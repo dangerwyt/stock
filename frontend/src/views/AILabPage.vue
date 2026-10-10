@@ -68,6 +68,18 @@ const generalRolesModel = computed({
   },
 })
 const manualStock = ref(null)
+// 「选择角色」下拉的选项。
+// 副信息只保留**有信息量**的风格：后端建角色时 style 的默认值是「自定义」
+// （backend/app/agents.py 的 `payload.get("style") or "自定义"`）——那是占位符、
+// 不是画像风格，照抄进下拉等于每一项后面挂一句废话。
+// 只有提炼出画像的角色（如「产业趋势共振」）才显示风格，其余只显示名字。
+const ROLE_STYLE_PLACEHOLDER = '自定义'
+const roleOptions = computed(() =>
+  agentItems.value.map((item) => {
+    const style = String(item.style || '').trim()
+    return { name: item.name, style: style === ROLE_STYLE_PLACEHOLDER ? '' : style }
+  }),
+)
 const sending = ref(false)
 const agentJob = ref(null)
 const liveAgentStates = ref([])
@@ -186,7 +198,7 @@ const stockEmptyText = computed(() => {
   if (stockSearchState.value === 'loading') return '正在搜索全市场A股…'
   if (stockSearchState.value === 'error') return '行情搜索暂不可用，请检查Tushare数据源。'
   if (stockSearchState.value === 'ready') return '没有匹配的上市A股。'
-  return '输入代码或名称开始搜索，支持全部 A 股。'
+  return '输入股票代码或名称，例如 603893 / 瑞芯微'
 })
 // composer 上方「已选上下文」那一行是否有内容。没有就整行隐藏 —— 默认高度和改动前一样，
 // 不白占聊天可视区（见模板里 context-chips / context-selected 两行的分工）。
@@ -201,7 +213,7 @@ const hasPickedContext = computed(
 const composerPlaceholder = computed(() => {
   const stock = requestStock.value
   if (stock) return `输入你的研究问题，例如「分析${stock.name}」`
-  return '输入你的研究问题，或引用文件 / 数据 / 图表'
+  return '输入你的研究问题'
 })
 const quickQuestions = computed(() => {
   const s = requestStock.value
@@ -829,9 +841,9 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
             :teleported="true"
           >
             <template #prefix><IconUserSearch :size="14" /></template>
-            <el-option v-for="item in agentItems" :key="item.name" :label="item.name" :value="item.name">
+            <el-option v-for="item in roleOptions" :key="item.name" :label="item.name" :value="item.name">
               <span class="composer-option-main">{{ item.name }}</span>
-              <span class="composer-option-sub">{{ item.style || '尚未学出画像' }}</span>
+              <span v-if="item.style" class="composer-option-sub">{{ item.style }}</span>
             </el-option>
             <template #empty>
               <p class="composer-select-empty">没有匹配的角色。可先点左上「新建角色」。</p>
