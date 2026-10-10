@@ -1,0 +1,260 @@
+{
+    "meta": {
+        "generatedAt": "2026-10-08T01:00:28.316Z",
+        "marketDate": "2026-10-06",
+        "sourceMode": "live",
+        "liveFetchStatus": "ok",
+        "freshCount": 12,
+        "staleCount": 0,
+        "failedSymbols": [],
+        "provider": "Yahoo Finance EOD",
+        "refreshPolicy": "A股交易日07:20与08:50各更新一次，盘前共享缓存",
+        "methodology": "按美股行业ETF前一交易日收盘涨跌映射A股相关行业；≥0.8%看多，≤-1%看空，其余中性。",
+        "disclaimer": "隔夜映射只反映外围风险偏好，不等同于A股开盘结果；需结合汇率、政策、竞价和本地资金确认。"
+    },
+    "summary": {
+        "bullish": 4,
+        "neutral": 8,
+        "bearish": 0
+    },
+    "items": [
+        {
+            "symbol": "XLU",
+            "usSector": "Utilities",
+            "aShareSector": "电力及公用事业",
+            "industryKeywords": [
+                "电力",
+                "公用事业",
+                "环保"
+            ],
+            "direction": "bullish",
+            "label": "看多上涨",
+            "previousClose": 39.97,
+            "close": 41.16,
+            "pctChange": 2.98,
+            "impactStrength": 99,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "SMH",
+            "usSector": "Semiconductors",
+            "aShareSector": "半导体芯片",
+            "industryKeywords": [
+                "半导体",
+                "元器件",
+                "电子"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 633.9,
+            "close": 632.5,
+            "pctChange": -0.22,
+            "impactStrength": 12,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLP",
+            "usSector": "Consumer Staples",
+            "aShareSector": "食品饮料&农林牧渔",
+            "industryKeywords": [
+                "食品",
+                "饮料",
+                "农业",
+                "农林牧渔"
+            ],
+            "direction": "bullish",
+            "label": "看多上涨",
+            "previousClose": 81.04,
+            "close": 81.8,
+            "pctChange": 0.94,
+            "impactStrength": 31,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLE",
+            "usSector": "Energy",
+            "aShareSector": "煤炭&石油石化",
+            "industryKeywords": [
+                "煤炭",
+                "石油",
+                "石化",
+                "油气"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 63.45,
+            "close": 63.75,
+            "pctChange": 0.47,
+            "impactStrength": 16,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLF",
+            "usSector": "Financials",
+            "aShareSector": "银行证券保险(大金融)",
+            "industryKeywords": [
+                "银行",
+                "证券",
+                "保险",
+                "多元金融"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 53.88,
+            "close": 54.01,
+            "pctChange": 0.24,
+            "impactStrength": 12,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLY",
+            "usSector": "Consumer Discretionary",
+            "aShareSector": "汽车家电&休闲服务",
+            "industryKeywords": [
+                "汽车",
+                "家用电器",
+                "家电",
+                "旅游",
+                "酒店"
+            ],
+            "direction": "bullish",
+            "label": "看多上涨",
+            "previousClose": 110.42,
+            "close": 111.72,
+            "pctChange": 1.18,
+            "impactStrength": 39,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLV",
+            "usSector": "Health Care",
+            "aShareSector": "医药生物",
+            "industryKeywords": [
+                "医药",
+                "医疗",
+                "生物"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 167.37,
+            "close": 167.09,
+            "pctChange": -0.17,
+            "impactStrength": 12,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "ITA",
+            "usSector": "Aerospace & Defense",
+            "aShareSector": "机械设备&国防军工",
+            "industryKeywords": [
+                "机械",
+                "军工",
+                "航空",
+                "航天",
+                "国防"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 206.98,
+            "close": 208.26,
+            "pctChange": 0.62,
+            "impactStrength": 21,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLB",
+            "usSector": "Materials",
+            "aShareSector": "有色钢铁&基础化工",
+            "industryKeywords": [
+                "有色",
+                "钢铁",
+                "化工",
+                "材料"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 49.5,
+            "close": 49.73,
+            "pctChange": 0.46,
+            "impactStrength": 15,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLK",
+            "usSector": "Technology",
+            "aShareSector": "电子计算机(科技)",
+            "industryKeywords": [
+                "电子",
+                "计算机",
+                "软件",
+                "通信"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 200.93,
+            "close": 202,
+            "pctChange": 0.53,
+            "impactStrength": 18,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "XLC",
+            "usSector": "Communication Services",
+            "aShareSector": "传媒游戏",
+            "industryKeywords": [
+                "传媒",
+                "游戏",
+                "互联网"
+            ],
+            "direction": "neutral",
+            "label": "震荡中性",
+            "previousClose": 111.61,
+            "close": 111.65,
+            "pctChange": 0.04,
+            "impactStrength": 12,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        },
+        {
+            "symbol": "IYR",
+            "usSector": "Real Estate",
+            "aShareSector": "房地产&建筑装饰",
+            "industryKeywords": [
+                "房地产",
+                "建筑",
+                "建材",
+                "装饰"
+            ],
+            "direction": "bullish",
+            "label": "看多上涨",
+            "previousClose": 94.36,
+            "close": 95.26,
+            "pctChange": 0.95,
+            "impactStrength": 32,
+            "marketDate": "2026-10-06",
+            "asOf": "2026-10-06T13:30:00.000Z",
+            "freshness": "live"
+        }
+    ]
+}

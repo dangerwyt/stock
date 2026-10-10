@@ -1,0 +1,44 @@
+# ---------- 依赖 ----------
+node_modules/
+
+# ---------- 构建产物 ----------
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# ---------- 环境变量（放行示例文件）----------
+# 凭据只放在仓库根的 .env（backend 与 frontend 都读它）
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# ---------- 日志 ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ---------- WorkBuddy 项目数据（记忆 + 备份）----------
+.workbuddy/
+
+# ---------- 后端运行态数据（本地可变状态，不入库）----------
+# agents.py / threads.py / agent_docs.py 三个 JSON 存储，缺失时会自动重建
+backend/app/data/custom_agents.json
+backend/app/data/ai_threads.json
+backend/app/data/agent_docs/
+backend/app/agent_docs/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ---------- 编辑器 / 系统 ----------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,222 @@
+{
+    "status": "ready",
+    "items": [
+        {
+            "name": "陈江挺",
+            "style": "趋势交易",
+            "horizon": "短线 / 波段",
+            "decision": "基本面决定关注对象，市场和行业强弱决定是否承担风险，趋势临界点决定买入。",
+            "selection": "上升趋势、行业强度、临界位置清晰、盈亏比至少3:1。",
+            "risk": "买入前确定止损和仓位，只加盈利且被市场确认的仓。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "养家",
+            "style": "超短情绪",
+            "horizon": "日内 / 超短",
+            "decision": "先判断情绪周期，再选主流题材和市场竞争形成的龙头。",
+            "selection": "主流题材、赚钱效应、核心龙头、首次分歧转一致与弱转强。",
+            "risk": "退潮期不格局，不及预期即撤，仓位随周期和确定性变化。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "谭琦",
+            "style": "价值研究",
+            "horizon": "中长线",
+            "decision": "先控制下限，再等待预期差被经营数据验证。",
+            "selection": "安全边际、基本面改善、市场预期偏低且价格阶段合适。",
+            "risk": "财务造假、盈利证伪和估值严重透支一票否决。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "曹名长",
+            "style": "深度价值",
+            "horizon": "长期",
+            "decision": "用债券和现金流思维判断企业长期生存与合理价值。",
+            "selection": "自由现金流、低估值、稳定分红、低杠杆和内生增长。",
+            "risk": "不加杠杆、适度分散，警惕永久性损失和价值陷阱。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "产业调研凌",
+            "style": "产业研究",
+            "horizon": "波段 / 中线",
+            "decision": "沿主要矛盾、产业短板、客户验证和重复订单逐级确认。",
+            "selection": "国产替代、供给短板、客户验证、订单兑现和份额提升。",
+            "risk": "未完成客户验证只进观察池，警惕产业叙事和估值透支。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "曹靖楠",
+            "style": "宏观策略",
+            "horizon": "中线 / 配置",
+            "decision": "把政策和地缘事件沿流动性、成本、订单传导到企业利润。",
+            "selection": "国家战略、供应链安全、政策兑现与企业真实受益。",
+            "risk": "宏观判断必须落到公司财务，多源核验且保留不交易选项。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "产业调研福总",
+            "style": "产业波段",
+            "horizon": "波段",
+            "decision": "从涨价叙事切换到资本开支、产能瓶颈和订单兑现。",
+            "selection": "扩产节奏、设备订单、关键瓶颈、交付和回款验证。",
+            "risk": "产业知识不能成为高位被套的借口，扩产不等于盈利。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "菠萝",
+            "style": "概率择时",
+            "horizon": "波段 / 配置",
+            "decision": "先判断持股环境，再等待产业、资金与情绪形成概率叠加。",
+            "selection": "基本面未坏、系统性错杀、催化临近、赔率突出。",
+            "risk": "允许长期空仓，不无限补仓，环境越差容错越低。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "曾剑枫",
+            "style": "产业成长",
+            "horizon": "中线",
+            "decision": "用产业阶段、订单、季度利润和现金流验证成长。",
+            "selection": "真实需求、竞争壁垒、业绩兑现与估值增速匹配。",
+            "risk": "不追无业绩题材，不满仓不高杠杆，警惕技术路线变化。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "寻龙一手",
+            "style": "盘面推演",
+            "horizon": "日内 / 超短",
+            "decision": "盘前建立多种场景，盘中依据核心股和板块共振选择。",
+            "selection": "事件驱动、资金聚焦、核心反馈、竞价和关键时点验证。",
+            "risk": "不猜资金意图，不把单股脉冲当板块修复，场景失效即降仓。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "龙一",
+            "style": "题材交易",
+            "horizon": "超短 / 波段",
+            "decision": "核验产业数据后判断题材所处交易阶段，只做最强验证环节。",
+            "selection": "主营利润、重复采购、订单兑现、量价转强和核心辨识度。",
+            "risk": "中线逻辑不代表短线可追，高位放量下跌尊重价格信号。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        },
+        {
+            "name": "短线委员会",
+            "style": "多因子短线",
+            "horizon": "短线",
+            "decision": "按数据、市场、产业、财务、资金、量价和情景依次验证。",
+            "selection": "趋势、资金、事件、情绪和赔率同时达标，多Agent投票确认。",
+            "risk": "硬风险一票否决，结论必须包含失效条件、仓位上限和回撤线。",
+            "materialCount": 0,
+            "productionVersion": {
+                "id": "agent-factor-v1",
+                "status": "production",
+                "source": "固定行情因子",
+                "publishedAt": "2026-08-24T00:00:00.000Z",
+                "note": "首个可审计生产版本；AI只做证据复核，不自动修改选股权重。"
+            },
+            "candidateCount": 0,
+            "lastMaterialAt": null
+        }
+    ],
+    "learningPolicy": "候选知识版本必须保留来源并经发布门禁；生产选股权重不会被AI自动修改。"
+}

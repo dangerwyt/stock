@@ -1,0 +1,114 @@
+// Formatting + stock hydration helpers ported from reference-react/src/App.jsx.
+
+export function formatShanghaiTime(value) {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--'
+  return date.toLocaleTimeString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+export function formatShanghaiDateTime(value, withSeconds = false) {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(withSeconds ? { second: '2-digit' } : {}),
+  })
+}
+
+export function displayField(value, fallback = '--') {
+  return value == null || value === '' ? fallback : String(value)
+}
+
+export function hydrateStock(item) {
+  const base = {}
+  const liveRankedItem = Boolean(item?.code && item?.agentScores)
+  const pct = Number(item?.pct ?? base.pct ?? 0)
+  return {
+    rank: item?.rank ?? base.rank ?? 0,
+    change: item?.change || 0,
+    name: item?.name || base.name || item?.code || '未知股票',
+    code: item?.code || base.code || '',
+    industry: item?.industry || base.industry || '行业待映射',
+    price: Number(item?.close ?? item?.price ?? base.price ?? 0),
+    pct,
+    score: Number(item?.score ?? base.score ?? 0),
+    confidence: Number(item?.confidence ?? base.confidence ?? 0),
+    consensus: Number(item?.agentVotes ?? base.consensus ?? 0),
+    status: item?.status || base.status || (Number(item?.score) >= 75 ? '可试仓' : '等待确认'),
+    valuation: item?.valuation || (liveRankedItem ? (Number(item?.peTtm) > 0 ? `PE(TTM) ${Number(item.peTtm).toFixed(1)}` : 'PE暂无有效值') : base.valuation || '按实时因子'),
+    trend: item?.trend || (liveRankedItem ? (pct >= 0 ? '当日价格上涨' : '当日价格回撤') : base.trend || '等待数据'),
+    risk: item?.risk || (liveRankedItem ? '高' : base.risk || '高'),
+    // 引擎现在总会给出 reason，这里的兜底只服务于「有 agentScores 却没带 reason」的旧数据，
+    // 因此不再写死 /12 —— 内置 12 位 mock 老师已从产品去掉，票数分母随实际老师数变化。
+    reason: item?.reason || (liveRankedItem ? `${item.topAgents?.join('、') || '策略画像'}因子领先` : '等待真实因子快照'),
+    trigger: item?.trigger || (Number.isFinite(Number(item?.triggerPrice)) ? `突破当日高点 ${Number(item.triggerPrice).toFixed(2)}` : liveRankedItem ? '暂无真实触发位' : base.trigger || '暂无真实触发位'),
+    invalid: item?.invalid || (Number.isFinite(Number(item?.invalidPrice)) ? `跌破当日低点 ${Number(item.invalidPrice).toFixed(2)}` : liveRankedItem ? '暂无真实失效位' : base.invalid || '暂无真实失效位'),
+    ...item,
+  }
+}
+
+export function resolveWatchlistStocks(codes, liveStocks = [], details = {}) {
+  return codes.map((code) => {
+    const live = liveStocks.find((item) => item.code === code)
+    if (live) return { ...hydrateStock(live), watchlistDataAvailable: true, decisionAvailable: Boolean(live.agentScores) }
+    const saved = details[code]
+    return {
+      code,
+      name: saved?.name || code,
+      industry: saved?.industry || '行情待刷新',
+      watchlistDataAvailable: false,
+      decisionAvailable: false,
+    }
+  })
+}
+
+// Build a flat live stock universe (TOP50 rankings + market quotes) used to
+// resolve watchlist rows, mirroring reference-react watchlistLiveUniverse.
+export function buildLiveUniverse(top50Snapshot, marketSnapshot) {
+  const seen = new Map()
+  for (const cycle of Object.values(top50Snapshot?.cycles || {})) {
+    for (const item of cycle?.ranking || []) {
+      if (item?.code) seen.set(item.code, item)
+    }
+  }
+  for (const quote of marketSnapshot?.quotes || []) {
+    if (quote?.code && !seen.has(quote.code)) {
+      seen.set(quote.code, {
+        code: quote.code,
+        name: quote.name,
+        industry: quote.industry || quote.sector,
+        close: quote.price ?? quote.close,
+        pct: quote.changePct ?? quote.pct,
+      })
+    }
+  }
+  return [...seen.values()]
+}
+
+export function changeClass(v) {
+  return v >= 0 ? 'price-up' : 'price-down'
+}
+
+export function formatDurationMs(durationMs) {
+  const value = Number(durationMs)
+  if (!Number.isFinite(value) || value <= 0) return '--'
+  const totalSeconds = Math.max(1, Math.round(value / 1000))
+  if (totalSeconds < 60) return `${totalSeconds}秒`
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return seconds ? `${minutes}分${seconds}秒` : `${minutes}分`
+}

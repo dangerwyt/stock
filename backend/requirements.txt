@@ -1,0 +1,22 @@
+# KnowPilot-stack backend skeleton for stock-intelligence-platform
+# Phase 1: FastAPI skeleton serving mock data; real LangGraph/PGVector/Milvus分层接入后续
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+sse-starlette==2.2.1
+httpx==0.27.2
+
+# Agent knowledge documents: upload + text extraction
+python-multipart==0.0.32
+pypdf==6.19.0
+
+# LLM 通道：init_chat_model（懒单例）走 MiniMax 的 OpenAI 兼容端点（默认），
+# 想省时间/token 可设 LLM_BACKEND=minimax_v2 走原生端点（见 app/llm.py）
+langchain==1.4.4
+langchain-openai==1.7.0
+
+# 定时任务：每天 9:00 按「资料 + 会话历史」自动更新自建角色画像（见 app/scheduler.py）
+# 选它是为了不引入 broker / worker —— 单进程 uvicorn 内跑 AsyncIOScheduler 就够
+apscheduler==3.11.3

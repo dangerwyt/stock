@@ -1,0 +1,2633 @@
+{
+    "meta": {
+        "generatedAt": "2026-10-08T06:00:13.993Z",
+        "tradeDate": "2026-10-08",
+        "sourceMode": "live",
+        "provider": "ProMax rt_k",
+        "status": "partial",
+        "refreshSeconds": null,
+        "requestCodeCount": 100,
+        "rowCount": 121,
+        "successCount": 99,
+        "staleCount": 1,
+        "failedCount": 1
+    },
+    "quotes": [
+        {
+            "tsCode": "688175.SH",
+            "code": "688175",
+            "name": "高凌信息",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 30.6,
+            "open": 28.9,
+            "high": 31.31,
+            "low": 28.53,
+            "volume": 10651110,
+            "amount": 323087214,
+            "amountUnit": "yuan",
+            "intradayVwap": 30.33,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 30.6,
+                    "volume": 10651110
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 30.6,
+                    "volume": 10651110
+                }
+            ]
+        },
+        {
+            "tsCode": "688027.SH",
+            "code": "688027",
+            "name": "国盾量子",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 315.66,
+            "open": 328.5,
+            "high": 331.59,
+            "low": 315.43,
+            "volume": 996674,
+            "amount": 321529602,
+            "amountUnit": "yuan",
+            "intradayVwap": 322.6,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 315.66,
+                    "volume": 996474
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 315.66,
+                    "volume": 996674
+                }
+            ]
+        },
+        {
+            "tsCode": "300192.SZ",
+            "code": "300192",
+            "name": "科德教育",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 24.59,
+            "open": 24.5,
+            "high": 25.55,
+            "low": 23.69,
+            "volume": 33536320,
+            "amount": 827125492,
+            "amountUnit": "yuan",
+            "intradayVwap": 24.66,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 24.59,
+                    "volume": 33536320
+                }
+            ]
+        },
+        {
+            "tsCode": "300308.SZ",
+            "code": "300308",
+            "name": "中际旭创",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 777.07,
+            "open": 810,
+            "high": 834.54,
+            "low": 777,
+            "volume": 22185765,
+            "amount": 17795502091,
+            "amountUnit": "yuan",
+            "intradayVwap": 802.11,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 777.07,
+                    "volume": 22185765
+                }
+            ]
+        },
+        {
+            "tsCode": "300545.SZ",
+            "code": "300545",
+            "name": "联得装备",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 25.15,
+            "open": 26.73,
+            "high": 26.73,
+            "low": 25.13,
+            "volume": 5316459,
+            "amount": 137137395,
+            "amountUnit": "yuan",
+            "intradayVwap": 25.79,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 25.15,
+                    "volume": 5316459
+                }
+            ]
+        },
+        {
+            "tsCode": "301080.SZ",
+            "code": "301080",
+            "name": "百普赛斯",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 124.62,
+            "open": 138,
+            "high": 138.25,
+            "low": 121.2,
+            "volume": 18067234,
+            "amount": 2297824157,
+            "amountUnit": "yuan",
+            "intradayVwap": 127.18,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 124.62,
+                    "volume": 18067234
+                }
+            ]
+        },
+        {
+            "tsCode": "300016.SZ",
+            "code": "300016",
+            "name": "北陆药业",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 9.12,
+            "open": 9.63,
+            "high": 9.63,
+            "low": 9.12,
+            "volume": 36122000,
+            "amount": 334313830,
+            "amountUnit": "yuan",
+            "intradayVwap": 9.26,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 9.12,
+                    "volume": 36122000
+                }
+            ]
+        },
+        {
+            "tsCode": "300750.SZ",
+            "code": "300750",
+            "name": "宁德时代",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 286.16,
+            "open": 292,
+            "high": 293.47,
+            "low": 285.8,
+            "volume": 27973712,
+            "amount": 8101257188,
+            "amountUnit": "yuan",
+            "intradayVwap": 289.6,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 286.16,
+                    "volume": 27973712
+                }
+            ]
+        },
+        {
+            "tsCode": "301132.SZ",
+            "code": "301132",
+            "name": "满坤科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 64.01,
+            "open": 67.04,
+            "high": 68.44,
+            "low": 63.97,
+            "volume": 7499472,
+            "amount": 494629832,
+            "amountUnit": "yuan",
+            "intradayVwap": 65.96,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 64.01,
+                    "volume": 7499472
+                }
+            ]
+        },
+        {
+            "tsCode": "002916.SZ",
+            "code": "002916",
+            "name": "深南电路",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 367.3,
+            "open": 379.07,
+            "high": 393.53,
+            "low": 367,
+            "volume": 6961230,
+            "amount": 2662304053,
+            "amountUnit": "yuan",
+            "intradayVwap": 382.45,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 367.3,
+                    "volume": 6961230
+                }
+            ]
+        },
+        {
+            "tsCode": "002886.SZ",
+            "code": "002886",
+            "name": "沃特股份",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 22.99,
+            "open": 23.51,
+            "high": 24.08,
+            "low": 22.97,
+            "volume": 9429156,
+            "amount": 221414058,
+            "amountUnit": "yuan",
+            "intradayVwap": 23.48,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 22.99,
+                    "volume": 9429156
+                }
+            ]
+        },
+        {
+            "tsCode": "002463.SZ",
+            "code": "002463",
+            "name": "沪电股份",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 115.95,
+            "open": 117.5,
+            "high": 123.11,
+            "low": 115.94,
+            "volume": 37940826,
+            "amount": 4546610451,
+            "amountUnit": "yuan",
+            "intradayVwap": 119.83,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 115.95,
+                    "volume": 37940826
+                }
+            ]
+        },
+        {
+            "tsCode": "002335.SZ",
+            "code": "002335",
+            "name": "科华数据",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 28.87,
+            "open": 30,
+            "high": 30.52,
+            "low": 28.86,
+            "volume": 15907914,
+            "amount": 470595745,
+            "amountUnit": "yuan",
+            "intradayVwap": 29.58,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 28.87,
+                    "volume": 15907914
+                }
+            ]
+        },
+        {
+            "tsCode": "002436.SZ",
+            "code": "002436",
+            "name": "兴森科技",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 40.11,
+            "open": 41.8,
+            "high": 44,
+            "low": 40.01,
+            "volume": 99486198,
+            "amount": 4188286328,
+            "amountUnit": "yuan",
+            "intradayVwap": 42.1,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 40.11,
+                    "volume": 99486198
+                }
+            ]
+        },
+        {
+            "tsCode": "002636.SZ",
+            "code": "002636",
+            "name": "金安国纪",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 79.01,
+            "open": 80,
+            "high": 82.72,
+            "low": 78.75,
+            "volume": 27121931,
+            "amount": 2195624226,
+            "amountUnit": "yuan",
+            "intradayVwap": 80.95,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 79.01,
+                    "volume": 27121931
+                }
+            ]
+        },
+        {
+            "tsCode": "002384.SZ",
+            "code": "002384",
+            "name": "东山精密",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 150.66,
+            "open": 154.09,
+            "high": 156.66,
+            "low": 150.66,
+            "volume": 52979583,
+            "amount": 8039679902,
+            "amountUnit": "yuan",
+            "intradayVwap": 151.75,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 150.66,
+                    "volume": 52979583
+                }
+            ]
+        },
+        {
+            "tsCode": "002646.SZ",
+            "code": "002646",
+            "name": "天佑德酒",
+            "time": "2026-10-08T13:58:24.000",
+            "observedAt": "2026-10-08T13:58:24.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 7.13,
+            "open": 7.11,
+            "high": 7.28,
+            "low": 7.02,
+            "volume": 7758401,
+            "amount": 55423607,
+            "amountUnit": "yuan",
+            "intradayVwap": 7.14,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:24.000",
+                    "price": 7.13,
+                    "volume": 7758401
+                }
+            ]
+        },
+        {
+            "tsCode": "001326.SZ",
+            "code": "001326",
+            "name": "联域股份",
+            "time": "2026-10-08T13:58:22.000",
+            "observedAt": "2026-10-08T13:58:22.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 101.25,
+            "open": 101.65,
+            "high": 107.95,
+            "low": 100,
+            "volume": 2197500,
+            "amount": 228232782,
+            "amountUnit": "yuan",
+            "intradayVwap": 103.86,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:22.000",
+                    "price": 101.25,
+                    "volume": 2197500
+                }
+            ]
+        },
+        {
+            "tsCode": "001330.SZ",
+            "code": "001330",
+            "name": "博纳影业",
+            "time": "2026-10-08T13:58:22.000",
+            "observedAt": "2026-10-08T13:58:22.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 6.31,
+            "open": 6.4,
+            "high": 6.5,
+            "low": 6.1,
+            "volume": 132043337,
+            "amount": 835003926,
+            "amountUnit": "yuan",
+            "intradayVwap": 6.32,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:22.000",
+                    "price": 6.31,
+                    "volume": 132043337
+                }
+            ]
+        },
+        {
+            "tsCode": "001216.SZ",
+            "code": "001216",
+            "name": "华瓷股份",
+            "time": "2026-10-08T13:58:22.000",
+            "observedAt": "2026-10-08T13:58:22.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 23.56,
+            "open": 25.01,
+            "high": 25.4,
+            "low": 23.56,
+            "volume": 17240037,
+            "amount": 411076413,
+            "amountUnit": "yuan",
+            "intradayVwap": 23.84,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:22.000",
+                    "price": 23.56,
+                    "volume": 17240037
+                }
+            ]
+        },
+        {
+            "tsCode": "001268.SZ",
+            "code": "001268",
+            "name": "联合精密",
+            "time": "2026-10-08T13:58:22.000",
+            "observedAt": "2026-10-08T13:58:22.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 24.34,
+            "open": 25.53,
+            "high": 25.55,
+            "low": 23.84,
+            "volume": 3156069,
+            "amount": 77996505,
+            "amountUnit": "yuan",
+            "intradayVwap": 24.71,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:22.000",
+                    "price": 24.34,
+                    "volume": 3156069
+                }
+            ]
+        },
+        {
+            "tsCode": "000636.SZ",
+            "code": "000636",
+            "name": "风华高科",
+            "time": "2026-10-08T13:58:21.000",
+            "observedAt": "2026-10-08T13:58:21.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 50.35,
+            "open": 50.5,
+            "high": 52.65,
+            "low": 50.32,
+            "volume": 72330829,
+            "amount": 3708141057,
+            "amountUnit": "yuan",
+            "intradayVwap": 51.27,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:21.000",
+                    "price": 50.35,
+                    "volume": 72330829
+                }
+            ]
+        },
+        {
+            "tsCode": "000555.SZ",
+            "code": "000555",
+            "name": "神州信息",
+            "time": "2026-10-08T13:58:21.000",
+            "observedAt": "2026-10-08T13:58:21.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 9.84,
+            "open": 10.04,
+            "high": 10.11,
+            "low": 9.84,
+            "volume": 8648072,
+            "amount": 86116135,
+            "amountUnit": "yuan",
+            "intradayVwap": 9.96,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:21.000",
+                    "price": 9.84,
+                    "volume": 8648072
+                }
+            ]
+        },
+        {
+            "tsCode": "000877.SZ",
+            "code": "000877",
+            "name": "天山股份",
+            "time": "2026-10-08T13:58:21.000",
+            "observedAt": "2026-10-08T13:58:21.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 3.71,
+            "open": 3.75,
+            "high": 3.78,
+            "low": 3.7,
+            "volume": 12367800,
+            "amount": 46162767,
+            "amountUnit": "yuan",
+            "intradayVwap": 3.73,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:21.000",
+                    "price": 3.71,
+                    "volume": 12367800
+                }
+            ]
+        },
+        {
+            "tsCode": "000725.SZ",
+            "code": "000725",
+            "name": "京东方Ａ",
+            "time": "2026-10-08T13:58:21.000",
+            "observedAt": "2026-10-08T13:58:21.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 5.49,
+            "open": 5.7,
+            "high": 5.79,
+            "low": 5.49,
+            "volume": 803875707,
+            "amount": 4521745438,
+            "amountUnit": "yuan",
+            "intradayVwap": 5.62,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:21.000",
+                    "price": 5.49,
+                    "volume": 803875707
+                }
+            ]
+        },
+        {
+            "tsCode": "688765.SH",
+            "code": "688765",
+            "name": "禾元生物",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 36.75,
+            "open": 40.2,
+            "high": 40.5,
+            "low": 36.74,
+            "volume": 4277978,
+            "amount": 162276490,
+            "amountUnit": "yuan",
+            "intradayVwap": 37.93,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 36.75,
+                    "volume": 4277978
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 36.75,
+                    "volume": 4277978
+                }
+            ]
+        },
+        {
+            "tsCode": "688112.SH",
+            "code": "688112",
+            "name": "鼎阳科技",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 92.09,
+            "open": 98.8,
+            "high": 98.98,
+            "low": 91.99,
+            "volume": 6059429,
+            "amount": 572796900,
+            "amountUnit": "yuan",
+            "intradayVwap": 94.53,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 92.09,
+                    "volume": 6059429
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 92.09,
+                    "volume": 6059429
+                }
+            ]
+        },
+        {
+            "tsCode": "688578.SH",
+            "code": "688578",
+            "name": "艾力斯  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 89.26,
+            "open": 92.83,
+            "high": 94.97,
+            "low": 89.26,
+            "volume": 6304098,
+            "amount": 569683252,
+            "amountUnit": "yuan",
+            "intradayVwap": 90.37,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 89.26,
+                    "volume": 6304098
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 89.26,
+                    "volume": 6304098
+                }
+            ]
+        },
+        {
+            "tsCode": "688677.SH",
+            "code": "688677",
+            "name": "海泰新光",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 69.06,
+            "open": 75.9,
+            "high": 76.38,
+            "low": 69,
+            "volume": 3994453,
+            "amount": 289470188,
+            "amountUnit": "yuan",
+            "intradayVwap": 72.47,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 69.06,
+                    "volume": 3994453
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 69.06,
+                    "volume": 3994453
+                }
+            ]
+        },
+        {
+            "tsCode": "300155.SZ",
+            "code": "300155",
+            "name": "安居宝",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 4.52,
+            "open": 4.57,
+            "high": 4.72,
+            "low": 4.49,
+            "volume": 17080133,
+            "amount": 78817613,
+            "amountUnit": "yuan",
+            "intradayVwap": 4.61,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 4.52,
+                    "volume": 17080133
+                }
+            ]
+        },
+        {
+            "tsCode": "301369.SZ",
+            "code": "301369",
+            "name": "联动科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 123.66,
+            "open": 136.69,
+            "high": 137.36,
+            "low": 123.66,
+            "volume": 2638135,
+            "amount": 341963303,
+            "amountUnit": "yuan",
+            "intradayVwap": 129.62,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 123.66,
+                    "volume": 2638135
+                }
+            ]
+        },
+        {
+            "tsCode": "300397.SZ",
+            "code": "300397",
+            "name": "天和防务",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 10.4,
+            "open": 10.88,
+            "high": 11.09,
+            "low": 10.4,
+            "volume": 16464007,
+            "amount": 176806676,
+            "amountUnit": "yuan",
+            "intradayVwap": 10.74,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 10.4,
+                    "volume": 16464007
+                }
+            ]
+        },
+        {
+            "tsCode": "301047.SZ",
+            "code": "301047",
+            "name": "义翘神州",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 147.01,
+            "open": 153.1,
+            "high": 155,
+            "low": 136.66,
+            "volume": 9887572,
+            "amount": 1453576001,
+            "amountUnit": "yuan",
+            "intradayVwap": 147.01,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 147.01,
+                    "volume": 9887572
+                }
+            ]
+        },
+        {
+            "tsCode": "300502.SZ",
+            "code": "300502",
+            "name": "新易盛",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 374.62,
+            "open": 389.21,
+            "high": 407.33,
+            "low": 374.62,
+            "volume": 31127736,
+            "amount": 12148996218,
+            "amountUnit": "yuan",
+            "intradayVwap": 390.29,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 374.62,
+                    "volume": 31127736
+                }
+            ]
+        },
+        {
+            "tsCode": "300243.SZ",
+            "code": "300243",
+            "name": "瑞丰高材",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 20.27,
+            "open": 20.78,
+            "high": 22.49,
+            "low": 20.27,
+            "volume": 24632339,
+            "amount": 527383365,
+            "amountUnit": "yuan",
+            "intradayVwap": 21.41,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 20.27,
+                    "volume": 24632339
+                }
+            ]
+        },
+        {
+            "tsCode": "300977.SZ",
+            "code": "300977",
+            "name": "深圳瑞捷",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 20.04,
+            "open": 18.86,
+            "high": 21.48,
+            "low": 18.45,
+            "volume": 6560357,
+            "amount": 132953249,
+            "amountUnit": "yuan",
+            "intradayVwap": 20.27,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 20.04,
+                    "volume": 6560357
+                }
+            ]
+        },
+        {
+            "tsCode": "301373.SZ",
+            "code": "301373",
+            "name": "凌玮科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 114.07,
+            "open": 116.9,
+            "high": 123.99,
+            "low": 114,
+            "volume": 4764156,
+            "amount": 564055232,
+            "amountUnit": "yuan",
+            "intradayVwap": 118.4,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 114.07,
+                    "volume": 4764156
+                }
+            ]
+        },
+        {
+            "tsCode": "300862.SZ",
+            "code": "300862",
+            "name": "蓝盾光电",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 40.76,
+            "open": 44.01,
+            "high": 44.27,
+            "low": 40.7,
+            "volume": 15532606,
+            "amount": 653253952,
+            "amountUnit": "yuan",
+            "intradayVwap": 42.06,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 40.76,
+                    "volume": 15532606
+                }
+            ]
+        },
+        {
+            "tsCode": "301008.SZ",
+            "code": "301008",
+            "name": "宏昌科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 48.68,
+            "open": 51.12,
+            "high": 51.88,
+            "low": 48.59,
+            "volume": 6398304,
+            "amount": 321420577,
+            "amountUnit": "yuan",
+            "intradayVwap": 50.24,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 48.68,
+                    "volume": 6398304
+                }
+            ]
+        },
+        {
+            "tsCode": "300895.SZ",
+            "code": "300895",
+            "name": "铜牛信息",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 52.76,
+            "open": 57.1,
+            "high": 57.3,
+            "low": 52.58,
+            "volume": 3933994,
+            "amount": 215057734,
+            "amountUnit": "yuan",
+            "intradayVwap": 54.67,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 52.76,
+                    "volume": 3933994
+                }
+            ]
+        },
+        {
+            "tsCode": "300285.SZ",
+            "code": "300285",
+            "name": "国瓷材料",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 60.14,
+            "open": 63.91,
+            "high": 65.44,
+            "low": 60.1,
+            "volume": 47667887,
+            "amount": 3003611206,
+            "amountUnit": "yuan",
+            "intradayVwap": 63.01,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 60.14,
+                    "volume": 47667887
+                }
+            ]
+        },
+        {
+            "tsCode": "300394.SZ",
+            "code": "300394",
+            "name": "天孚通信",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 231.68,
+            "open": 259.22,
+            "high": 259.8,
+            "low": 231.3,
+            "volume": 34805663,
+            "amount": 8473389099,
+            "amountUnit": "yuan",
+            "intradayVwap": 243.45,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 231.68,
+                    "volume": 34805663
+                }
+            ]
+        },
+        {
+            "tsCode": "301595.SZ",
+            "code": "301595",
+            "name": "太力科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 43.92,
+            "open": 46.09,
+            "high": 46.23,
+            "low": 43.2,
+            "volume": 1409378,
+            "amount": 62550641,
+            "amountUnit": "yuan",
+            "intradayVwap": 44.38,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 43.92,
+                    "volume": 1409378
+                }
+            ]
+        },
+        {
+            "tsCode": "300404.SZ",
+            "code": "300404",
+            "name": "博济医药",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 13.9,
+            "open": 15.29,
+            "high": 15.3,
+            "low": 13.9,
+            "volume": 38115035,
+            "amount": 543245844,
+            "amountUnit": "yuan",
+            "intradayVwap": 14.25,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 13.9,
+                    "volume": 38115035
+                }
+            ]
+        },
+        {
+            "tsCode": "300489.SZ",
+            "code": "300489",
+            "name": "光智科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 259.5,
+            "open": 283,
+            "high": 288.8,
+            "low": 251,
+            "volume": 13868445,
+            "amount": 3693237670,
+            "amountUnit": "yuan",
+            "intradayVwap": 266.31,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 259.5,
+                    "volume": 13868445
+                }
+            ]
+        },
+        {
+            "tsCode": "300684.SZ",
+            "code": "300684",
+            "name": "中石科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 91.08,
+            "open": 106.89,
+            "high": 107.78,
+            "low": 91,
+            "volume": 24441330,
+            "amount": 2402632133,
+            "amountUnit": "yuan",
+            "intradayVwap": 98.3,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 91.08,
+                    "volume": 24441330
+                }
+            ]
+        },
+        {
+            "tsCode": "301099.SZ",
+            "code": "301099",
+            "name": "雅创电子",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 47.98,
+            "open": 50,
+            "high": 52.08,
+            "low": 47.98,
+            "volume": 8599021,
+            "amount": 428483204,
+            "amountUnit": "yuan",
+            "intradayVwap": 49.83,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 47.98,
+                    "volume": 8599021
+                }
+            ]
+        },
+        {
+            "tsCode": "301630.SZ",
+            "code": "301630",
+            "name": "同宇新材",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 207.61,
+            "open": 200.97,
+            "high": 224.95,
+            "low": 197.04,
+            "volume": 2133988,
+            "amount": 452195066,
+            "amountUnit": "yuan",
+            "intradayVwap": 211.9,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 207.61,
+                    "volume": 2133988
+                }
+            ]
+        },
+        {
+            "tsCode": "300829.SZ",
+            "code": "300829",
+            "name": "金丹科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 21,
+            "open": 22.4,
+            "high": 22.64,
+            "low": 21,
+            "volume": 18017192,
+            "amount": 390945707,
+            "amountUnit": "yuan",
+            "intradayVwap": 21.7,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 21,
+                    "volume": 18017192
+                }
+            ]
+        },
+        {
+            "tsCode": "301678.SZ",
+            "code": "301678",
+            "name": "新恒汇",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 50.82,
+            "open": 50.86,
+            "high": 53.48,
+            "low": 50.7,
+            "volume": 3952843,
+            "amount": 205867778,
+            "amountUnit": "yuan",
+            "intradayVwap": 52.08,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 50.82,
+                    "volume": 3952843
+                }
+            ]
+        },
+        {
+            "tsCode": "301393.SZ",
+            "code": "301393",
+            "name": "昊帆生物",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 63.06,
+            "open": 67.34,
+            "high": 68.4,
+            "low": 63.01,
+            "volume": 2545001,
+            "amount": 165006576,
+            "amountUnit": "yuan",
+            "intradayVwap": 64.84,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 63.06,
+                    "volume": 2545001
+                }
+            ]
+        },
+        {
+            "tsCode": "300691.SZ",
+            "code": "300691",
+            "name": "联合光电",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 17.63,
+            "open": 20.5,
+            "high": 20.59,
+            "low": 17.4,
+            "volume": 25029520,
+            "amount": 463690978,
+            "amountUnit": "yuan",
+            "intradayVwap": 18.53,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 17.63,
+                    "volume": 25029520
+                }
+            ]
+        },
+        {
+            "tsCode": "301217.SZ",
+            "code": "301217",
+            "name": "铜冠铜箔",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 99.86,
+            "open": 100.88,
+            "high": 104.18,
+            "low": 99.5,
+            "volume": 14561479,
+            "amount": 1484670965,
+            "amountUnit": "yuan",
+            "intradayVwap": 101.96,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 99.86,
+                    "volume": 14561479
+                }
+            ]
+        },
+        {
+            "tsCode": "301233.SZ",
+            "code": "301233",
+            "name": "盛帮股份",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 36.02,
+            "open": 36.6,
+            "high": 36.99,
+            "low": 35.81,
+            "volume": 1178060,
+            "amount": 42843879,
+            "amountUnit": "yuan",
+            "intradayVwap": 36.37,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 36.02,
+                    "volume": 1178060
+                }
+            ]
+        },
+        {
+            "tsCode": "300911.SZ",
+            "code": "300911",
+            "name": "亿田智能",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 31.33,
+            "open": 32.28,
+            "high": 32.5,
+            "low": 31.09,
+            "volume": 4373300,
+            "amount": 138608311,
+            "amountUnit": "yuan",
+            "intradayVwap": 31.69,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 31.33,
+                    "volume": 4373300
+                }
+            ]
+        },
+        {
+            "tsCode": "300566.SZ",
+            "code": "300566",
+            "name": "激智科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 22.18,
+            "open": 23.45,
+            "high": 23.68,
+            "low": 22.17,
+            "volume": 9534434,
+            "amount": 217901340,
+            "amountUnit": "yuan",
+            "intradayVwap": 22.85,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 22.18,
+                    "volume": 9534434
+                }
+            ]
+        },
+        {
+            "tsCode": "300259.SZ",
+            "code": "300259",
+            "name": "新天科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 3.82,
+            "open": 3.91,
+            "high": 3.93,
+            "low": 3.82,
+            "volume": 18111700,
+            "amount": 70265807,
+            "amountUnit": "yuan",
+            "intradayVwap": 3.88,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 3.82,
+                    "volume": 18111700
+                }
+            ]
+        },
+        {
+            "tsCode": "300476.SZ",
+            "code": "300476",
+            "name": "胜宏科技",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 205.51,
+            "open": 212.01,
+            "high": 218.5,
+            "low": 205.2,
+            "volume": 17653703,
+            "amount": 3756698577,
+            "amountUnit": "yuan",
+            "intradayVwap": 212.8,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 205.51,
+                    "volume": 17653703
+                }
+            ]
+        },
+        {
+            "tsCode": "300520.SZ",
+            "code": "300520",
+            "name": "科大国创",
+            "time": "2026-10-08T13:58:26.000",
+            "observedAt": "2026-10-08T13:58:26.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 21.62,
+            "open": 22.39,
+            "high": 22.55,
+            "low": 21.62,
+            "volume": 6497000,
+            "amount": 143241840,
+            "amountUnit": "yuan",
+            "intradayVwap": 22.05,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:26.000",
+                    "price": 21.62,
+                    "volume": 6497000
+                }
+            ]
+        },
+        {
+            "tsCode": "688662.SH",
+            "code": "688662",
+            "name": "富信科技",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 111.54,
+            "open": 114.95,
+            "high": 127.78,
+            "low": 111.2,
+            "volume": 14045924,
+            "amount": 1675022250,
+            "amountUnit": "yuan",
+            "intradayVwap": 119.25,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 111.54,
+                    "volume": 14045424
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 111.54,
+                    "volume": 14045924
+                }
+            ]
+        },
+        {
+            "tsCode": "688789.SH",
+            "code": "688789",
+            "name": "宏华数科",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 48.74,
+            "open": 49.78,
+            "high": 49.78,
+            "low": 47.25,
+            "volume": 1231661,
+            "amount": 59452598,
+            "amountUnit": "yuan",
+            "intradayVwap": 48.27,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 48.74,
+                    "volume": 1231661
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 48.74,
+                    "volume": 1231661
+                }
+            ]
+        },
+        {
+            "tsCode": "688203.SH",
+            "code": "688203",
+            "name": "海正生材",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 18.21,
+            "open": 19,
+            "high": 19.52,
+            "low": 18.2,
+            "volume": 14843322,
+            "amount": 280156807,
+            "amountUnit": "yuan",
+            "intradayVwap": 18.87,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 18.21,
+                    "volume": 14843322
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 18.21,
+                    "volume": 14843322
+                }
+            ]
+        },
+        {
+            "tsCode": "688710.SH",
+            "code": "688710",
+            "name": "益诺思  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 109.02,
+            "open": 102.58,
+            "high": 112,
+            "low": 99.18,
+            "volume": 3982422,
+            "amount": 423980289,
+            "amountUnit": "yuan",
+            "intradayVwap": 106.46,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 109.09,
+                    "volume": 3981604
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 109.02,
+                    "volume": 3982422
+                }
+            ]
+        },
+        {
+            "tsCode": "600183.SH",
+            "code": "600183",
+            "name": "生益科技",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 131.61,
+            "open": 131.01,
+            "high": 140,
+            "low": 131.01,
+            "volume": 60286112,
+            "amount": 8211308459,
+            "amountUnit": "yuan",
+            "intradayVwap": 136.21,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 131.61,
+                    "volume": 60286112
+                }
+            ]
+        },
+        {
+            "tsCode": "601208.SH",
+            "code": "601208",
+            "name": "东材科技",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 51.1,
+            "open": 51.06,
+            "high": 53.04,
+            "low": 50.47,
+            "volume": 97645810,
+            "amount": 5110034284,
+            "amountUnit": "yuan",
+            "intradayVwap": 52.33,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 51.1,
+                    "volume": 97645810
+                }
+            ]
+        },
+        {
+            "tsCode": "688489.SH",
+            "code": "688489",
+            "name": "三未信安",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 26.41,
+            "open": 27,
+            "high": 27.5,
+            "low": 26.37,
+            "volume": 1293964,
+            "amount": 34829021,
+            "amountUnit": "yuan",
+            "intradayVwap": 26.92,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 26.41,
+                    "volume": 1293964
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 26.41,
+                    "volume": 1293964
+                }
+            ]
+        },
+        {
+            "tsCode": "603986.SH",
+            "code": "603986",
+            "name": "兆易创新",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 335.17,
+            "open": 352,
+            "high": 353.8,
+            "low": 334.76,
+            "volume": 23204304,
+            "amount": 7989786464,
+            "amountUnit": "yuan",
+            "intradayVwap": 344.32,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 335.17,
+                    "volume": 23204304
+                }
+            ]
+        },
+        {
+            "tsCode": "601899.SH",
+            "code": "601899",
+            "name": "紫金矿业",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 29.27,
+            "open": 29.7,
+            "high": 29.84,
+            "low": 29.25,
+            "volume": 83466409,
+            "amount": 2465684774,
+            "amountUnit": "yuan",
+            "intradayVwap": 29.54,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 29.27,
+                    "volume": 83466409
+                }
+            ]
+        },
+        {
+            "tsCode": "688293.SH",
+            "code": "688293",
+            "name": "奥浦迈  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 73.16,
+            "open": 77.08,
+            "high": 77.88,
+            "low": 71.5,
+            "volume": 5404166,
+            "amount": 398308078,
+            "amountUnit": "yuan",
+            "intradayVwap": 73.7,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 73.16,
+                    "volume": 5404166
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 73.16,
+                    "volume": 5404166
+                }
+            ]
+        },
+        {
+            "tsCode": "688238.SH",
+            "code": "688238",
+            "name": "和元生物",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 8.21,
+            "open": 9,
+            "high": 9.1,
+            "low": 8.21,
+            "volume": 42566853,
+            "amount": 360207251,
+            "amountUnit": "yuan",
+            "intradayVwap": 8.46,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 8.21,
+                    "volume": 42566453
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 8.21,
+                    "volume": 42566853
+                }
+            ]
+        },
+        {
+            "tsCode": "600186.SH",
+            "code": "600186",
+            "name": "莲花控股",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 11.56,
+            "open": 11.75,
+            "high": 12.1,
+            "low": 11.54,
+            "volume": 125058264,
+            "amount": 1473067981,
+            "amountUnit": "yuan",
+            "intradayVwap": 11.78,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 11.56,
+                    "volume": 125058264
+                }
+            ]
+        },
+        {
+            "tsCode": "688678.SH",
+            "code": "688678",
+            "name": "福立旺  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 29.15,
+            "open": 31.12,
+            "high": 31.5,
+            "low": 29.11,
+            "volume": 23398610,
+            "amount": 706226438,
+            "amountUnit": "yuan",
+            "intradayVwap": 30.18,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 29.15,
+                    "volume": 23398205
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 29.15,
+                    "volume": 23398610
+                }
+            ]
+        },
+        {
+            "tsCode": "688131.SH",
+            "code": "688131",
+            "name": "皓元医药",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 94.69,
+            "open": 99.07,
+            "high": 99.57,
+            "low": 94.5,
+            "volume": 5480785,
+            "amount": 526543004,
+            "amountUnit": "yuan",
+            "intradayVwap": 96.07,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 94.68,
+                    "volume": 5480368
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 94.69,
+                    "volume": 5480785
+                }
+            ]
+        },
+        {
+            "tsCode": "600641.SH",
+            "code": "600641",
+            "name": "先导基电",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 45.13,
+            "open": 49.13,
+            "high": 50.32,
+            "low": 44.92,
+            "volume": 67591643,
+            "amount": 3174937803,
+            "amountUnit": "yuan",
+            "intradayVwap": 46.97,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 45.13,
+                    "volume": 67591643
+                }
+            ]
+        },
+        {
+            "tsCode": "600900.SH",
+            "code": "600900",
+            "name": "长江电力",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 28.82,
+            "open": 28.5,
+            "high": 28.97,
+            "low": 28.5,
+            "volume": 87809985,
+            "amount": 2529567601,
+            "amountUnit": "yuan",
+            "intradayVwap": 28.81,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 28.82,
+                    "volume": 87809985
+                }
+            ]
+        },
+        {
+            "tsCode": "688319.SH",
+            "code": "688319",
+            "name": "欧林生物",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 29.53,
+            "open": 31.37,
+            "high": 31.6,
+            "low": 29.51,
+            "volume": 4437520,
+            "amount": 134624573,
+            "amountUnit": "yuan",
+            "intradayVwap": 30.34,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 29.53,
+                    "volume": 4437520
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 29.53,
+                    "volume": 4437520
+                }
+            ]
+        },
+        {
+            "tsCode": "688573.SH",
+            "code": "688573",
+            "name": "信宇人  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 18.22,
+            "open": 16.9,
+            "high": 19.2,
+            "low": 16.9,
+            "volume": 8259407,
+            "amount": 148881554,
+            "amountUnit": "yuan",
+            "intradayVwap": 18.03,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 18.22,
+                    "volume": 8259407
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 18.22,
+                    "volume": 8259407
+                }
+            ]
+        },
+        {
+            "tsCode": "688256.SH",
+            "code": "688256",
+            "name": "寒武纪  ",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 982,
+            "open": 1000,
+            "high": 1028.33,
+            "low": 981,
+            "volume": 7047945,
+            "amount": 7081568363,
+            "amountUnit": "yuan",
+            "intradayVwap": 1004.77,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 982,
+                    "volume": 7047945
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 982,
+                    "volume": 7047945
+                }
+            ]
+        },
+        {
+            "tsCode": "601318.SH",
+            "code": "601318",
+            "name": "中国平安",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 52.58,
+            "open": 52.91,
+            "high": 53.25,
+            "low": 52.56,
+            "volume": 46164227,
+            "amount": 2443096052,
+            "amountUnit": "yuan",
+            "intradayVwap": 52.92,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 52.58,
+                    "volume": 46164227
+                }
+            ]
+        },
+        {
+            "tsCode": "688008.SH",
+            "code": "688008",
+            "name": "澜起科技",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 197.21,
+            "open": 203,
+            "high": 208.14,
+            "low": 197.1,
+            "volume": 25454228,
+            "amount": 5153718939,
+            "amountUnit": "yuan",
+            "intradayVwap": 202.47,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 197.29,
+                    "volume": 25449483
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 197.21,
+                    "volume": 25454228
+                }
+            ]
+        },
+        {
+            "tsCode": "600667.SH",
+            "code": "600667",
+            "name": "太极实业",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 16.56,
+            "open": 17.28,
+            "high": 17.5,
+            "low": 16.51,
+            "volume": 80858884,
+            "amount": 1378062608,
+            "amountUnit": "yuan",
+            "intradayVwap": 17.04,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 16.56,
+                    "volume": 80858884
+                }
+            ]
+        },
+        {
+            "tsCode": "688981.SH",
+            "code": "688981",
+            "name": "中芯国际",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 106.5,
+            "open": 112,
+            "high": 113.13,
+            "low": 106.48,
+            "volume": 36858374,
+            "amount": 4031672119,
+            "amountUnit": "yuan",
+            "intradayVwap": 109.38,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 106.52,
+                    "volume": 36842021
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 106.5,
+                    "volume": 36858374
+                }
+            ]
+        },
+        {
+            "tsCode": "600941.SH",
+            "code": "600941",
+            "name": "中国移动",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 97.81,
+            "open": 95.91,
+            "high": 98,
+            "low": 95.77,
+            "volume": 10212417,
+            "amount": 992693878,
+            "amountUnit": "yuan",
+            "intradayVwap": 97.2,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 97.81,
+                    "volume": 10212417
+                }
+            ]
+        },
+        {
+            "tsCode": "603893.SH",
+            "code": "603893",
+            "name": "瑞芯微  ",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 199.9,
+            "open": 211.99,
+            "high": 215.39,
+            "low": 199.88,
+            "volume": 8746481,
+            "amount": 1812588505,
+            "amountUnit": "yuan",
+            "intradayVwap": 207.24,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 199.9,
+                    "volume": 8746481
+                }
+            ]
+        },
+        {
+            "tsCode": "688776.SH",
+            "code": "688776",
+            "name": "国光电气",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 44.78,
+            "open": 47.52,
+            "high": 49.27,
+            "low": 44.7,
+            "volume": 2203985,
+            "amount": 103924473,
+            "amountUnit": "yuan",
+            "intradayVwap": 47.15,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 44.78,
+                    "volume": 2203985
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 44.78,
+                    "volume": 2203985
+                }
+            ]
+        },
+        {
+            "tsCode": "600938.SH",
+            "code": "600938",
+            "name": "中国海油",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 34.2,
+            "open": 33.37,
+            "high": 34.45,
+            "low": 33.25,
+            "volume": 37406519,
+            "amount": 1273312154,
+            "amountUnit": "yuan",
+            "intradayVwap": 34.04,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 34.2,
+                    "volume": 37406519
+                }
+            ]
+        },
+        {
+            "tsCode": "603230.SH",
+            "code": "603230",
+            "name": "内蒙新华",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 12.85,
+            "open": 13.85,
+            "high": 14.25,
+            "low": 12.83,
+            "volume": 39758594,
+            "amount": 535092230,
+            "amountUnit": "yuan",
+            "intradayVwap": 13.46,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 12.85,
+                    "volume": 39758594
+                }
+            ]
+        },
+        {
+            "tsCode": "600176.SH",
+            "code": "600176",
+            "name": "中国巨石",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 39.39,
+            "open": 40.09,
+            "high": 40.98,
+            "low": 39.38,
+            "volume": 116965802,
+            "amount": 4712301546,
+            "amountUnit": "yuan",
+            "intradayVwap": 40.29,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 39.39,
+                    "volume": 116965802
+                }
+            ]
+        },
+        {
+            "tsCode": "603259.SH",
+            "code": "603259",
+            "name": "药明康德",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 162.47,
+            "open": 167.42,
+            "high": 170,
+            "low": 162.35,
+            "volume": 35900045,
+            "amount": 6003131528,
+            "amountUnit": "yuan",
+            "intradayVwap": 167.22,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 162.47,
+                    "volume": 35900045
+                }
+            ]
+        },
+        {
+            "tsCode": "688379.SH",
+            "code": "688379",
+            "name": "华光新材",
+            "time": "2026-10-08T13:58:20.000",
+            "observedAt": "2026-10-08T13:58:20.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 50.12,
+            "open": 52.7,
+            "high": 54.15,
+            "low": 50.08,
+            "volume": 2519093,
+            "amount": 130681097,
+            "amountUnit": "yuan",
+            "intradayVwap": 51.88,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 50.08,
+                    "volume": 2518493
+                },
+                {
+                    "time": "2026-10-08T13:58:20.000",
+                    "price": 50.12,
+                    "volume": 2519093
+                }
+            ]
+        },
+        {
+            "tsCode": "603407.SH",
+            "code": "603407",
+            "name": "长裕集团",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 56.7,
+            "open": 57,
+            "high": 58.13,
+            "low": 56.6,
+            "volume": 1652500,
+            "amount": 94946126,
+            "amountUnit": "yuan",
+            "intradayVwap": 57.46,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 56.7,
+                    "volume": 1652500
+                }
+            ]
+        },
+        {
+            "tsCode": "600172.SH",
+            "code": "600172",
+            "name": "黄河旋风",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 13.48,
+            "open": 14.1,
+            "high": 14.27,
+            "low": 13.47,
+            "volume": 104014655,
+            "amount": 1440257554,
+            "amountUnit": "yuan",
+            "intradayVwap": 13.85,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 13.48,
+                    "volume": 104014655
+                }
+            ]
+        },
+        {
+            "tsCode": "605268.SH",
+            "code": "605268",
+            "name": "王力安防",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 10.02,
+            "open": 10.22,
+            "high": 10.25,
+            "low": 10,
+            "volume": 2503000,
+            "amount": 25270334,
+            "amountUnit": "yuan",
+            "intradayVwap": 10.1,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 10.02,
+                    "volume": 2503000
+                }
+            ]
+        },
+        {
+            "tsCode": "600487.SH",
+            "code": "600487",
+            "name": "亨通光电",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 52.47,
+            "open": 54.5,
+            "high": 55.49,
+            "low": 52.41,
+            "volume": 91241663,
+            "amount": 4912053876,
+            "amountUnit": "yuan",
+            "intradayVwap": 53.84,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 52.47,
+                    "volume": 91241663
+                }
+            ]
+        },
+        {
+            "tsCode": "600519.SH",
+            "code": "600519",
+            "name": "贵州茅台",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 1250,
+            "open": 1252.9,
+            "high": 1258,
+            "low": 1242,
+            "volume": 1871397,
+            "amount": 2336413525,
+            "amountUnit": "yuan",
+            "intradayVwap": 1248.49,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 1250,
+                    "volume": 1871397
+                }
+            ]
+        },
+        {
+            "tsCode": "600036.SH",
+            "code": "600036",
+            "name": "招商银行",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 41.63,
+            "open": 41.26,
+            "high": 41.83,
+            "low": 41,
+            "volume": 49562555,
+            "amount": 2060936043,
+            "amountUnit": "yuan",
+            "intradayVwap": 41.58,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 41.63,
+                    "volume": 49562555
+                }
+            ]
+        },
+        {
+            "tsCode": "601939.SH",
+            "code": "601939",
+            "name": "建设银行",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 11.12,
+            "open": 11.05,
+            "high": 11.17,
+            "low": 11.03,
+            "volume": 72210593,
+            "amount": 803297684,
+            "amountUnit": "yuan",
+            "intradayVwap": 11.12,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 11.12,
+                    "volume": 72210593
+                }
+            ]
+        },
+        {
+            "tsCode": "601138.SH",
+            "code": "601138",
+            "name": "工业富联",
+            "time": "2026-10-08T13:58:18.000",
+            "observedAt": "2026-10-08T13:58:18.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 55.66,
+            "open": 58.66,
+            "high": 59.15,
+            "low": 55.65,
+            "volume": 56010931,
+            "amount": 3215542515,
+            "amountUnit": "yuan",
+            "intradayVwap": 57.41,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:18.000",
+                    "price": 55.66,
+                    "volume": 56010931
+                }
+            ]
+        },
+        {
+            "tsCode": "920083.BJ",
+            "code": "920083",
+            "name": "金戈新材",
+            "time": "2026-10-08T13:58:28.000",
+            "observedAt": "2026-10-08T13:58:28.000",
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "live",
+            "price": 35.7,
+            "open": 38,
+            "high": 38,
+            "low": 35.5,
+            "volume": 2182973,
+            "amount": 80217751,
+            "amountUnit": "yuan",
+            "intradayVwap": 36.75,
+            "series": [
+                {
+                    "time": "2026-10-08T13:58:28.000",
+                    "price": 35.7,
+                    "volume": 2182973
+                }
+            ]
+        },
+        {
+            "tsCode": "003026.SZ",
+            "code": "003026",
+            "name": "中晶科技",
+            "time": "2026-10-08T06:00:13.993Z",
+            "observedAt": null,
+            "snapshotAt": "2026-10-08T06:00:13.993Z",
+            "provider": "ProMax rt_k",
+            "freshness": "stale",
+            "price": 31.02,
+            "open": 32.12,
+            "high": 32.69,
+            "low": 30.95,
+            "volume": 7978709,
+            "amount": 253973114.77,
+            "amountUnit": "yuan",
+            "intradayVwap": 31.83,
+            "series": []
+        }
+    ],
+    "health": {
+        "status": "partial",
+        "label": "部分股票行情已更新，其余继续展示最近快照",
+        "isIntraday": false,
+        "sourceState": {
+            "status": "partial",
+            "provider": "ProMax rt_k",
+            "succeededAt": "2026-10-08T06:00:13.993Z",
+            "quoteCount": 99,
+            "staleCount": 1
+        }
+    }
+}

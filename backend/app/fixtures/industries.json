@@ -1,0 +1,853 @@
+{
+    "status": "ready",
+    "meta": {
+        "generatedAt": "2026-10-09T02:33:44.354Z",
+        "sourceMode": "derived_from_live",
+        "marketDataDate": "2026-09-23",
+        "top50GeneratedAt": "2026-09-24T01:09:19.498Z",
+        "newsGeneratedAt": "2026-10-08T06:00:18.303Z",
+        "provider": "Tushare TOP50 snapshot + live news links",
+        "methodology": "按波段TOP50中的真实前一交易日行情分组；强度由冻结综合分、上涨概率与上涨家数占比计算；资讯仅做行业关键词关联。",
+        "disclaimer": "行业强度是可审计的规则计算，不代表全市场行业指数，也不构成投资建议。"
+    },
+    "industries": [
+        {
+            "name": "文教休闲",
+            "stockCount": 1,
+            "averagePct": 16.97,
+            "averageScore": 60,
+            "averageProbabilityUp": 0.5787,
+            "positiveBreadth": 100,
+            "strengthScore": 64,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 1,
+                "high": 0
+            },
+            "topStocks": [
+                {
+                    "code": "300192",
+                    "name": "科德教育",
+                    "close": 22.95,
+                    "pct": 16.9725,
+                    "score": 60,
+                    "risk": "中",
+                    "agentVotes": 7
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "IT设备",
+            "stockCount": 2,
+            "averagePct": 11.52,
+            "averageScore": 58,
+            "averageProbabilityUp": 0.5634,
+            "positiveBreadth": 100,
+            "strengthScore": 62,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 1,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "300155",
+                    "name": "安居宝",
+                    "close": 5.06,
+                    "pct": 11.9469,
+                    "score": 64,
+                    "risk": "中",
+                    "agentVotes": 9
+                },
+                {
+                    "code": "688489",
+                    "name": "三未信安",
+                    "close": 28.92,
+                    "pct": 11.1026,
+                    "score": 52,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "半导体",
+            "stockCount": 3,
+            "averagePct": 12.33,
+            "averageScore": 56.7,
+            "averageProbabilityUp": 0.5532,
+            "positiveBreadth": 100,
+            "strengthScore": 61,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 1,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "600641",
+                    "name": "先导基电",
+                    "close": 47.8,
+                    "pct": 9.2821,
+                    "score": 60,
+                    "risk": "中",
+                    "agentVotes": 8
+                },
+                {
+                    "code": "301678",
+                    "name": "新恒汇",
+                    "close": 59.22,
+                    "pct": 14.3243,
+                    "score": 56,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "301369",
+                    "name": "联动科技",
+                    "close": 155.59,
+                    "pct": 13.379,
+                    "score": 54,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": [
+                {
+                    "id": "live-news-1791439105000-10",
+                    "title": "比亚迪执行副总裁李柯：英伟达(NVDA.O)仍是极具实力的芯片合作伙伴。",
+                    "source": "金十数据",
+                    "time": "13:58",
+                    "publishedAt": "2026-10-08T05:58:25.000Z",
+                    "url": "https://flash.jin10.com/detail/20261008135825806800",
+                    "matchMethod": "industry_keyword"
+                },
+                {
+                    "id": "live-news-1791438693000-47",
+                    "title": "[300602] 飞荣达：近期国外部分ar眼镜因为过热被下架，主要是因为端侧ai芯片过热导致，未来大量端侧ai产品会出现，并且算力越大热量越大。贵公司作为国内散热头部企业，是否有端侧ai芯片可靠的散热方案？面对即将到来的端侧ai产品大爆发，贵公司是否有足够的产能？",
+                    "source": "irm-qa",
+                    "time": "13:51",
+                    "publishedAt": "2026-10-08T05:51:33.000Z",
+                    "url": "https://irm.cninfo.com.cn/ircs/question/questionDetail?questionId=2371519057569099776",
+                    "matchMethod": "industry_keyword"
+                },
+                {
+                    "id": "live-news-1791438271000-92",
+                    "title": "深证成指跌幅扩大至2%，沪指跌0.91%，创业板指现跌3.07%，半导体、存储芯片板块持续走弱。",
+                    "source": "金十数据",
+                    "time": "13:44",
+                    "publishedAt": "2026-10-08T05:44:31.000Z",
+                    "url": "https://flash.jin10.com/detail/20261008134431137800",
+                    "matchMethod": "industry_keyword"
+                }
+            ]
+        },
+        {
+            "name": "软件服务",
+            "stockCount": 2,
+            "averagePct": 8.18,
+            "averageScore": 55.5,
+            "averageProbabilityUp": 0.5444,
+            "positiveBreadth": 100,
+            "strengthScore": 60,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "300520",
+                    "name": "科大国创",
+                    "close": 25.66,
+                    "pct": 11.9058,
+                    "score": 61,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "000555",
+                    "name": "神州信息",
+                    "close": 11.01,
+                    "pct": 4.4592,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "塑料",
+            "stockCount": 1,
+            "averagePct": 16.38,
+            "averageScore": 56,
+            "averageProbabilityUp": 0.5465,
+            "positiveBreadth": 100,
+            "strengthScore": 60,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "688203",
+                    "name": "海正生材",
+                    "close": 24.3,
+                    "pct": 16.3793,
+                    "score": 56,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "机械基件",
+            "stockCount": 1,
+            "averagePct": 13.98,
+            "averageScore": 56,
+            "averageProbabilityUp": 0.5502,
+            "positiveBreadth": 100,
+            "strengthScore": 60,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "688379",
+                    "name": "华光新材",
+                    "close": 64.17,
+                    "pct": 13.9787,
+                    "score": 56,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "电气设备",
+            "stockCount": 1,
+            "averagePct": 7.83,
+            "averageScore": 55,
+            "averageProbabilityUp": 0.5433,
+            "positiveBreadth": 100,
+            "strengthScore": 59,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "002335",
+                    "name": "科华数据",
+                    "close": 32.63,
+                    "pct": 7.8321,
+                    "score": 55,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "水泥",
+            "stockCount": 1,
+            "averagePct": 6.78,
+            "averageScore": 54,
+            "averageProbabilityUp": 0.5306,
+            "positiveBreadth": 100,
+            "strengthScore": 58,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "000877",
+                    "name": "天山股份",
+                    "close": 3.94,
+                    "pct": 6.7751,
+                    "score": 54,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "汽车配件",
+            "stockCount": 1,
+            "averagePct": 10.37,
+            "averageScore": 53,
+            "averageProbabilityUp": 0.5229,
+            "positiveBreadth": 100,
+            "strengthScore": 58,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "301233",
+                    "name": "盛帮股份",
+                    "close": 37.57,
+                    "pct": 10.3702,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "元器件",
+            "stockCount": 6,
+            "averagePct": 10.28,
+            "averageScore": 52.8,
+            "averageProbabilityUp": 0.5212,
+            "positiveBreadth": 100,
+            "strengthScore": 57,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 6
+            },
+            "topStocks": [
+                {
+                    "code": "688662",
+                    "name": "富信科技",
+                    "close": 130.61,
+                    "pct": 16.2114,
+                    "score": 58,
+                    "risk": "高",
+                    "agentVotes": 7
+                },
+                {
+                    "code": "301099",
+                    "name": "雅创电子",
+                    "close": 57.54,
+                    "pct": 9.4332,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 7
+                },
+                {
+                    "code": "688678",
+                    "name": "福立旺",
+                    "close": 31.43,
+                    "pct": 13.0576,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "家用电器",
+            "stockCount": 2,
+            "averagePct": 12.18,
+            "averageScore": 52,
+            "averageProbabilityUp": 0.5134,
+            "positiveBreadth": 100,
+            "strengthScore": 57,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "301008",
+                    "name": "宏昌科技",
+                    "close": 60.23,
+                    "pct": 12.2228,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 7
+                },
+                {
+                    "code": "300911",
+                    "name": "亿田智能",
+                    "close": 36.24,
+                    "pct": 12.1287,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "家居用品",
+            "stockCount": 2,
+            "averagePct": 5.81,
+            "averageScore": 52.5,
+            "averageProbabilityUp": 0.5197,
+            "positiveBreadth": 100,
+            "strengthScore": 57,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "605268",
+                    "name": "王力安防",
+                    "close": 10.33,
+                    "pct": 4.6606,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "001216",
+                    "name": "华瓷股份",
+                    "close": 28.31,
+                    "pct": 6.9513,
+                    "score": 52,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "橡胶",
+            "stockCount": 1,
+            "averagePct": 12.79,
+            "averageScore": 52,
+            "averageProbabilityUp": 0.5198,
+            "positiveBreadth": 100,
+            "strengthScore": 57,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "301595",
+                    "name": "太力科技",
+                    "close": 50.54,
+                    "pct": 12.7873,
+                    "score": 52,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "生物制药",
+            "stockCount": 5,
+            "averagePct": 11.89,
+            "averageScore": 51.6,
+            "averageProbabilityUp": 0.514,
+            "positiveBreadth": 100,
+            "strengthScore": 56,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 5
+            },
+            "topStocks": [
+                {
+                    "code": "688710",
+                    "name": "益诺思",
+                    "close": 104.77,
+                    "pct": 14.4152,
+                    "score": 55,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "688319",
+                    "name": "欧林生物",
+                    "close": 33.92,
+                    "pct": 12.9913,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "301047",
+                    "name": "义翘神州",
+                    "close": 150,
+                    "pct": 10.116,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "专用机械",
+            "stockCount": 4,
+            "averagePct": 8.36,
+            "averageScore": 51,
+            "averageProbabilityUp": 0.5076,
+            "positiveBreadth": 100,
+            "strengthScore": 56,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 4
+            },
+            "topStocks": [
+                {
+                    "code": "688573",
+                    "name": "信宇人",
+                    "close": 17.15,
+                    "pct": 10.1477,
+                    "score": 53,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "688789",
+                    "name": "宏华数科",
+                    "close": 51.01,
+                    "pct": 10.7709,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "300489",
+                    "name": "光智科技",
+                    "close": 264.02,
+                    "pct": 6.0279,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "化工原料",
+            "stockCount": 3,
+            "averagePct": 10.8,
+            "averageScore": 51.7,
+            "averageProbabilityUp": 0.5128,
+            "positiveBreadth": 100,
+            "strengthScore": 56,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 3
+            },
+            "topStocks": [
+                {
+                    "code": "301373",
+                    "name": "凌玮科技",
+                    "close": 135.35,
+                    "pct": 13.2068,
+                    "score": 54,
+                    "risk": "高",
+                    "agentVotes": 7
+                },
+                {
+                    "code": "300243",
+                    "name": "瑞丰高材",
+                    "close": 24.57,
+                    "pct": 10.3278,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 7
+                },
+                {
+                    "code": "301393",
+                    "name": "昊帆生物",
+                    "close": 71.5,
+                    "pct": 8.8611,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "化学制药",
+            "stockCount": 3,
+            "averagePct": 9.32,
+            "averageScore": 51,
+            "averageProbabilityUp": 0.5091,
+            "positiveBreadth": 100,
+            "strengthScore": 56,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 3
+            },
+            "topStocks": [
+                {
+                    "code": "300016",
+                    "name": "北陆药业",
+                    "close": 10.29,
+                    "pct": 8.7738,
+                    "score": 52,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "688131",
+                    "name": "皓元医药",
+                    "close": 110.37,
+                    "pct": 9.8428,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "688578",
+                    "name": "艾力斯",
+                    "close": 112.42,
+                    "pct": 9.3473,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "建筑工程",
+            "stockCount": 1,
+            "averagePct": 11.03,
+            "averageScore": 51,
+            "averageProbabilityUp": 0.5059,
+            "positiveBreadth": 100,
+            "strengthScore": 56,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "300977",
+                    "name": "深圳瑞捷",
+                    "close": 20.83,
+                    "pct": 11.0341,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "通信设备",
+            "stockCount": 4,
+            "averagePct": 8.01,
+            "averageScore": 53.5,
+            "averageProbabilityUp": 0.5269,
+            "positiveBreadth": 75,
+            "strengthScore": 55,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 4
+            },
+            "topStocks": [
+                {
+                    "code": "300397",
+                    "name": "天和防务",
+                    "close": 12.44,
+                    "pct": 8.3624,
+                    "score": 56,
+                    "risk": "高",
+                    "agentVotes": 5
+                },
+                {
+                    "code": "688027",
+                    "name": "国盾量子",
+                    "close": 387.84,
+                    "pct": 8.9806,
+                    "score": 54,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "688175",
+                    "name": "高凌信息",
+                    "close": 26.79,
+                    "pct": 15.2754,
+                    "score": 54,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "电器仪表",
+            "stockCount": 2,
+            "averagePct": 9.1,
+            "averageScore": 50.5,
+            "averageProbabilityUp": 0.504,
+            "positiveBreadth": 100,
+            "strengthScore": 55,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "300259",
+                    "name": "新天科技",
+                    "close": 4.5,
+                    "pct": 8.6957,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "688112",
+                    "name": "鼎阳科技",
+                    "close": 114.98,
+                    "pct": 9.4943,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "医疗保健",
+            "stockCount": 2,
+            "averagePct": 10.53,
+            "averageScore": 50.5,
+            "averageProbabilityUp": 0.5046,
+            "positiveBreadth": 100,
+            "strengthScore": 55,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 2
+            },
+            "topStocks": [
+                {
+                    "code": "688238",
+                    "name": "和元生物",
+                    "close": 8.68,
+                    "pct": 10.7143,
+                    "score": 51,
+                    "risk": "高",
+                    "agentVotes": 4
+                },
+                {
+                    "code": "688677",
+                    "name": "海泰新光",
+                    "close": 87.48,
+                    "pct": 10.3431,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "白酒",
+            "stockCount": 1,
+            "averagePct": 3.97,
+            "averageScore": 50,
+            "averageProbabilityUp": 0.4965,
+            "positiveBreadth": 100,
+            "strengthScore": 55,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "002646",
+                    "name": "天佑德酒",
+                    "close": 7.34,
+                    "pct": 3.966,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 4
+                }
+            ],
+            "news": []
+        },
+        {
+            "name": "食品",
+            "stockCount": 1,
+            "averagePct": 5.1,
+            "averageScore": 50,
+            "averageProbabilityUp": 0.4964,
+            "positiveBreadth": 100,
+            "strengthScore": 55,
+            "riskDistribution": {
+                "low": 0,
+                "medium": 0,
+                "high": 1
+            },
+            "topStocks": [
+                {
+                    "code": "600186",
+                    "name": "莲花控股",
+                    "close": 13.59,
+                    "pct": 5.1044,
+                    "score": 50,
+                    "risk": "高",
+                    "agentVotes": 5
+                }
+            ],
+            "news": []
+        }
+    ],
+    "catalysts": [
+        {
+            "id": "live-news-1791439105000-10",
+            "title": "比亚迪执行副总裁李柯：英伟达(NVDA.O)仍是极具实力的芯片合作伙伴。",
+            "source": "金十数据",
+            "time": "13:58",
+            "publishedAt": "2026-10-08T05:58:25.000Z",
+            "url": "https://flash.jin10.com/detail/20261008135825806800",
+            "matchMethod": "industry_keyword",
+            "industry": "半导体"
+        },
+        {
+            "id": "live-news-1791438693000-47",
+            "title": "[300602] 飞荣达：近期国外部分ar眼镜因为过热被下架，主要是因为端侧ai芯片过热导致，未来大量端侧ai产品会出现，并且算力越大热量越大。贵公司作为国内散热头部企业，是否有端侧ai芯片可靠的散热方案？面对即将到来的端侧ai产品大爆发，贵公司是否有足够的产能？",
+            "source": "irm-qa",
+            "time": "13:51",
+            "publishedAt": "2026-10-08T05:51:33.000Z",
+            "url": "https://irm.cninfo.com.cn/ircs/question/questionDetail?questionId=2371519057569099776",
+            "matchMethod": "industry_keyword",
+            "industry": "半导体"
+        },
+        {
+            "id": "live-news-1791438271000-92",
+            "title": "深证成指跌幅扩大至2%，沪指跌0.91%，创业板指现跌3.07%，半导体、存储芯片板块持续走弱。",
+            "source": "金十数据",
+            "time": "13:44",
+            "publishedAt": "2026-10-08T05:44:31.000Z",
+            "url": "https://flash.jin10.com/detail/20261008134431137800",
+            "matchMethod": "industry_keyword",
+            "industry": "半导体"
+        }
+    ]
+}

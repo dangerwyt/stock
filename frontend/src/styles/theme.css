@@ -1,0 +1,355 @@
+/* =========================================================================
+ * theme.css — 蓝白浅色基底（对齐 reference-react 的 reference-theme.css）
+ * 策略：把既有暗色变量名别名映射到原版浅色变量，组件零改动即蓝白化；
+ *       再补 Element Plus 浅色调优与通用卡片工具类。
+ * 真正的视觉权威来自 reference-theme.css（:root 变量 + shell + 页面模块）。
+ * ========================================================================= */
+
+/* 1) 别名映射：--bg-0 / --bg-1 ... --up / --down 等指向原版浅色 token */
+:root {
+  --bg-0: var(--surface);
+  --bg-1: var(--surface);
+  --bg-2: var(--surface-2);
+  --bg-3: var(--panel);
+  --text-0: var(--text);
+  --text-1: var(--muted);
+  --text-2: var(--muted-2);
+  --accent: var(--blue);
+  --accent-soft: var(--blue-soft);
+  --up: var(--red);            /* 涨 = 红 (A股约定) */
+  --down: var(--green);        /* 跌 = 绿 */
+  --warn: var(--yellow);
+  --radius: 11px;
+}
+
+/* 2) Element Plus 调优，对齐原版蓝白 token。
+ * ⚠️ 为什么必须在这里、而不是只靠 EP 默认值：EP 的 `element-plus/dist/index.css`
+ * 是**无层样式且排在 theme.css 之前**（实测构建产物：`--el-color-primary` 在文件头、
+ * `.el-textarea__inner` 在 170k、theme.css 的规则在 666k）。两者都是无层 → 同具体度时
+ * **后加载的 theme.css 胜**，所以这里是唯一能稳定压住 EP 默认主题的落点。
+ * 另外 EP 的 -light-3/5/7/8/9 是 SCSS 编译期算出来的常量，不会跟着主色变，必须手写。 */
+:root {
+  --el-color-primary: #2176ed;
+  --el-color-primary-light-3: #5b9df8;
+  --el-color-primary-light-5: #8fbcfa;
+  --el-color-primary-light-7: #c2d9fc;
+  --el-color-primary-light-8: #d9e8fd;
+  --el-color-primary-light-9: #eef5ff;
+  --el-color-primary-dark-2: #1a63c9;
+  /* 语义色也要对齐（EP 默认 success #67c23a / danger #f56c6c 与项目差得很远，
+   * 不改就会出现"EP 的绿"和"K线的绿"同屏）。 */
+  --el-color-success: #079b78;
+  --el-color-success-light-9: #e7f7f1;
+  --el-color-warning: #bd811d;
+  --el-color-warning-light-9: #fff6df;
+  --el-color-danger: #ed535b;
+  --el-color-danger-light-9: #fff0f1;
+  --el-color-error: #ed535b;
+  --el-color-info: #6e86ab;
+  --el-color-info-light-9: #f0f4fa;
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-color: #d9e6f6;
+  --el-border-color-light: #e7eef8;
+  --el-border-color-lighter: #eef2f8;
+  --el-text-color-primary: #183f78;
+  --el-text-color-regular: #3e6395;
+  --el-text-color-secondary: #6e86ab;
+  --el-text-color-placeholder: #8ba0ba;
+  /* 全站正文是 13px，EP 默认 14px 会让弹窗里的字号比页面其它地方大一档。 */
+  --el-font-size-base: 13px;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f7fbff;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+  --el-mask-color: rgba(21, 52, 101, .35);
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+a { color: inherit; text-decoration: none; }
+
+/* 3) 市场语义：红涨绿跌 + 通用工具类 */
+.up { color: var(--up); }
+.down { color: var(--down); }
+.muted { color: var(--text-2); }
+.tag-up { background: var(--red-soft); color: var(--red); }
+.tag-down { background: var(--green-soft); color: var(--green); }
+
+/* 4) 通用卡片（对齐原版 .panel：白底 #fff / 边框 #d9e6f6 / radius 11） */
+.sip-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.sip-section-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  padding: 10px 4px; border-bottom: 1px solid var(--line); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sip-grid { display: grid; gap: 12px; }
+
+/* 5) 图表容器：白底 + 浅色坐标，贴合蓝白主题 */
+.chart-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; }
+
+/* 6) 新建角色弹窗 —— ⚠️ 已改为 Element Plus（2026-10-10 试点）。
+ * 下面这几条 `.role-create-dialog / -grid / -field / -actions` 对应的手写 DOM 已经换成
+ * el-dialog + el-form + el-input，**目前是死规则**（为方便回退刻意先留着）。
+ * 新的样式在 6b)。
+ * 原注释：原版只有一个名称输入，这里扩展为完整画像后需要限高滚动。 */
+.role-create-dialog { max-height: 88dvh; overflow: auto; }
+.role-create-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.role-create-field textarea {
+  width: 100%; min-height: 62px; box-sizing: border-box; resize: vertical;
+  border: 1px solid #bcd4ef; border-radius: 6px; outline: none;
+  background: #fff; color: #244776; padding: 8px 11px;
+  font-size: 12px; font-family: inherit; line-height: 1.5;
+}
+.role-create-field textarea:focus { border-color: #4b91ed; box-shadow: 0 0 0 2px rgba(75, 145, 237, .16); }
+.role-create-field textarea::placeholder { color: #8ba0ba; }
+.role-create-actions button:disabled { opacity: .6; cursor: not-allowed; }
+
+/* 6b) EP 版新建角色弹窗。
+ * 这里只补「EP 默认样式与项目视觉不一致」的部分；配色一律走上面的 `--el-*`，
+ * 不再单独写颜色，避免以后改主色要改两处。
+ * 选择器带 `.el-dialog` 是为了压过 EP 自带的 `.el-dialog` / `.el-dialog__*`（同具体度，
+ * theme.css 后加载，所以平手即胜；叠一层只是为了以后不被 EP 的具体度变化咬到）。 */
+:root {
+  /* EP 遮罩默认是 rgba(0,0,0,.5) 的黑纱，蓝白主题下会显脏；换成项目同源深蓝。 */
+  --el-overlay-color-lighter: rgba(21, 52, 101, .38);
+  --el-box-shadow: 0 24px 70px rgba(29, 78, 135, .24);
+}
+.ai-role-dialog.el-dialog { padding: 0; border-radius: 12px; overflow: hidden; }
+.ai-role-dialog .el-dialog__header {
+  /* 没开 draggable，别留 EP 默认的移动光标与 16px 底部留白（分隔线由这里画） */
+  cursor: default;
+  padding: 16px 56px 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.ai-role-dialog .el-dialog__headerbtn { top: 13px; right: 13px; width: 34px; height: 34px; }
+.ai-role-dialog .el-dialog__headerbtn .el-dialog__close { color: var(--muted); }
+.ai-role-dialog .el-dialog__headerbtn:hover .el-dialog__close { color: var(--blue); }
+.ai-role-dialog .el-dialog__body { padding: 18px; }
+/* 头部两行标题（AI研究 / 新建角色）自带样式在 legacy 里，但那条带了 padding-bottom + 下边框，
+ * 现在下边框移到了 .el-dialog__header，必须把它清掉，否则会出现两条线。 */
+.ai-role-dialog .role-create-head { padding-bottom: 0; border-bottom: 0; }
+.ai-role-dialog .el-input__wrapper { min-height: 40px; border-radius: 8px; }
+.ai-role-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+/* 7) 自建角色标记 + 未评分单元格（自定义角色只对 TOP10 打分） */
+.custom-tag {
+  font-style: normal; font-size: 9px; font-weight: 400; line-height: 14px;
+  margin-left: 4px; padding: 0 4px; border-radius: 3px;
+  background: #e6f1fb; color: #185fa5; vertical-align: middle;
+}
+.th-custom { color: #185fa5 !important; }
+.strategy-matrix .pending { color: #a8b4c4 !important; font-weight: 400 !important; }
+.strategy-matrix .cell-pending { background: #fafcff; }
+.strategy-matrix .cell-pending small { color: #c6d2e0 !important; }
+
+/* 8) 角色资料 / 画像面板（AI 研究室右栏） */
+.agent-docs { display: grid; gap: 8px; }
+.agent-docs-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.agent-docs-actions button {
+  flex: 1; min-height: 30px; border: 1px solid #c7dbf2; border-radius: 6px;
+  background: #f4f8ff; color: #356ba5; font-size: 11px; cursor: pointer;
+}
+.agent-docs-actions button.primary { border-color: #287beb; background: #287beb; color: #fff; }
+.agent-docs-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.agent-doc-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 7px; border: 1px solid #e2ecf8; border-radius: 6px;
+  background: #fbfdff; font-size: 11px; color: #48709e;
+}
+.agent-doc-row b { flex: 1; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-doc-row small { color: #8ba0ba; flex-shrink: 0; }
+.agent-doc-row button { border: 0; background: transparent; color: #9ab0c8; cursor: pointer; padding: 0 2px; }
+.agent-doc-row button:hover { color: #d54e58; }
+.agent-docs-status { font-size: 11px; color: #6b8ab0; line-height: 1.6; }
+.agent-docs-status.error { color: #d54e58; }
+/* 上传的资料被判为与股票财经无关：不是报错，但要说清楚「留档了但不参与提炼」。 */
+.agent-docs-status.warn { color: #b8801a; }
+.factor-weight { display: grid; grid-template-columns: 42px 1fr 34px; align-items: center; gap: 6px; font-size: 11px; color: #48709e; }
+.factor-weight i { display: block; height: 6px; border-radius: 3px; background: #e3edf9; overflow: hidden; }
+.factor-weight i b { display: block; height: 100%; background: #3185ed; }
+.factor-weight em { font-style: normal; color: #7b93b3; text-align: right; }
+
+/* 9) 老师策略 tabs：legacy 用的是 grid-template-columns: 72px repeat(12, ...)，
+ *    只留了 12 个位置。自建角色插进来后第 13 个只能换行到第二排。
+ *    改为单行弹性布局 + 横向滚动，角色数量再多也保持一行。 */
+.teacher-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  /* tab 固定宽度：角色名一般 ≤6 个汉字（13px 字号约 78px），100px 装得下且留余量。
+   * 想调整只改这一个变量即可。 */
+  --teacher-tab-width: 100px;
+}
+.teacher-tabs > span { flex: 0 0 auto; }
+.teacher-tabs button {
+  flex: 0 0 var(--teacher-tab-width);
+  width: var(--teacher-tab-width);
+  max-width: var(--teacher-tab-width);
+}
+/* 名字超出固定宽度就省略号，不外溢、不把整行撑变形 */
+.teacher-tabs button strong,
+.teacher-tabs button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.teacher-tabs::-webkit-scrollbar { height: 6px; }
+.teacher-tabs::-webkit-scrollbar-track { background: transparent; }
+.teacher-tabs::-webkit-scrollbar-thumb { background: #cfe0f5; border-radius: 3px; }
+.teacher-tabs::-webkit-scrollbar-thumb:hover { background: #a9c6ea; }
+
+/* 9b) 策略因子矩阵的行状态
+ *     两个问题：
+ *     ① legacy 里 `.strategy-matrix tr:hover, tr.selected { background: #12243a }` 是深色主题
+ *        遗留（深底 + 深色文字 = 看不清），而 reference-theme 想要的浅色 `#eaf3ff` 写在
+ *        `reference-controls` 层里、优先级低于 styles.css 所在的 `legacy` 层，一直没生效。
+ *     ② 首行被默认高亮 —— `current` 会在没选中任何行时兜底成第一只股票，
+ *        于是第一行永远带着选中态。这里把「高亮」只留给用户点过的那一行。
+ *     用无层样式（优先级最高）覆盖。 */
+.strategy-matrix tbody tr:hover { background: #eef5ff; }
+.strategy-matrix tbody tr.selected { background: #eaf3ff; }
+
+/* 9c) AI 研究室 · 固定会话「通用研究」
+ *     它常驻列表首位、不绑定角色（见 AILabPage 的 isGeneralThread），
+ *     所以视觉上要一眼能和普通会话分开：左侧色条 + 一个「固定」标签 + 与下方留白。
+ *     legacy 的 hover/active 是深色遗留（#14263d），这里连状态一起覆盖。 */
+.thread-list > button.pinned {
+  background: #f4f9ff;
+  /* 与下面的老师会话拉开距离，让"固定一条 + 其余一摞"的分组一眼可见。 */
+  margin-bottom: 8px;
+}
+.thread-list > button.pinned:hover,
+.thread-list > button.pinned.active { background: #e4f0ff; }
+.thread-pin-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #e3f0ff;
+  color: #2f6fd0;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 600;
+  vertical-align: middle;
+}
+/* 收藏夹 tab 已从页面去掉，原来由 .thread-tabs 提供的那条分隔线补到标题行上，
+ * 否则「研究会话 + 新建角色」会直接糊在第一条会话上。 */
+.thread-head {
+  height: auto;
+  padding: 4px 5px 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+
+/* 10) AI 研究室 · 聊天气泡
+ *    原先 AI 侧是「报告卡片」：标题栏 + 状态徽章 + 元信息行 + 按钮组。
+ *    现在统一成气泡 —— 头像 + 作者名 + 正文 + 轻量操作；用户消息本来就在右侧
+ *    （.user-message 已是右对齐气泡），两侧合起来就是标准的聊天形态。 */
+.chat-scroll .chat-bubble { display: flex; align-items: flex-start; gap: 10px; max-width: 78%; margin: 0 0 14px; }
+.chat-scroll .chat-bubble .bubble-avatar {
+  flex: 0 0 30px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: #e8f2ff; border: 1px solid #cfe3fb; color: #2f6fd0;
+}
+.chat-scroll .chat-bubble .bubble-main {
+  min-width: 0; padding: 10px 14px;
+  background: #fff; border: 1px solid #dce8f8;
+  border-radius: 4px 12px 12px 12px;
+  box-shadow: 0 1px 2px rgba(53, 113, 174, 0.05);
+}
+.chat-scroll .chat-bubble .bubble-author { margin-bottom: 4px; font-size: 11px; font-weight: 600; color: #4a7ab5; }
+.chat-scroll .chat-bubble .bubble-text { font-size: 13px; line-height: 1.75; color: #2c4a6e; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-scroll .chat-bubble .bubble-text strong { color: #1f4470; }
+.chat-scroll .chat-bubble .bubble-actions { display: flex; gap: 8px; margin-top: 8px; }
+.chat-scroll .chat-bubble .bubble-actions button {
+  padding: 2px 10px; border-radius: 10px; cursor: pointer; font-size: 11px;
+  background: #f4f9ff; border: 1px solid #d7e7fc; color: #5b83b3;
+}
+.chat-scroll .chat-bubble .bubble-actions button:hover { background: #e9f3ff; }
+.chat-scroll .chat-bubble .bubble-actions button.active { background: #e3f0ff; border-color: #9fc6f5; color: #1f5da8; }
+.chat-scroll .chat-bubble.assistant-error .bubble-main { background: #fff5f3; border-color: #f3cec8; }
+.chat-scroll .chat-bubble.assistant-error .bubble-avatar { background: #fdeceb; border-color: #f3cec8; color: #d0544e; }
+
+@media (max-width: 720px) {
+  .chat-scroll .chat-bubble { max-width: 92%; }
+}
+
+/* 11) 输入框上方的 chips（本次研究标的 / TOP50 名次 / 溢出的老师数）
+ *  高度统一 —— legacy 的 `.context-chips button { min-height: 32px }` 会连带命中 chip
+ *  里的「×」，把它撑成 32px 方块，整个 chip 因此被顶到 42px，比旁边的 TOP50 tag
+ *  高出 10px（实测 42 vs 32）。把 × 的 min-height 归零后整行回到统一的 32px。
+ *  底色改浅蓝（同 .ai-layout .user-message 的 #eaf3ff），文字随之换深蓝系 ——
+ *  原来的 b #e8eef6 近白在新底上会直接看不见。 */
+.context-chips span { background: #eaf3ff; border: 1px solid #cfe3fb; color: #6785ab; }
+/* 第二行「已选上下文」（股票 chip / TOP50 名次 / 角色 tag）。
+ * 与第一行「入口按钮」分开的理由：按钮位置因此永远不动 —— 原来两行合一，
+ * 每选一位角色都会把「搜索A股 / 选择角色」挤着换行。整行由 v-if 控制，
+ * 没有已选内容时不渲染，默认高度与改动前一致。 */
+.context-chips.context-selected { margin-top: 6px; }
+.context-chips .agent-overflow-chip { background: #eaf3ff; border-color: #cfe3fb; color: #4a7ab5; }
+.context-chips .stock-context-chip { gap: 5px; }
+.context-chips .stock-context-chip b { color: #1f4470; font-weight: 700; }
+.context-chips .stock-context-chip small { color: #6785ab; font-size: 10px; }
+/* 涨跌色刻意**不用** .price-up / .price-down —— legacy 的
+ * `.price-up { color: var(--red) !important }` 被 @import 进 `legacy` @layer
+ * （见 reference-theme.css 开头），而 layer 里 important 的层序是反转的、优先级最高，
+ * 写在层外的 !important 压不过它。换成 chip 专属类名，不进 layer、不加 important，
+ * 按「层外普通 > 层内普通」稳赢，比跟它硬碰干净。 */
+.context-chips .stock-context-chip em.chip-pct-up { font-style: normal; font-weight: 700; color: #d63b48; }
+.context-chips .stock-context-chip em.chip-pct-down { font-style: normal; font-weight: 700; color: #0a8f6b; }
+.context-chips .stock-context-chip button {
+  margin-left: 1px; padding: 0 2px; font-size: 13px; line-height: 1;
+  min-height: 0; /* ← 高度统一的关键，见本节注释 */
+  color: #8195ab;
+}
+.context-chips .stock-context-chip button:hover { color: #e06a72; }
+/* 通用研究会话的「选择角色」chip：选了角色才点亮，否则和其它按钮一样是中性态 ——
+ * 一眼能看出"这一问到底有没有指定角色"。 */
+.context-chips button.chip-active {
+  background: #e4f0ff;
+  border-color: #a8cbf5;
+  color: #2f6fd0;
+  font-weight: 600;
+}
+/* 角色下拉里当前选中的那一项（复用 搜索A股 的浮层与列表样式，只补选中态）。 */
+.stock-search-results button.active { border-color: #3185ed; background: #eef5ff; }
+
+/* 通用研究会话里已选角色的 tag。宽度按用户反馈调宽：原来完全按内容撑开，
+ * 「C老师」这类短名会缩成一个很小的胶囊，× 紧贴名字、既难点也不好看。
+ * 用 min-width 而不是固定 width —— 长名（「产业趋势共振老师」）仍能自然撑开，
+ * 只有短名被补到统一的最小宽度，几个 tag 排在一起才整齐。 */
+.context-chips .role-tag {
+  min-width: 96px;
+  padding: 0 8px;
+  gap: 10px;
+  justify-content: space-between; /* 名字靠左、× 靠右，短名时 × 不会黏在字上 */
+}
+.context-chips .role-tag b {
+  font-weight: 600; color: #2f6fd0;
+  max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.context-chips .role-tag button {
+  margin-left: 0; padding: 0 2px; font-size: 13px; line-height: 1;
+  min-height: 0; /* 同 stock-context-chip 的坑：不清零会被撑成 32px 方块，拉高整行 */
+  color: #8195ab;
+}
+.context-chips .role-tag button:hover { color: #e06a72; }
+
+/* 12) 气泡里的「本次标的」标记 —— 形如（瑞芯微/603893）
+ *  用户提问气泡下方一行小字，说明这一问是对着哪只股票问的；
+ *  标的按发送时刻记录，所以换股票不会改写历史气泡。
+ *  用继承色 + 透明度，浅色/深色主题都不用再各调一套配色。 */
+.user-message .bubble-stock-tag {
+  display: block; margin-top: 6px;
+  font-size: 0.82em; font-weight: 600; letter-spacing: .2px;
+  opacity: .66; overflow-wrap: anywhere;
+}
