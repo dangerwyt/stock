@@ -812,17 +812,28 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
           </span>
         </div>
 
-        <div v-if="rolePickerOpen" class="stock-picker">
-          <div class="stock-picker-head">
-            <strong>选择本次回答的角色（可多选）</strong>
-            <span>
-              <button v-if="generalRoles.length" @click="clearRoles">清空</button>
-              <button @click="rolePickerOpen = false">关闭</button>
-            </span>
-          </div>
-          <label><IconSearch :size="15" /><input v-model="roleQuery" placeholder="输入角色名称筛选" /></label>
+        <!-- 选择角色 —— Element Plus 试点 ③（2026-10-10）。
+             原先是贴在 composer 上方的 .stock-picker 内联面板；换 el-dialog 后遮罩、Esc、
+             焦点陷阱、body 滚动锁都由组件接管。
+             ⚠️ 多选面板**点选项不能关**（要能连着点几个）—— el-dialog 只在点遮罩 / 关闭钮 /
+             Esc 时关，正好等于原行为，所以结果行保持普通 button、不接 dialog 的开关。 -->
+        <el-dialog
+          v-model="rolePickerOpen"
+          class="composer-picker-dialog"
+          width="560px"
+          align-center
+          append-to-body
+        >
+          <template #header>
+            <div class="composer-picker-head">
+              <strong>选择本次回答的角色（可多选）</strong>
+            </div>
+          </template>
+          <el-input v-model="roleQuery" placeholder="输入角色名称筛选">
+            <template #prefix><IconSearch :size="15" /></template>
+          </el-input>
           <div class="stock-search-results">
-            <!-- 刻意不提供「通用助手」选项：取消选择走 tag 上的 × 或上面的「清空」，
+            <!-- 刻意不提供「通用助手」选项：取消选择走 tag 上的 × 或下面的「清空」，
                  多选列表里混一个非角色的项会让人误以为它也是一个"角色"。 -->
             <button
               v-for="item in roleOptions"
@@ -834,20 +845,46 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
             </button>
             <span v-if="!roleOptions.length">没有匹配的角色。可先点左上「新建角色」。</span>
           </div>
-        </div>
+          <template #footer>
+            <el-button v-if="generalRoles.length" @click="clearRoles">清空</el-button>
+            <el-button type="primary" @click="rolePickerOpen = false">完成</el-button>
+          </template>
+        </el-dialog>
 
-        <div v-if="stockPickerOpen" class="stock-picker">
-          <div class="stock-picker-head"><strong>选择任意A股作为本次研究上下文</strong><button @click="stockPickerOpen = false">关闭</button></div>
-          <label><IconSearch :size="15" /><input v-model="stockQuery" placeholder="输入股票代码或名称，例如 603893 / 瑞芯微" @input="runStockSearch" /></label>
+        <!-- 搜索A股 —— 同上。选中即关（pickStock 内部会把 stockPickerOpen 置 false）。 -->
+        <el-dialog
+          v-model="stockPickerOpen"
+          class="composer-picker-dialog"
+          width="560px"
+          align-center
+          append-to-body
+        >
+          <template #header>
+            <div class="composer-picker-head">
+              <strong>选择任意A股作为本次研究上下文</strong>
+            </div>
+          </template>
+          <el-input
+            v-model="stockQuery"
+            placeholder="输入股票代码或名称，例如 603893 / 瑞芯微"
+            @input="runStockSearch"
+          >
+            <template #prefix><IconSearch :size="15" /></template>
+          </el-input>
           <div class="stock-search-results">
             <span v-if="stockSearchState === 'loading'">正在搜索全市场A股…</span>
             <span v-else-if="stockSearchState === 'error'">行情搜索暂不可用，请检查Tushare数据源。</span>
             <span v-else-if="stockSearchState === 'ready' && !stockResults.length">没有匹配的上市A股。</span>
+            <!-- 空闲态也给一句提示：原来是内联小面板，空着不显眼；换成弹窗后空 body 会显得像坏了 -->
+            <span v-else>输入代码或名称开始搜索，支持全部 A 股。</span>
             <button v-for="item in stockResults" :key="item.tsCode || item.code" @click="pickStock(item)">
               <strong>{{ item.name }}</strong><span>{{ item.code }} · {{ item.industry }}</span>
             </button>
           </div>
-        </div>
+          <template #footer>
+            <el-button @click="stockPickerOpen = false">关闭</el-button>
+          </template>
+        </el-dialog>
 
         <div v-if="showAgentRunStatus" class="agent-run-status" aria-live="polite">
           <div class="agent-run-head">

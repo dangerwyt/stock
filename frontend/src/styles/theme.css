@@ -132,7 +132,10 @@ a { color: inherit; text-decoration: none; }
 .accuracy-evidence-dialog.el-dialog {
   width: min(720px, calc(100vw - 32px));
   max-height: min(760px, calc(100dvh - 48px));
-  margin: 0;
+  /* ⚠️ 必须是 auto 不能是 0：EP 的 `align-center` 靠 `.el-dialog.is-align-center { margin: auto }`
+   * 在 flex 容器里居中，这里写 margin:0 会以同具体度+更晚加载把它压掉，
+   * 弹窗就被钉到视口左上角（headless 实拍踩到的坑）。 */
+  margin: auto;
   padding: 0;
   border-radius: 9px;
   overflow: hidden;
@@ -148,6 +151,40 @@ a { color: inherit; text-decoration: none; }
 .accuracy-evidence-dialog .el-dialog__headerbtn .el-dialog__close { color: var(--muted); }
 .accuracy-evidence-dialog .el-dialog__headerbtn:hover .el-dialog__close { color: var(--blue); }
 .accuracy-evidence-dialog .el-dialog__body { min-height: 0; padding: 0; overflow: auto; }
+
+/* 6d) EP 版 composer 面板「搜索A股 / 选择角色」（AILabPage，试点 ③）。
+ * 同 6b / 6c：只放需要压过 EP 自带 `.el-dialog` / `.el-dialog__*` 的几条，
+ * 且必须写在无层文件里（styles.css 被 @import 进 layer(legacy)，同具体度必输）。
+ * 头部标题与结果网格的内容样式留在 legacy（styles.css）。 */
+.composer-picker-dialog.el-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(72vh, 620px);
+  /* 同上：align-center 靠 margin:auto 居中，写 0 会钉死在左上角 */
+  margin: auto;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.composer-picker-dialog .el-dialog__header {
+  cursor: default;
+  padding: 16px 56px 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.composer-picker-dialog .el-dialog__headerbtn { top: 13px; right: 13px; width: 34px; height: 34px; }
+.composer-picker-dialog .el-dialog__headerbtn .el-dialog__close { color: var(--muted); }
+.composer-picker-dialog .el-dialog__headerbtn:hover .el-dialog__close { color: var(--blue); }
+/* 输入框固定在顶部，只有结果网格滚动（条目多时不会把搜索框顶走） */
+.composer-picker-dialog .el-dialog__body { min-height: 0; padding: 16px 18px 6px; overflow: auto; }
+.composer-picker-dialog .el-dialog__footer { padding: 0 18px 16px; }
+.composer-picker-dialog .el-input__wrapper { min-height: 40px; border-radius: 8px; }
+/* legacy 里结果瓦片的底色是 var(--surface)（浅色主题下 = 白），放进白底弹窗就看不出是「可选项」；
+ * 换成浅蓝瓦片。⚠️ 这三条必须带 :hover / .active 的更高具体度，否则会把
+ * legacy 的悬停与选中反馈一起盖掉。 */
+.composer-picker-dialog .stock-search-results button { background: var(--surface-2); }
+.composer-picker-dialog .stock-search-results button:hover { background: var(--blue-soft); }
+.composer-picker-dialog .stock-search-results button.active { background: #eef5ff; }
 
 /* 7) 自建角色标记 + 未评分单元格（自定义角色只对 TOP10 打分） */
 .custom-tag {
