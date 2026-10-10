@@ -41,8 +41,8 @@ const agentItems = computed(() => agentsStore.teacherList)
 const EMPTY_TEACHER = { name: '暂无角色', style: '尚未创建', productionVersion: { id: 'agent-factor-v1' } }
 // 初始留空，onMounted 拉到角色列表后自动选中第一个 —— 不再写死一个已不存在的内置老师名。
 const selectedAgentNames = ref([])
-const stockPickerOpen = ref(false)
-const stockQuery = ref('')
+// 「搜索A股」内联下拉（EP el-select，remote 模式）的数据源，仍是 /api/stocks/search。
+// 不再自己维护输入框的 query —— remote 模式下查询词由 el-select 的 remote-method 传进来。
 const stockResults = ref([])
 const stockSearchState = ref('idle')
 // —— 通用研究会话的「选择角色」（多选）——
@@ -51,19 +51,21 @@ const stockSearchState = ref('idle')
 // ⚠️ 但选中的角色**会**因此拿到新的画像素材：后端按**每条回答消息上的 teacherNames**
 // 逐条归账，把这个角色答的那几问算进它的提炼历史（threads.attributed_messages）。
 // 所以下面每个回答消息都必须带上真实作答角色名 —— 那是唯一的归账依据。
-const rolePickerOpen = ref(false)
-const roleQuery = ref('')
 const generalRoles = ref([])
 // 右栏「角色名单」：一个顿号串列全，一个都没选时给「—」而不是空白。
 // （名字可能已经不在了 —— 角色被删后会话上还留着旧名单，这里不额外过滤：
 //   显示出来反而能让用户看到"选中的角色已被删"，右栏不会出现"选了却看不到"的错觉。）
 const generalRoleNames = computed(() => generalRoles.value.join('、') || '—')
-// 选项 = 全部已建角色，按输入过滤（角色通常不超过十几个，纯前端筛选就够，不必打接口）。
-// 注意：列表里**没有**「通用助手」这一项 —— 取消选择靠已选 tag 上的 ×（见模板）。
-const roleOptions = computed(() => {
-  const q = roleQuery.value.trim().toLowerCase()
-  if (!q) return agentItems.value
-  return agentItems.value.filter((i) => String(i.name || '').toLowerCase().includes(q))
+// 下拉的 v-model 桥：get/set 直连 generalRoles，set 时顺手落库 ——
+// 原来「选中 / 点 tag 上的 × / 清空」三条路径各自调 persistRoles，现在 el-select 的多选
+// 也是同一个数组，统一在这里落库，那三个函数就都不需要了。
+// ⚠️ 必须 slice()：EP 会把同一个数组引用反复 emit，直接赋值会让 v-model 的 diff 失效。
+const generalRolesModel = computed({
+  get: () => generalRoles.value,
+  set: (value) => {
+    generalRoles.value = Array.isArray(value) ? value.slice() : []
+    persistRoles()
+  },
 })
 const manualStock = ref(null)
 const sending = ref(false)
@@ -123,10 +125,6 @@ const quickStartWho = computed(() => {
   const names = selectedAgentNames.value
   return names.length === 1 ? `${names[0]} Agent` : `${names.length}位老师联合研判`
 })
-// 「选择角色」按钮上的文案：选了就报个数，没选就是提示语。
-const rolePickerLabel = computed(() =>
-  generalRoles.value.length ? `已选 ${generalRoles.value.length} 位` : '选择角色',
-)
 const selectedAgents = computed(() =>
   selectedAgentNames.value.map((name) => agentItems.value.find((i) => i.name === name)).filter(Boolean),
 )
@@ -151,21 +149,53 @@ const activeStock = computed(
 const requestStock = computed(
   () => activeStock.value || (threadStockCode.value ? { code: threadStockCode.value, name: '历史会话标的' } : null),
 )
-// 输入框上方标的 chip 的涨跌幅：模板内不做格式化，统一在这里算好
-// （约定：模板属性里禁止内联三元 / 比较 / toFixed）。
-const stockChipPct = computed(() => {
-  const pct = Number(requestStock.value?.pct)
-  if (!Number.isFinite(pct)) return ''
-  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
+// 「搜索A股」下拉的 v-model 桥。
+// - 读：**当前标的**的 code。不能用 manualStock 当读源 —— 会话自带 stockCode（老师会话）
+//   时下拉会是空的，用户看不到自己正在对哪只股票提问。
+// - 写：按 code 回到全量条目再走 pickStock（命中 TOP50 才有行情与因子，见 pickStock 注释）；
+//   清空（clearable 的 ×）= 放弃手动覆盖：老师会话回落到会话自带标的，通用会话变成无标的。
+//   原第二行的标的 chip 已删（下拉本身就显示当前标的，两处重复），清空职责由 clearable 接管。
+const stockSelectCode = computed({
+  get: () => requestStock.value?.code || '',
+  set: (code) => {
+    if (!code) {
+      clearStock()
+      return
+    }
+    const hit = labTop50Stocks.value.find((i) => i.code === code)
+      || stockResults.value.find((i) => i.code === code)
+    if (hit) pickStock(hit)
+  },
 })
-const stockChipUp = computed(() => Number(requestStock.value?.pct) >= 0)
+// 下拉选项 = 本次搜索结果；若当前标的还不在结果里（会话自带标的、或上次选完清空了输入），
+// 把它补到最前面，否则 el-select 只能拿裸 code 当 label 显示。
+const stockSelectOptions = computed(() => {
+  const list = stockResults.value.slice()
+  const cur = requestStock.value
+  if (cur?.code && !list.some((i) => i.code === cur.code)) list.unshift(cur)
+  return list
+})
+// el-select 选中后显示的是 option 的 **label**（不是插槽内容），插槽只管下拉里的排版，
+// 所以选中态要的「名称 代码」得单独拼一份。
+function stockOptionLabel(item) {
+  return [String(item.name || '').trim(), String(item.code || '').trim()].filter(Boolean).join(' ')
+}
+// 下拉空态的一句话（模板里不做条件串联，统一在这里选）。
+// loading 态 EP 自己会显示 loading-text，这里兜住"还没输入 / 没结果 / 接口挂了"三种。
+const stockEmptyText = computed(() => {
+  if (stockSearchState.value === 'loading') return '正在搜索全市场A股…'
+  if (stockSearchState.value === 'error') return '行情搜索暂不可用，请检查Tushare数据源。'
+  if (stockSearchState.value === 'ready') return '没有匹配的上市A股。'
+  return '输入代码或名称开始搜索，支持全部 A 股。'
+})
 // composer 上方「已选上下文」那一行是否有内容。没有就整行隐藏 —— 默认高度和改动前一样，
 // 不白占聊天可视区（见模板里 context-chips / context-selected 两行的分工）。
+// ⚠️ 标的与角色都不再算进来：标的选择改成 el-select 后下拉本身就显示当前标的
+// （原标的 chip 已删，两处重复）；角色 tag 由下拉自己渲染。
+// 这一行只剩 TOP50 榜位与老师会话的溢出人数，都是下拉表达不了的信息。
 const hasPickedContext = computed(
   () =>
-    !!requestStock.value ||
     Number(activeStock.value?.rank) > 0 ||
-    generalRoles.value.length > 0 ||
     (!isGeneralThread.value && selectedAgentNames.value.length > visibleAgentNames.value.length),
 )
 const composerPlaceholder = computed(() => {
@@ -234,8 +264,6 @@ async function loadThread(threadId) {
     generalRoles.value = Array.isArray(result.thread?.generalRoles)
       ? result.thread.generalRoles.slice()
       : []
-    rolePickerOpen.value = false
-    roleQuery.value = ''
     messages.value = result.thread?.messages?.length
       ? result.thread.messages.map((i) => ({ ...i, type: i.role === 'assistant' ? 'live' : undefined }))
       : [systemMessage]
@@ -246,9 +274,15 @@ async function loadThread(threadId) {
 }
 
 let stockTimer = null
-function runStockSearch() {
-  const query = stockQuery.value.trim()
-  if (!stockPickerOpen.value || !query) {
+// el-select remote 模式：每次输入都会带着当前输入框文字调这里（不再是自定义 ref）。
+// - 250ms 防抖：一个中文词/一串代码要打好几键。
+// - seq 竞态保护：防抖只压住了"输入多快"，压不住"响应多慢" —— 慢的那个请求后回来
+//   会把新结果覆盖掉（下拉里出现跟输入框对不上的股票）。回来的序号不是最新的就丢弃。
+let stockSearchSeq = 0
+function runStockSearch(query) {
+  const keyword = String(query || '').trim()
+  if (!keyword) {
+    stockSearchSeq += 1
     stockResults.value = []
     stockSearchState.value = 'idle'
     return
@@ -256,11 +290,14 @@ function runStockSearch() {
   stockSearchState.value = 'loading'
   clearTimeout(stockTimer)
   stockTimer = setTimeout(async () => {
+    const seq = ++stockSearchSeq
     try {
-      const result = await fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(query)}`)
+      const result = await fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(keyword)}`)
+      if (seq !== stockSearchSeq) return
       stockResults.value = result.items || []
       stockSearchState.value = 'ready'
     } catch {
+      if (seq !== stockSearchSeq) return
       stockSearchState.value = 'error'
     }
   }, 250)
@@ -274,7 +311,6 @@ function runStockSearch() {
 // 之前只能靠"选另一只"来替换，选错了没法退回。
 function clearStock() {
   manualStock.value = null
-  stockPickerOpen.value = false
 }
 
 // 选中搜索结果。搜索接口（/api/stocks/search）只返回 code/name/industry，
@@ -283,8 +319,6 @@ function clearStock() {
 function pickStock(item) {
   const full = labTop50Stocks.value.find((entry) => entry.code === item.code)
   manualStock.value = full || item
-  stockPickerOpen.value = false
-  stockQuery.value = ''
 }
 
 // —— 通用研究会话：选择本次回答的角色（多选）——
@@ -302,48 +336,8 @@ async function persistRoles() {
   } catch { /* 会话落库失败不应阻断研究 */ }
 }
 
-function toggleRole(name) {
-  const value = String(name || '').trim()
-  if (!value) return
-  const next = generalRoles.value.slice()
-  const at = next.indexOf(value)
-  if (at >= 0) next.splice(at, 1)
-  else next.push(value)
-  generalRoles.value = next
-  persistRoles()
-}
-
-// tag 上的 ×：把某个已选角色从名单里删掉。
-function removeRole(name) {
-  const at = generalRoles.value.indexOf(name)
-  if (at < 0) return
-  const next = generalRoles.value.slice()
-  next.splice(at, 1)
-  generalRoles.value = next
-  persistRoles()
-}
-
-function clearRoles() {
-  if (!generalRoles.value.length) return
-  generalRoles.value = []
-  persistRoles()
-}
-
-// 多选：选完不自动关面板（要能连着点几个）；关面板靠「关闭」按钮或再点一次按钮。
-function toggleRolePicker() {
-  rolePickerOpen.value = !rolePickerOpen.value
-  // 两个下拉共用同一个浮层位置，同时开着会叠在一起。
-  if (rolePickerOpen.value) {
-    stockPickerOpen.value = false
-    roleQuery.value = ''
-  }
-}
-
-function toggleStockPicker() {
-  stockPickerOpen.value = !stockPickerOpen.value
-  if (stockPickerOpen.value) rolePickerOpen.value = false
-  runStockSearch()
-}
+// 选中/移除/清空全部由上面 generalRolesModel 的 setter 统一落库，
+// 原 toggleRole / removeRole / clearRoles / toggleRolePicker / toggleStockPicker 已删。
 
 // 消息上只留「名称 + 代码」。整条行情快照（因子、价位、pct…）塞进历史消息既没用
 // 又把 ai_threads.json 撑大 —— 气泡只需要说明「这一问是对着哪只股票问的」。
@@ -487,8 +481,6 @@ function scrollToEnd() {
 async function send() {
   if (!input.value.trim() || sending.value) return
   const question = input.value.trim()
-  stockPickerOpen.value = false
-  rolePickerOpen.value = false
   const threadId = await ensureThread()
   // 按 ensureThread 真正落到的那条会话判定，而不是按发送前的 activeThread ——
   // 后者在"还没有活动会话"时是 null，会把它误判成老师会话。
@@ -779,112 +771,81 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
       </div>
 
       <div v-if="hasThreads" class="composer">
-        <!-- 第 1 行：**入口**。只放"往这次提问加上下文"的按钮，位置永远不动
+        <!-- 第 1 行：**入口**。两个"往这次提问加上下文"的入口常驻在这行，位置永远不动
              （改动前它和已选 chip/tag 挤在同一行，每选一位角色按钮就被挤着换行一次）。
-             通用研究会话专有的「选择角色」也在这行：它和「搜索A股」语义同类，都是入口。 -->
+             通用研究会话专有的「选择角色」也在这行：它和「搜索A股」语义同类，都是入口。
+
+             Element Plus 试点 ③ 第二轮（2026-10-10）：这两个入口先做成 el-dialog 弹窗，
+             实拍后弹窗对"加个上下文"这种高频轻量动作太重（点开→选→关三步），
+             换回**内联下拉** el-select：
+             - 搜索A股：remote 模式（filterable + remote-method），输入即查 /api/stocks/search，
+               选中即收起并把上下文加到这一问上；
+             - 选择角色：multiple + collapse-tags（多选，超过 2 位折成 +N），
+               值直接双向绑到 generalRoles，落库收在 generalRolesModel 的 setter 里。 -->
         <div class="context-chips">
-          <button :disabled="sending" @click="toggleStockPicker"><IconSearch :size="13" /> 搜索A股</button>
-          <!-- 临时挑角色来回答这一问（不改会话的角色归属）。多选。 -->
-          <button
-            v-if="isGeneralThread"
+          <el-select
+            v-model="stockSelectCode"
+            class="composer-select composer-stock-select"
+            popper-class="composer-select-dropdown"
+            placeholder="搜索A股"
+            filterable
+            remote
+            clearable
+            :remote-method="runStockSearch"
+            :loading="stockSearchState === 'loading'"
             :disabled="sending"
-            :class="{ 'chip-active': generalRoles.length > 0 }"
-            @click="toggleRolePicker"
+            :teleported="true"
           >
-            <IconUserSearch :size="13" /> {{ rolePickerLabel }}
-          </button>
+            <template #prefix><IconSearch :size="14" /></template>
+            <el-option
+              v-for="item in stockSelectOptions"
+              :key="item.tsCode || item.code"
+              :label="stockOptionLabel(item)"
+              :value="item.code"
+            >
+              <span class="composer-option-main">{{ item.name }}</span>
+              <span class="composer-option-sub">{{ item.code }} · {{ item.industry }}</span>
+            </el-option>
+            <!-- 空态沿用原来的三句文案：下拉自带 no-data 只能给一句，说不出"在加载"和"接口挂了" -->
+            <template #empty>
+              <p class="composer-select-empty">{{ stockEmptyText }}</p>
+            </template>
+          </el-select>
+
+          <!-- 临时挑角色来回答这一问（不改会话的角色归属）。多选。
+               ⚠️ 列表里**没有**「通用助手」这一项 —— 取消选择靠 tag 上的 ×，
+               多选列表里混一个非角色的项会让人误以为它也是一个"角色"。 -->
+          <el-select
+            v-if="isGeneralThread"
+            v-model="generalRolesModel"
+            class="composer-select composer-role-select"
+            popper-class="composer-select-dropdown"
+            placeholder="选择角色"
+            multiple
+            filterable
+            collapse-tags
+            :max-collapse-tags="1"
+            :disabled="sending"
+            :teleported="true"
+          >
+            <template #prefix><IconUserSearch :size="14" /></template>
+            <el-option v-for="item in agentItems" :key="item.name" :label="item.name" :value="item.name">
+              <span class="composer-option-main">{{ item.name }}</span>
+              <span class="composer-option-sub">{{ item.style || '尚未学出画像' }}</span>
+            </el-option>
+            <template #empty>
+              <p class="composer-select-empty">没有匹配的角色。可先点左上「新建角色」。</p>
+            </template>
+          </el-select>
         </div>
 
-        <!-- 第 2 行：**已选上下文**。股票 chip / TOP50 标签 / 角色 tag 全在这行，
+        <!-- 第 2 行：**补充上下文**。TOP50 榜位 / 老师会话的溢出人数在这行 ——
+             只放下拉表达不了的信息（标的由下拉显示、角色 tag 由下拉渲染），
              空的时候整行不渲染（默认态高度与改动前一致）。 -->
         <div v-if="hasPickedContext" class="context-chips context-selected">
-          <span v-if="requestStock" class="stock-context-chip">
-            <b>{{ requestStock.name }}</b>
-            <small>{{ requestStock.code }}</small>
-            <em v-if="stockChipPct" :class="stockChipUp ? 'chip-pct-up' : 'chip-pct-down'">{{ stockChipPct }}</em>
-            <button v-if="manualStock" type="button" title="取消选中该标的" @click="clearStock">×</button>
-          </span>
           <span v-if="!isGeneralThread && selectedAgentNames.length > visibleAgentNames.length" class="agent-overflow-chip">+{{ selectedAgentNames.length - visibleAgentNames.length }}位</span>
           <span v-if="Number(activeStock?.rank) > 0">TOP50 #{{ activeStock.rank }}</span>
-          <span v-for="name in generalRoles" :key="name" class="role-tag">
-            <b>{{ name }}</b>
-            <button type="button" title="移除该角色" @click="removeRole(name)">×</button>
-          </span>
         </div>
-
-        <!-- 选择角色 —— Element Plus 试点 ③（2026-10-10）。
-             原先是贴在 composer 上方的 .stock-picker 内联面板；换 el-dialog 后遮罩、Esc、
-             焦点陷阱、body 滚动锁都由组件接管。
-             ⚠️ 多选面板**点选项不能关**（要能连着点几个）—— el-dialog 只在点遮罩 / 关闭钮 /
-             Esc 时关，正好等于原行为，所以结果行保持普通 button、不接 dialog 的开关。 -->
-        <el-dialog
-          v-model="rolePickerOpen"
-          class="composer-picker-dialog"
-          width="560px"
-          align-center
-          append-to-body
-        >
-          <template #header>
-            <div class="composer-picker-head">
-              <strong>选择本次回答的角色（可多选）</strong>
-            </div>
-          </template>
-          <el-input v-model="roleQuery" placeholder="输入角色名称筛选">
-            <template #prefix><IconSearch :size="15" /></template>
-          </el-input>
-          <div class="stock-search-results">
-            <!-- 刻意不提供「通用助手」选项：取消选择走 tag 上的 × 或下面的「清空」，
-                 多选列表里混一个非角色的项会让人误以为它也是一个"角色"。 -->
-            <button
-              v-for="item in roleOptions"
-              :key="item.name"
-              :class="{ active: generalRoles.includes(item.name) }"
-              @click="toggleRole(item.name)"
-            >
-              <strong>{{ item.name }}</strong><span>{{ item.style || '尚未学出画像' }}</span>
-            </button>
-            <span v-if="!roleOptions.length">没有匹配的角色。可先点左上「新建角色」。</span>
-          </div>
-          <template #footer>
-            <el-button v-if="generalRoles.length" @click="clearRoles">清空</el-button>
-            <el-button type="primary" @click="rolePickerOpen = false">完成</el-button>
-          </template>
-        </el-dialog>
-
-        <!-- 搜索A股 —— 同上。选中即关（pickStock 内部会把 stockPickerOpen 置 false）。 -->
-        <el-dialog
-          v-model="stockPickerOpen"
-          class="composer-picker-dialog"
-          width="560px"
-          align-center
-          append-to-body
-        >
-          <template #header>
-            <div class="composer-picker-head">
-              <strong>选择任意A股作为本次研究上下文</strong>
-            </div>
-          </template>
-          <el-input
-            v-model="stockQuery"
-            placeholder="输入股票代码或名称，例如 603893 / 瑞芯微"
-            @input="runStockSearch"
-          >
-            <template #prefix><IconSearch :size="15" /></template>
-          </el-input>
-          <div class="stock-search-results">
-            <span v-if="stockSearchState === 'loading'">正在搜索全市场A股…</span>
-            <span v-else-if="stockSearchState === 'error'">行情搜索暂不可用，请检查Tushare数据源。</span>
-            <span v-else-if="stockSearchState === 'ready' && !stockResults.length">没有匹配的上市A股。</span>
-            <!-- 空闲态也给一句提示：原来是内联小面板，空着不显眼；换成弹窗后空 body 会显得像坏了 -->
-            <span v-else>输入代码或名称开始搜索，支持全部 A 股。</span>
-            <button v-for="item in stockResults" :key="item.tsCode || item.code" @click="pickStock(item)">
-              <strong>{{ item.name }}</strong><span>{{ item.code }} · {{ item.industry }}</span>
-            </button>
-          </div>
-          <template #footer>
-            <el-button @click="stockPickerOpen = false">关闭</el-button>
-          </template>
-        </el-dialog>
 
         <div v-if="showAgentRunStatus" class="agent-run-status" aria-live="polite">
           <div class="agent-run-head">

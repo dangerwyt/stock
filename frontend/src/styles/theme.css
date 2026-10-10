@@ -152,39 +152,31 @@ a { color: inherit; text-decoration: none; }
 .accuracy-evidence-dialog .el-dialog__headerbtn:hover .el-dialog__close { color: var(--blue); }
 .accuracy-evidence-dialog .el-dialog__body { min-height: 0; padding: 0; overflow: auto; }
 
-/* 6d) EP 版 composer 面板「搜索A股 / 选择角色」（AILabPage，试点 ③）。
- * 同 6b / 6c：只放需要压过 EP 自带 `.el-dialog` / `.el-dialog__*` 的几条，
- * 且必须写在无层文件里（styles.css 被 @import 进 layer(legacy)，同具体度必输）。
- * 头部标题与结果网格的内容样式留在 legacy（styles.css）。 */
-.composer-picker-dialog.el-dialog {
-  width: min(560px, calc(100vw - 32px));
-  max-height: min(72vh, 620px);
-  /* 同上：align-center 靠 margin:auto 居中，写 0 会钉死在左上角 */
-  margin: auto;
-  padding: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+/* 6d) composer 里的 el-select（AILabPage，试点 ③ 第二轮，2026-10-10）。
+ * 这两个入口（搜索A股 / 选择角色）最初做成 el-dialog 弹窗，实拍后太重 ——
+ * "加个上下文"是高频轻量动作，弹窗要走「点开 → 选 → 关」三步。改回内联下拉：
+ * 搜索A股 = remote 模式，选择角色 = multiple + collapse-tags，交互全由 EP 接管。
+ * 只覆盖需要压过 EP 默认值/需要卡进 composer 行高的几条；颜色仍走 --el-*（见 6b 说明）。 */
+.composer-select { flex: none; }
+.composer-stock-select { width: 210px; }
+.composer-role-select { width: 280px; }
+/* 与同行的 .context-chips 按钮/chip 等高（legacy 里那批是 min-height:32px） */
+.composer-select .el-select__wrapper { min-height: 32px; padding: 1px 10px; border-radius: 6px; }
+.composer-select .el-select__placeholder,
+.composer-select .el-select__selected-item { font-size: 12px; }
+.composer-select .el-select__prefix { color: var(--muted); margin-right: 4px; }
+/* 多选 tag 必须比 EP 默认（24px）矮，否则 32px 的入口行会被撑高、和 composer 跳动 */
+.composer-role-select .el-tag { height: 20px; line-height: 18px; font-size: 11px; }
+.composer-role-select .el-tag .el-tag__close { font-size: 11px; }
+/* 下拉项：名称 + 副信息各占一段，都压到一行内（EP 的 item 自带 nowrap + 省略号）。
+ * popper 挂在 body 上，所以用 popper-class 单独命中，不能靠 .composer-select 前缀。 */
+.composer-select-dropdown .el-select-dropdown__item { font-size: 12px; }
+.composer-select-dropdown .composer-option-main { font-weight: 600; }
+/* 副信息与名称之间留 6px：inline 元素里 content:' ' 会被折叠，必须用 margin */
+.composer-select-dropdown .composer-option-sub { color: var(--muted); margin-left: 6px; }
+.composer-select-dropdown .composer-select-empty {
+  margin: 0; padding: 6px 4px; color: var(--muted); font-size: 11px; line-height: 1.6;
 }
-.composer-picker-dialog .el-dialog__header {
-  cursor: default;
-  padding: 16px 56px 14px 18px;
-  border-bottom: 1px solid var(--line);
-}
-.composer-picker-dialog .el-dialog__headerbtn { top: 13px; right: 13px; width: 34px; height: 34px; }
-.composer-picker-dialog .el-dialog__headerbtn .el-dialog__close { color: var(--muted); }
-.composer-picker-dialog .el-dialog__headerbtn:hover .el-dialog__close { color: var(--blue); }
-/* 输入框固定在顶部，只有结果网格滚动（条目多时不会把搜索框顶走） */
-.composer-picker-dialog .el-dialog__body { min-height: 0; padding: 16px 18px 6px; overflow: auto; }
-.composer-picker-dialog .el-dialog__footer { padding: 0 18px 16px; }
-.composer-picker-dialog .el-input__wrapper { min-height: 40px; border-radius: 8px; }
-/* legacy 里结果瓦片的底色是 var(--surface)（浅色主题下 = 白），放进白底弹窗就看不出是「可选项」；
- * 换成浅蓝瓦片。⚠️ 这三条必须带 :hover / .active 的更高具体度，否则会把
- * legacy 的悬停与选中反馈一起盖掉。 */
-.composer-picker-dialog .stock-search-results button { background: var(--surface-2); }
-.composer-picker-dialog .stock-search-results button:hover { background: var(--blue-soft); }
-.composer-picker-dialog .stock-search-results button.active { background: #eef5ff; }
 
 /* 7) 自建角色标记 + 未评分单元格（自定义角色只对 TOP10 打分） */
 .custom-tag {
@@ -331,66 +323,26 @@ a { color: inherit; text-decoration: none; }
   .chat-scroll .chat-bubble { max-width: 92%; }
 }
 
-/* 11) 输入框上方的 chips（本次研究标的 / TOP50 名次 / 溢出的老师数）
+/* 11) 输入框上方的 chips（TOP50 名次 / 溢出的老师数）
  *  高度统一 —— legacy 的 `.context-chips button { min-height: 32px }` 会连带命中 chip
  *  里的「×」，把它撑成 32px 方块，整个 chip 因此被顶到 42px，比旁边的 TOP50 tag
  *  高出 10px（实测 42 vs 32）。把 × 的 min-height 归零后整行回到统一的 32px。
  *  底色改浅蓝（同 .ai-layout .user-message 的 #eaf3ff），文字随之换深蓝系 ——
- *  原来的 b #e8eef6 近白在新底上会直接看不见。 */
+ *  原来的 b #e8eef6 近白在新底上会直接看不见。
+ *  ⚠️ 标的 chip（.stock-context-chip 及 chip-pct-up/down）已随 2026-10-10 的
+ *  el-select 化删除：下拉本身就显示当前标的，chip 纯重复。 */
 .context-chips span { background: #eaf3ff; border: 1px solid #cfe3fb; color: #6785ab; }
-/* 第二行「已选上下文」（股票 chip / TOP50 名次 / 角色 tag）。
- * 与第一行「入口按钮」分开的理由：按钮位置因此永远不动 —— 原来两行合一，
- * 每选一位角色都会把「搜索A股 / 选择角色」挤着换行。整行由 v-if 控制，
- * 没有已选内容时不渲染，默认高度与改动前一致。 */
+/* 第二行「补充上下文」（TOP50 名次 / 溢出人数）。
+ * 与第一行「入口」分开的理由：入口位置因此永远不动。整行由 v-if 控制，
+ * 没有内容时不渲染，默认高度与改动前一致。 */
 .context-chips.context-selected { margin-top: 6px; }
 .context-chips .agent-overflow-chip { background: #eaf3ff; border-color: #cfe3fb; color: #4a7ab5; }
-.context-chips .stock-context-chip { gap: 5px; }
-.context-chips .stock-context-chip b { color: #1f4470; font-weight: 700; }
-.context-chips .stock-context-chip small { color: #6785ab; font-size: 10px; }
-/* 涨跌色刻意**不用** .price-up / .price-down —— legacy 的
- * `.price-up { color: var(--red) !important }` 被 @import 进 `legacy` @layer
- * （见 reference-theme.css 开头），而 layer 里 important 的层序是反转的、优先级最高，
- * 写在层外的 !important 压不过它。换成 chip 专属类名，不进 layer、不加 important，
- * 按「层外普通 > 层内普通」稳赢，比跟它硬碰干净。 */
-.context-chips .stock-context-chip em.chip-pct-up { font-style: normal; font-weight: 700; color: #d63b48; }
-.context-chips .stock-context-chip em.chip-pct-down { font-style: normal; font-weight: 700; color: #0a8f6b; }
-.context-chips .stock-context-chip button {
-  margin-left: 1px; padding: 0 2px; font-size: 13px; line-height: 1;
-  min-height: 0; /* ← 高度统一的关键，见本节注释 */
-  color: #8195ab;
-}
-.context-chips .stock-context-chip button:hover { color: #e06a72; }
-/* 通用研究会话的「选择角色」chip：选了角色才点亮，否则和其它按钮一样是中性态 ——
- * 一眼能看出"这一问到底有没有指定角色"。 */
-.context-chips button.chip-active {
-  background: #e4f0ff;
-  border-color: #a8cbf5;
-  color: #2f6fd0;
-  font-weight: 600;
-}
 /* 角色下拉里当前选中的那一项（复用 搜索A股 的浮层与列表样式，只补选中态）。 */
 .stock-search-results button.active { border-color: #3185ed; background: #eef5ff; }
 
-/* 通用研究会话里已选角色的 tag。宽度按用户反馈调宽：原来完全按内容撑开，
- * 「C老师」这类短名会缩成一个很小的胶囊，× 紧贴名字、既难点也不好看。
- * 用 min-width 而不是固定 width —— 长名（「产业趋势共振老师」）仍能自然撑开，
- * 只有短名被补到统一的最小宽度，几个 tag 排在一起才整齐。 */
-.context-chips .role-tag {
-  min-width: 96px;
-  padding: 0 8px;
-  gap: 10px;
-  justify-content: space-between; /* 名字靠左、× 靠右，短名时 × 不会黏在字上 */
-}
-.context-chips .role-tag b {
-  font-weight: 600; color: #2f6fd0;
-  max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.context-chips .role-tag button {
-  margin-left: 0; padding: 0 2px; font-size: 13px; line-height: 1;
-  min-height: 0; /* 同 stock-context-chip 的坑：不清零会被撑成 32px 方块，拉高整行 */
-  color: #8195ab;
-}
-.context-chips .role-tag button:hover { color: #e06a72; }
+/* 已删条目（2026-10-10，el-select 化后全 src 0 引用）：
+ * - .context-chips .role-tag 及 b / button（角色 tag 由 EP 渲染，尺寸见 6d)）
+ * - .context-chips button.chip-active（「选择角色」不再是按钮） */
 
 /* 12) 气泡里的「本次标的」标记 —— 形如（瑞芯微/603893）
  *  用户提问气泡下方一行小字，说明这一问是对着哪只股票问的；
@@ -432,6 +384,5 @@ a { color: inherit; text-decoration: none; }
 .composer-input > button:disabled { background: var(--line-soft); color: var(--muted); opacity: 1; }
 .composer-actions button { transition: color .12s ease, border-color .12s ease, background .12s ease; }
 .composer-actions button:hover:not(:disabled) { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
-/* 入口按钮（搜索A股 / 选择角色）与快捷按钮同属一组，补上 hover 保持一致 */
-.context-chips > button { transition: color .12s ease; }
-.context-chips > button:hover:not(:disabled) { color: var(--blue); }
+/* 入口行的 hover 反馈（原 .context-chips > button 两条）已随按钮一起移除：
+ * 那两个入口现在是 el-select，悬停态由 EP 自己的 wrapper 负责。 */

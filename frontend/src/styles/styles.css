@@ -780,12 +780,11 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .context-chips span button { padding: 0; color: var(--muted); }
 .context-chips span button:disabled { opacity: .35; cursor: not-allowed; }
 .context-chips .agent-overflow-chip { border-color: #315786; background: var(--blue-soft); color: #9fc3f8; font-weight: 700; }
-/* composer 的「搜索A股 / 选择角色」面板 —— 已改用 Element Plus（2026-10-10 试点 ③）。
- * 原先贴在 composer 上方的手写内联面板（.stock-picker / -head / > label / input）已移除，
- * 容器级样式见 theme.css 6d)。
+/* composer 的「搜索A股 / 选择角色」入口 —— 已改用 Element Plus el-select（2026-10-10 试点 ③）。
+ * 手写内联面板（.stock-picker / -head / > label / input）→ el-dialog 弹窗 → 内联下拉，
+ * 中间两代容器样式都已清掉；下拉的尺寸适配见 theme.css 6d)。
  * 结果网格沿用共用的 .stock-search-results —— App.vue 的全局搜索弹窗
  * （.stock-search-dialog）也在用它，所以那几条不能动、也不要改名。 */
-.composer-picker-head strong { color: var(--text); font-size: 14px; }
 .stock-search-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .stock-search-results > span { grid-column: 1 / -1; padding: 14px 4px; color: var(--muted); font-size: 11px; }
 .stock-search-results button { min-width: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); padding: 9px 10px; text-align: left; cursor: pointer; }
