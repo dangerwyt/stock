@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { fetchSnapshot } from '@/api/client'
 import { formatShanghaiDateTime } from '@/utils/format'
@@ -8,7 +8,6 @@ import {
   IconAlertTriangle,
   IconDatabase,
   IconInfoCircle,
-  IconX,
 } from '@tabler/icons-vue'
 
 const { data: snapshot, state } = useSnapshot('/api/accuracy', { refreshMs: 300000 })
@@ -69,19 +68,22 @@ const evidence = ref(null)
 const evidenceState = ref('idle')
 let evidenceToken = 0
 
+// el-dialog 需要布尔 v-model；evidenceId 仍是指挥源，关闭时统一走 closeEvidence()。
+// Esc / 点遮罩 / 关闭按钮由 EP 接管 —— 原先手写的 window keydown 监听与 onBeforeUnmount
+// 清理已随之移除（少一处自维护的副作用）。
+const evidenceVisible = computed({
+  get: () => Boolean(evidenceId.value),
+  set: (value) => {
+    if (!value) closeEvidence()
+  },
+})
+
 function closeEvidence() {
   evidenceToken += 1
   evidenceId.value = null
   evidence.value = null
   evidenceState.value = 'idle'
 }
-function onKeydown(event) {
-  if (event.key === 'Escape' && evidenceId.value) closeEvidence()
-}
-if (typeof window !== 'undefined') window.addEventListener('keydown', onKeydown)
-onBeforeUnmount(() => {
-  if (typeof window !== 'undefined') window.removeEventListener('keydown', onKeydown)
-})
 async function openEvidence(item, event) {
   if (!item.id) return
   event.stopPropagation()
@@ -229,59 +231,68 @@ const EVENT_REASON = { maturity_market_data_available: '已取得目标交易日
       </div>
     </section>
 
-    <div v-if="evidenceId" class="accuracy-evidence-backdrop" role="presentation" @mousedown.self="closeEvidence">
-      <section class="accuracy-evidence-dialog" role="dialog" aria-modal="true" aria-labelledby="accuracy-evidence-title" tabindex="-1">
-        <header>
-          <div>
-            <span>冻结预测证据</span>
-            <h2 id="accuracy-evidence-title">{{ evidence?.prediction?.name || evidence?.prediction?.code || evidenceId }}</h2>
-            <p>{{ evidence?.prediction?.code || evidenceId }}</p>
-          </div>
-          <button aria-label="关闭证据" @click="closeEvidence"><IconX :size="17" /></button>
-        </header>
-        <div v-if="evidenceState === 'loading'" class="accuracy-evidence-state">正在读取冻结记录与事件...</div>
-        <div v-else-if="evidenceState === 'unavailable'" class="accuracy-evidence-state">
-          <IconAlertTriangle :size="18" /><strong>证据暂不可用</strong>
-          <p>未能读取该预测的证据记录；系统没有使用其他股票或静态数据补位。</p>
+    <!-- 冻结预测证据 —— Element Plus 试点 ②（2026-10-10）。
+         原先是手写 backdrop + <section role="dialog"> + header + 关闭按钮；换 el-dialog 后，
+         遮罩点击关闭、Esc、焦点陷阱、body 滚动锁、aria 语义全部由组件接管。
+         容器级样式放 theme.css 6c)（无层文件才能压过 EP 的 `.el-dialog`）；内容样式仍在 styles.css。
+         `class="accuracy-evidence-dialog"` 的落点同新建角色弹窗：EP 把 $attrs merge 进 DialogContent，
+         最终落在 `.el-dialog` 元素上。 -->
+    <el-dialog
+      v-model="evidenceVisible"
+      class="accuracy-evidence-dialog"
+      width="720px"
+      align-center
+      append-to-body
+    >
+      <template #header>
+        <div class="accuracy-evidence-head">
+          <span>冻结预测证据</span>
+          <h2 id="accuracy-evidence-title">{{ evidence?.prediction?.name || evidence?.prediction?.code || evidenceId }}</h2>
+          <p>{{ evidence?.prediction?.code || evidenceId }}</p>
         </div>
-        <div v-else-if="evidenceState === 'ready' && evidence" class="accuracy-evidence-body">
-          <div class="accuracy-evidence-meta">
-            <div><span>冻结时间</span><strong>{{ formatShanghaiDateTime(evidence.frozenAt) }}</strong></div>
-            <div><span>数据截止</span><strong>{{ formatShanghaiDateTime(evidence.dataCutoff) }}</strong></div>
-            <div><span>来源</span><strong>{{ displayValue(evidence.source) }}</strong></div>
-            <div><span>失效规则</span><strong>{{ displayValue(evidence.invalidationRule) }}</strong></div>
-          </div>
-          <details class="accuracy-evidence-result">
-            <summary>策略版本与基准明细</summary>
-            <p>因子版本：{{ displayValue(evidence.prediction?.factorVersion) }} · 市场环境：{{ REGIME_LABEL[evidence.prediction?.marketRegime] || '未记录' }}</p>
-            <p>基准：{{ evidence.prediction?.benchmark ? `${evidence.prediction.benchmark.name} · ${evidence.prediction.benchmark.referenceDate} · ${evidence.prediction.benchmark.referencePrice}` : '当时未冻结基准，不事后补填' }}</p>
-            <p>老师知识版本：{{ Object.entries(evidence.prediction?.teacherVersions || {}).map(([n, v]) => `${n}: ${v}`).join('；') || '未记录' }}</p>
-          </details>
-          <section class="accuracy-evidence-result">
-            <h3>验证口径与行情证据</h3>
-            <p>事前规则版本：{{ evidence.prediction?.evaluationRule?.version || '历史记录未单独冻结规则版本，不事后补写' }}</p>
-            <p>收盘报价来源：{{ evidence.evaluation?.evaluationEvidence?.provider || '历史记录未保存供应商明细' }} · 目标交易日：{{ evidence.evaluation?.evaluationEvidence?.tradeDate || '未记录' }} · 收盘价：{{ evidence.evaluation?.evaluationEvidence?.close ?? '未记录' }}</p>
-            <p>采集时间：{{ evidence.evaluation?.evaluationEvidence?.fetchedAt || '未记录' }}。除权除息可能影响原始价格比较，不能视为投资总回报。</p>
-          </section>
-          <section v-if="evidence.evaluation" class="accuracy-evidence-result">
-            <h3>这次预测是否命中？</h3>
-            <p>{{ evidence.evaluation.actualDirection === 'up' ? '上涨' : evidence.evaluation.actualDirection === 'down' ? '下跌' : '数据缺失（未记录）' }} · {{ evidence.evaluation.actualReturn == null ? '收益数据缺失' : percent(Number(evidence.evaluation.actualReturn) * 100, 2) }} · {{ evidence.evaluation.hit == null ? '命中结果缺失' : evidence.evaluation.hit ? '命中' : '未命中' }}</p>
-          </section>
-          <section class="accuracy-evidence-events">
-            <h3>事件时间线</h3>
-            <ol v-if="evidence.events?.length">
-              <li v-for="(event, index) in evidence.events" :key="event.eventId || `${event.occurredAt}:${index}`">
-                <strong>{{ EVENT_LABEL[event.type] || '证据事件' }}</strong>
-                <time>{{ formatShanghaiDateTime(event.occurredAt) }}</time>
-                <p v-if="event.reason">{{ EVENT_REASON[event.reason] || '系统追加证据记录' }}</p>
-                <details v-if="event.patch"><summary>查看原始证据数据</summary><pre>{{ JSON.stringify(event.patch, null, 2) }}</pre></details>
-              </li>
-            </ol>
-            <p v-else class="accuracy-evidence-empty">暂无追加事件；冻结预测仍保留原始记录。</p>
-          </section>
+      </template>
+      <div v-if="evidenceState === 'loading'" class="accuracy-evidence-state">正在读取冻结记录与事件...</div>
+      <div v-else-if="evidenceState === 'unavailable'" class="accuracy-evidence-state">
+        <IconAlertTriangle :size="18" /><strong>证据暂不可用</strong>
+        <p>未能读取该预测的证据记录；系统没有使用其他股票或静态数据补位。</p>
+      </div>
+      <div v-else-if="evidenceState === 'ready' && evidence" class="accuracy-evidence-body">
+        <div class="accuracy-evidence-meta">
+          <div><span>冻结时间</span><strong>{{ formatShanghaiDateTime(evidence.frozenAt) }}</strong></div>
+          <div><span>数据截止</span><strong>{{ formatShanghaiDateTime(evidence.dataCutoff) }}</strong></div>
+          <div><span>来源</span><strong>{{ displayValue(evidence.source) }}</strong></div>
+          <div><span>失效规则</span><strong>{{ displayValue(evidence.invalidationRule) }}</strong></div>
         </div>
-      </section>
-    </div>
+        <details class="accuracy-evidence-result">
+          <summary>策略版本与基准明细</summary>
+          <p>因子版本：{{ displayValue(evidence.prediction?.factorVersion) }} · 市场环境：{{ REGIME_LABEL[evidence.prediction?.marketRegime] || '未记录' }}</p>
+          <p>基准：{{ evidence.prediction?.benchmark ? `${evidence.prediction.benchmark.name} · ${evidence.prediction.benchmark.referenceDate} · ${evidence.prediction.benchmark.referencePrice}` : '当时未冻结基准，不事后补填' }}</p>
+          <p>老师知识版本：{{ Object.entries(evidence.prediction?.teacherVersions || {}).map(([n, v]) => `${n}: ${v}`).join('；') || '未记录' }}</p>
+        </details>
+        <section class="accuracy-evidence-result">
+          <h3>验证口径与行情证据</h3>
+          <p>事前规则版本：{{ evidence.prediction?.evaluationRule?.version || '历史记录未单独冻结规则版本，不事后补写' }}</p>
+          <p>收盘报价来源：{{ evidence.evaluation?.evaluationEvidence?.provider || '历史记录未保存供应商明细' }} · 目标交易日：{{ evidence.evaluation?.evaluationEvidence?.tradeDate || '未记录' }} · 收盘价：{{ evidence.evaluation?.evaluationEvidence?.close ?? '未记录' }}</p>
+          <p>采集时间：{{ evidence.evaluation?.evaluationEvidence?.fetchedAt || '未记录' }}。除权除息可能影响原始价格比较，不能视为投资总回报。</p>
+        </section>
+        <section v-if="evidence.evaluation" class="accuracy-evidence-result">
+          <h3>这次预测是否命中？</h3>
+          <p>{{ evidence.evaluation.actualDirection === 'up' ? '上涨' : evidence.evaluation.actualDirection === 'down' ? '下跌' : '数据缺失（未记录）' }} · {{ evidence.evaluation.actualReturn == null ? '收益数据缺失' : percent(Number(evidence.evaluation.actualReturn) * 100, 2) }} · {{ evidence.evaluation.hit == null ? '命中结果缺失' : evidence.evaluation.hit ? '命中' : '未命中' }}</p>
+        </section>
+        <section class="accuracy-evidence-events">
+          <h3>事件时间线</h3>
+          <ol v-if="evidence.events?.length">
+            <li v-for="(event, index) in evidence.events" :key="event.eventId || `${event.occurredAt}:${index}`">
+              <strong>{{ EVENT_LABEL[event.type] || '证据事件' }}</strong>
+              <time>{{ formatShanghaiDateTime(event.occurredAt) }}</time>
+              <p v-if="event.reason">{{ EVENT_REASON[event.reason] || '系统追加证据记录' }}</p>
+              <details v-if="event.patch"><summary>查看原始证据数据</summary><pre>{{ JSON.stringify(event.patch, null, 2) }}</pre></details>
+            </li>
+          </ol>
+          <p v-else class="accuracy-evidence-empty">暂无追加事件；冻结预测仍保留原始记录。</p>
+        </section>
+      </div>
+    </el-dialog>
 
     <p class="page-data-method"><IconInfoCircle :size="15" /> {{ snapshot?.methodology || '按目标交易日收盘验证方向与概率，不使用模型自评准确率。' }}</p>
   </div>

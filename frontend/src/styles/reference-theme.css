@@ -44,19 +44,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .research-promo strong { font-size: 13px; }.research-promo small { font-size: 9px; color: #bcdbff; }.research-promo b { font-size: 11px; font-weight: 500; }
 .app-header { padding: 0 22px; background: #f9fcff; border-color: #d9e7f8; }
 .header-title { gap: 13px; min-width: 0; }.header-title strong { color: #163f76; font-size: 15px; }
-.role-create-backdrop { background: rgba(20, 57, 100, .28); }
-.role-create-dialog { border-color: #bed6f5; background: #f8fbff; box-shadow: 0 24px 70px rgba(29, 78, 135, .24); color: #244776; }
+/* 新建角色弹窗（EP 版）只保留头部与提示两处浅色覆盖，其余手写规则已随 DOM 移除。 */
 .role-create-head { border-color: #d4e4f8; }
 .role-create-head span { color: #5c86bb; }
 .role-create-head h2 { color: #194b85; }
-.role-create-head > button { border-color: #c9ddf4; background: #edf5ff; color: #5c7da7; }
-.role-create-field { color: #3e6595; }
-.role-create-field input { border-color: #bcd4ef; background: #fff; color: #244776; }
-.role-create-field input:focus { border-color: #4b91ed; box-shadow: 0 0 0 2px rgba(75, 145, 237, .16); }
-.role-create-error { color: #d54e58; }
 .role-create-hint { color: #7792b5; }
-.role-create-actions button { border-color: #c7dbf2; background: #fff; color: #5579a5; }
-.role-create-actions button.primary { border-color: #287beb; background: #287beb; color: #fff; }
 .header-title > span { font-size: 11px; }.header-title .data-state { max-width: 330px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header-actions { gap: 15px; }.header-actions > button { color: #5475a3; }
 .header-actions .header-search { width: 234px; justify-content: flex-start; border: 1px solid #dae6f5; background: #f1f6ff; border-radius: 7px; padding: 0 10px; font-size: 11px; color: #8096b8; }
@@ -148,7 +140,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .risk-grid { padding: 0; gap: 14px; margin-bottom: 14px; }.risk-card { min-height: 242px; padding: 18px; background: #fff; }.risk-card > div:first-child { color: #426994; font-size: 15px; }.risk-card > strong { font-size: 21px; margin-top: 12px; color: #2b639c; }.risk-card p { color: #7a91b0; font-size: 11px; line-height: 1.7; min-height: 42px; }.risk-card small { color: #8a9bb2; font-size: 10px; }.risk-meter { background: #eaf1fb; }.alerts-table { margin: 0; }.alert-row { background: white; border-color: #e8eff8; min-height: 65px; }.alert-row strong { color: #3c6490; }.alert-row small { color: #8196b2; }.alert-row button { color: #3c7fcd; background: #f0f6ff; border-color: #dbe8fa; }
 .operations-grid { padding: 0; gap: 12px; grid-template-columns: repeat(5,minmax(0,1fr)); }.operations-card { padding: 14px; }.operations-card header { color: #6081a8; }.operations-card header strong { font-size: 19px; }.operations-card dl { color: #738dad; font-size: 10px; }.operations-card dl dd { color: #426d9e; }.source-quality-panel { margin: 0 0 14px; }.review-feed-grid { padding: 0; gap: 14px; background: transparent; margin-bottom: 14px; }.review-feed-grid article { min-height: 110px; padding: 14px 18px; background: white; border: 1px solid #d8e7f8; border-radius: 10px; }.review-feed-grid h3 { color: #416d9e; font-size: 14px; margin: 0 0 8px; }.review-feed-grid strong { color: #255f9a; font-size: 24px; }.review-feed-grid p { color: #6b88ac; font-size: 11px; margin: 6px 0; }.review-feed-grid small { color: #8298b4; font-size: 10px; }.quality-table-scroll { overflow: auto; }.quality-table-scroll td { height: 43px; }.operations-history { margin-top: 16px; color: #547ba9; }.operations-history > summary { cursor: pointer; padding: 12px; background: #fff; border: 1px solid #d8e7f8; border-radius: 8px; margin-bottom: 12px; }
 .stock-decision-dialog, .stock-research-workbench, .stock-search-dialog, .notification-center, .accuracy-evidence-dialog, .notification-panel { background: #f8fbff; color: #244776; border-color: #bed6f5; }
-.stock-decision-dialog header, .stock-search-dialog header, .notification-center header, .accuracy-evidence-dialog header { background: #edf5ff; border-color: #d4e4f8; color: #315b8f; }.stock-decision-dialog section, .stock-search-result, .notification-item, .accuracy-evidence-meta > div, .accuracy-evidence-result { background: #fff; color: #4a6d95; border-color: #dfE9f7; }.stock-search-result strong, .notification-item strong { color: #285990; }
+.stock-decision-dialog header, .stock-search-dialog header, .notification-center header, .accuracy-evidence-dialog .el-dialog__header { background: #edf5ff; border-color: #d4e4f8; color: #315b8f; }.stock-decision-dialog section, .stock-search-result, .notification-item, .accuracy-evidence-meta > div, .accuracy-evidence-result { background: #fff; color: #4a6d95; border-color: #dfE9f7; }.stock-search-result strong, .notification-item strong { color: #285990; }
 .brand > img { display: block; width: 160px; height: auto; }
 .research-promo { padding: 0; border: 0; background: transparent; min-height: 0; display: block; }
 .research-promo img { display: block; width: 100%; border-radius: 9px; }

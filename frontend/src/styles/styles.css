@@ -720,21 +720,13 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .thread-empty strong { color: var(--text); font-size: 12px; }
 .thread-empty span { font-size: 10px; line-height: 1.5; }
 .chat-main { min-width: 0; min-height: 0; display: grid; grid-template-rows: 48px minmax(0, 1fr) auto; }
-.role-create-backdrop { position: fixed; z-index: 140; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 15, .78); backdrop-filter: blur(5px); }
-.role-create-dialog { width: min(440px, 100%); border: 1px solid #38506d; border-radius: 10px; background: #0b1522; box-shadow: 0 28px 90px rgba(0, 0, 0, .58); padding: 18px; }
+/* 新建角色弹窗 —— 已改用 Element Plus（2026-10-10），下面只保留 EP 版仍在用的三条。
+ * 手写版的 .role-create-backdrop / -dialog / -field / -error / -actions / -grid
+ * 及其 input / textarea / :focus / :hover / button 派生规则已删除（对应 DOM 已不存在）。 */
 .role-create-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .role-create-head span { color: #7fa7e4; font-size: 10px; letter-spacing: .08em; }
 .role-create-head h2 { margin: 5px 0 0; font-size: 18px; }
-.role-create-head > button { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 5px; background: #111e2d; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
-.role-create-field { display: grid; gap: 8px; margin-top: 18px; color: #b7c7da; font-size: 12px; }
-.role-create-field input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid #38516f; border-radius: 6px; outline: none; background: #0d1b2b; color: var(--text); padding: 0 11px; font-size: 13px; }
-.role-create-field input:focus { border-color: #5b9dff; box-shadow: 0 0 0 2px rgba(91, 157, 255, .16); }
-.role-create-error { margin: 8px 0 0; color: #ff8b84; font-size: 11px; }
 .role-create-hint { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-.role-create-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.role-create-actions button { min-height: 34px; border: 1px solid var(--line); border-radius: 5px; background: #111e2d; color: #a9b8ca; padding: 0 13px; cursor: pointer; font-size: 11px; }
-.role-create-actions button.primary { border-color: #397ed8; background: #165aa8; color: #fff; }
-.role-create-actions button:hover, .role-create-head > button:hover { filter: brightness(1.15); }
 .chat-head { border-bottom: 1px solid var(--line); padding: 0 14px; display: flex; justify-content: space-between; align-items: center; }
 .chat-head h1 { font-size: 13px; margin: 0; }
 .chat-head span { color: var(--muted); font-size: 8px; display: block; margin-top: 2px; }
@@ -968,13 +960,15 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .accuracy-evaluation-table td small { display: block; }
 .accuracy-evaluation-table td small { color: var(--muted); font-size: 10px; }
 .evidence-trigger { white-space: nowrap; }
-.accuracy-evidence-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(3, 8, 14, .76); }
-.accuracy-evidence-dialog { width: min(720px, 100%); max-height: min(760px, calc(100dvh - 48px)); overflow: auto; border: 1px solid #38506d; border-radius: 9px; background: #0b1522; box-shadow: 0 28px 90px rgba(0, 0, 0, .58); outline: none; }
-.accuracy-evidence-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
-.accuracy-evidence-dialog > header span { color: #7fa7e4; font-size: 11px; letter-spacing: .06em; }
-.accuracy-evidence-dialog > header h2 { margin: 5px 0 0; font-size: 20px; }
-.accuracy-evidence-dialog > header p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
-.accuracy-evidence-dialog > header button { width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 6px; background: #111e2d; color: #93a4b9; display: grid; place-items: center; cursor: pointer; }
+/* 冻结预测证据弹窗 —— 已改用 Element Plus（2026-10-10 试点 ②）。
+ * 手写 backdrop / <section role="dialog"> / <header> / 关闭按钮已移除。
+ * 容器级样式（宽度、圆角、圆角内滚动、遮罩、Esc/点遮罩关闭）改由 theme.css 6c) 提供 ——
+ * 必须写在无层文件里才能压过 EP 的 `.el-dialog`（本文件被 @import 进 layer(legacy)，
+ * 层级永远低于无层规则，同具体度必输）。
+ * 这里只保留弹窗「内容」样式，选择器换成自定义类，不再依赖 `> header` 结构。 */
+.accuracy-evidence-head span { color: #7fa7e4; font-size: 11px; letter-spacing: .06em; }
+.accuracy-evidence-head h2 { margin: 5px 0 0; font-size: 20px; }
+.accuracy-evidence-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .accuracy-evidence-body { padding: 16px 20px 20px; }
 .accuracy-evidence-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .accuracy-evidence-meta > div { min-width: 0; padding: 11px 12px; border: 1px solid var(--line-soft); border-radius: 5px; background: #0d1b2b; }
