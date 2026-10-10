@@ -774,11 +774,13 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 @keyframes pulse { 50% { opacity: .25; transform: translateY(-2px); } }
 .composer { position: relative; margin: 8px clamp(16px, 4vw, 48px) 12px; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
 .context-chips { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.context-chips span { display: flex; align-items: center; gap: 4px; background: #172437; border: 1px solid #2c3c50; border-radius: 3px; padding: 4px 6px; color: #acb9ca; font-size: 8px; }
+/* ⚠️ 必须 > ：.context-chips 里现在住着 el-select，它的 tag 渲染成 <span class="el-tag">，
+ * 不加 > 的话 chip 的 padding/background 会灌进 tag，把它撑成 32px 的方块（实拍踩坑）。 */
+.context-chips > span { display: flex; align-items: center; gap: 4px; background: #172437; border: 1px solid #2c3c50; border-radius: 3px; padding: 4px 6px; color: #acb9ca; font-size: 8px; }
 .context-chips button { border: 0; background: transparent; color: var(--blue); font-size: 8px; display: flex; align-items: center; gap: 3px; cursor: pointer; }
 .context-chips button:disabled, .composer-actions button:disabled { opacity: .55; cursor: not-allowed; }
-.context-chips span button { padding: 0; color: var(--muted); }
-.context-chips span button:disabled { opacity: .35; cursor: not-allowed; }
+.context-chips > span button { padding: 0; color: var(--muted); }
+.context-chips > span button:disabled { opacity: .35; cursor: not-allowed; }
 .context-chips .agent-overflow-chip { border-color: #315786; background: var(--blue-soft); color: #9fc3f8; font-weight: 700; }
 /* composer 的「搜索A股 / 选择角色」入口 —— 已改用 Element Plus el-select（2026-10-10 试点 ③）。
  * 手写内联面板（.stock-picker / -head / > label / input）→ el-dialog 弹窗 → 内联下拉，
@@ -2494,8 +2496,9 @@ footer { font-size: 11px; }
 .message-feedback button,
 .agent-learning-state small { font-size: 11px; }
 .composer { padding: 11px; border-radius: 8px; }
-.context-chips span,
-.context-chips button,
+/* > 同 .context-chips > span 的理由：min-height:32px 灌进 el-tag 会把下拉行撑高 */
+.context-chips > span,
+.context-chips > button,
 .composer-actions button { min-height: 32px; font-size: 11px; }
 .agent-run-status { font-size: 11px; }
 .agent-progress-grid b { font-size: 11px; }

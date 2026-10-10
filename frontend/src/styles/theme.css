@@ -171,9 +171,18 @@ a { color: inherit; text-decoration: none; }
 .composer-select .el-select__placeholder,
 .composer-select .el-select__selected-item { font-size: 12px; }
 .composer-select .el-select__prefix { color: var(--muted); margin-right: 4px; }
-/* 多选 tag 必须比 EP 默认（24px）矮，否则 32px 的入口行会被撑高、和 composer 跳动 */
-.composer-role-select .el-tag { height: 20px; line-height: 18px; font-size: 11px; }
-.composer-role-select .el-tag .el-tag__close { font-size: 11px; }
+/* 多选 tag：紧凑小胶囊（20px），浅蓝底、无边框。
+ * ⚠️ 2026-10-10 第二次踩坑：legacy 的 `.context-chips span` 会命中这里的
+ * <span class="el-tag">（tag 就渲染在 .context-chips 内部），padding/background
+ * 全被灌进去撑成 32px 方块 —— chip 规则已全部收窄成 `.context-chips > span`，
+ * 这里再给一套显式样式兜底，tag 观感不再"顺便"继承。 */
+.composer-role-select .el-tag {
+  height: 20px; line-height: 18px; padding: 0 6px;
+  font-size: 11px; border-radius: 4px;
+  background: var(--blue-soft); border-color: transparent; color: #4a7ab5;
+}
+.composer-role-select .el-tag .el-tag__close { font-size: 11px; color: #8aa5c8; }
+.composer-role-select .el-tag .el-tag__close:hover { background: var(--blue); color: #fff; }
 /* 下拉项：名称 + 副信息各占一段，都压到一行内（EP 的 item 自带 nowrap + 省略号）。
  * popper 挂在 body 上，所以用 popper-class 单独命中，不能靠 .composer-select 前缀。 */
 .composer-select-dropdown .el-select-dropdown__item { font-size: 12px; }
@@ -337,7 +346,8 @@ a { color: inherit; text-decoration: none; }
  *  原来的 b #e8eef6 近白在新底上会直接看不见。
  *  ⚠️ 标的 chip（.stock-context-chip 及 chip-pct-up/down）已随 2026-10-10 的
  *  el-select 化删除：下拉本身就显示当前标的，chip 纯重复。 */
-.context-chips span { background: #eaf3ff; border: 1px solid #cfe3fb; color: #6785ab; }
+/* > 必须：el-select 的 tag 渲染成 <span class="el-tag">，不加 > 会被这条灌色 */
+.context-chips > span { background: #eaf3ff; border: 1px solid #cfe3fb; color: #6785ab; }
 /* 第二行「补充上下文」（TOP50 名次 / 溢出人数）。
  * 与第一行「入口」分开的理由：入口位置因此永远不动。整行由 v-if 控制，
  * 没有内容时不渲染，默认高度与改动前一致。 */
