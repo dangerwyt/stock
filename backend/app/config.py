@@ -70,12 +70,12 @@ class Settings(BaseSettings):
     doc_relevance_enabled: bool = True
 
     # 定时自动更新自建角色的画像（T4）：每天固定时刻跑一次（Asia/Shanghai）。
-    # 用 cron 而不是 interval —— 重启后依然是「每天 9:00」，不会漂移成「从启动起算 24h」。
+    # 用 cron 而不是 interval —— 重启后依然是「每天 00:30」，不会漂移成「从启动起算 24h」。
     # 代价是进程若在当天这个时刻之后才启动，当天就跳过，等第二天。
     # 想临时验证，把 hour/minute 调成下一分钟，或直接调 scheduler.refresh_all()。
     auto_extract_enabled: bool = True
-    auto_extract_hour: int = 9
-    auto_extract_minute: int = 0
+    auto_extract_hour: int = 0
+    auto_extract_minute: int = 30
 
     # 自建老师（AI 学习提炼出画像的「学生」）在每个持有周期里**合计**占的权重份额。
     #

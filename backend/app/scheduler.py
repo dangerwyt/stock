@@ -1,12 +1,13 @@
-"""每天 9:00 自动更新自建角色的画像（T4）。
+"""每天 00:30 自动更新自建角色的画像（T4）。
 
 **为什么用 APScheduler 而不是 Celery**：单进程 uvicorn + ``AsyncIOScheduler`` 在进程内
 跑最省事，不引入 broker / worker。Celery 在 Windows 上要 ``--pool=solo`` 还得单独起
 worker，对 demo 阶段是过度设计。
 
 **为什么用 cron 而不是 interval**：``IntervalTrigger`` 是从进程启动开始计时的相对值 ——
-重启一次，「每天几点跑」就漂移一次。``CronTrigger(hour=9)`` 是绝对时刻，重启后仍然是
-每天 9:00（代价：进程若在当天 9:00 之后才启动，当天就跳过，等第二天）。
+重启一次，「每天几点跑」就漂移一次。``CronTrigger(hour=0, minute=30)`` 是绝对时刻，重启后
+仍然是每天 00:30（代价：进程若在当天 00:30 之后才启动，当天就跳过，等第二天）。
+具体时刻由 ``.env`` 的 ``AUTO_EXTRACT_HOUR`` / ``AUTO_EXTRACT_MINUTE`` 决定。
 
 **变更检测是这里最关键的逻辑**：只有「资料指纹或会话指纹变了」才重新提炼。否则每天无脑重跑，
 既白烧模型调用额度，又可能覆盖用户手工调整过的画像。
