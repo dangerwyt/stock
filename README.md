@@ -85,6 +85,7 @@ npm run dev
 
 ```bash
 cp .env.example .env      # 填凭据（怎么填见下节）
+bash scripts/preflight.sh # 部署前预检：Docker/端口/凭据/网络/磁盘，只读不改
 docker compose up -d --build
 docker compose exec backend python -m app.scripts.check_connectivity   # 先自检再使用
 ```
@@ -95,6 +96,10 @@ docker compose exec backend python -m app.scripts.check_connectivity   # 先自�
 
 - **后端必须单进程**：定时任务（每天 09:00 自动提炼画像）跑在进程内的 APScheduler 上，多 worker 会重复执行。
 - **数据挂 volume**：`./backend/app/data`，否则 `up --build` 重建容器会丢角色与会话。
+
+> 配置生效路径：凭据写在根目录 `.env`，由 compose 以**环境变量**注入容器（环境变量优先级高于
+> `app/config.py` 里那个 env_file 路径 —— 容器内它会指向 `/.env` 而找不到，属预期行为）。
+> 改完 `.env` 要 `docker compose up -d` 让它重新注入。
 
 完整步骤（含 Mac 服务器、自检判读、排障表）见 **[`docs/DEPLOY.md`](docs/DEPLOY.md)**。
 

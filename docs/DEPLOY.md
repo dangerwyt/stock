@@ -39,7 +39,7 @@ cd stock-intelligence-platform-v2
 
 ## 三、创建 .env（**必做，且不要提交**）
 
-`.env` 被 `.gitignore` 忽略，克隆下来是没有的。以 `.env.example` 为模板：
+`.env` 被 `.gitignore` 忽略，克隆下来是没有的。以 `.env.example` 为模板（它已按 `backend/app/config.py` 的字段逐项对齐，共 31 项）：
 
 ```bash
 cp .env.example .env
@@ -58,9 +58,37 @@ vim .env
 | `NEWSAPI_KEY` | 资讯次选源 | 可留空（会跳过，不会造假） |
 | `ADMIN_API_TOKEN` | 管理接口鉴权 | 管理接口不可用 |
 
-> ⚠️ 不要照抄根目录里的旧 `.env.example`（那是 React 原型时代的，含 Worker / Sites / 4173 / QUANT_ENGINE_URL 等已废弃项）。以 `backend/app/config.py` 里的字段名为准。
+> ⚠️ **别把 `.env` 拷进镜像**：容器里 `app/config.py` 会去找 `/.env`（找不到，因为镜像里代码在 `/app/app`），
+> 真正生效的是 compose 的 `env_file` 把 `.env` 作为**环境变量**注入 —— 环境变量优先级高于 `env_file` 文件读取。
+> 所以：改配置 = 改根目录 `.env` + 重启容器（`docker compose up -d`），不要去动镜像内部。
+> 想知道最终生效值，跑第六节的连通性自检。
 
-## 四、启动
+## 四、部署前预检（建议先跑）
+
+装完 Docker、填完 `.env` 后，**先跑这个再构建**，把"跑到一半才发现"的问题提前暴露：
+
+```bash
+bash scripts/preflight.sh
+```
+
+它只读不改，检查这些：
+
+| 分组 | 检查项 |
+|---|---|
+| 系统 | 操作系统 / 架构 |
+| Docker | `docker` 命令、**daemon 是否在跑**、`compose` 版本 |
+| 端口 | `8080`（读到 compose 里的映射自动换）是否被占 |
+| 配置文件 | `.env`、`docker-compose.yml`、两个 Dockerfile、`nginx.conf` 是否齐 |
+| 凭据 | 从 `.env` 读取并脱敏显示，区分「必需」与「可选」 |
+| 网络 | Docker Hub（拉基础镜像）、Tushare 主源、MiniMax 是否可达 |
+| 磁盘 | 可用空间（构建缓存 + 镜像约需 3~5G） |
+| 数据目录 | 是否存在、是否可写（volume 挂载前提） |
+
+末尾给 `PASS / WARN / FAIL` 统计。有 `FAIL` 会以退出码 1 结束，先修完再来。
+
+> 最常见的一条就是 **`docker daemon 连不上`** —— 说明 Docker Desktop 没启动。
+
+## 五、启动
 
 ```bash
 docker compose up -d --build
@@ -84,7 +112,7 @@ docker compose logs -f backend
 
 看到这两行就说明 FastAPI 与定时任务都起来了。
 
-## 五、连通性自检（**关键一步**）
+## 六、连通性自检（**关键一步**）
 
 本机能连的数据源，换了网络环境未必连得上。**先跑自检再打开页面**：
 
@@ -107,7 +135,7 @@ docker compose exec backend python -m app.scripts.check_connectivity --all
 
 自检脚本是**只读**的：不写文件、不改数据，可以反复跑。
 
-## 六、访问
+## 七、访问
 
 同一局域网内用服务器的 IP：
 
@@ -121,7 +149,7 @@ http://<服务器IP>:8080
 
 若本机 Docker Desktop 跑（非局域网服务器），想只让本机访问就把 `"8080:80"` 改成 `"127.0.0.1:8080:80"`。
 
-## 七、日常运维
+## 八、日常运维
 
 ```bash
 # 更新代码后重建（数据不会丢 —— 挂在 volume 上）
@@ -168,7 +196,7 @@ tar czf sip-data-$(date +%Y%m%d).tar.gz backend/app/data
 
 ---
 
-## 八、排障速查
+## 九、排障速查
 
 | 现象 | 原因 / 处理 |
 |---|---|
@@ -179,7 +207,7 @@ tar czf sip-data-$(date +%Y%m%d).tar.gz backend/app/data
 | 上传资料失败 | 数据卷挂载或写权限问题，自检里的「数据目录可写」会直接报出来 |
 | 想彻底重置 | `docker compose down`，删掉 `backend/app/data` 下的文件，再 `up -d` |
 
-## 九、安全提醒（内网也建议做）
+## 十、安全提醒（内网也建议做）
 
 - `ADMIN_API_TOKEN` 一定要设，别留空。
 - `.env` 不要提交到 Git，也不要拷进镜像（`.dockerignore` 已经排除）。

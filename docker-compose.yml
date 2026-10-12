@@ -20,8 +20,16 @@ services:
       APP_ENV: production
       BACKEND_HOST: 0.0.0.0
       BACKEND_PORT: "8000"
-      # 前端与后端同源（都从 nginx 进），CORS 白名单给同源地址即可
+      # 前端与后端**同源**（浏览器访问 :8080，请求 /api 由 nginx 反代到 backend），
+      # 同源请求不触发 CORS 预检、也不校验 Origin，所以这里填什么都不影响访问。
+      # 保留它是因为中间件仍在（万一将来前后端拆成两个域名部署，改这里即可）。
       FRONTEND_ORIGIN: http://localhost
+      # ⚠️ 必须显式给：app/config.py 里这个字段的默认值是用**源码文件路径**推出来的
+      #    （_BACKEND_DIR / "app" / "data" / "agent_docs"）。容器里代码在 /app/app，
+      #    虽然推出来恰好也是 /app/app/data/agent_docs，但那是"碰巧对"，一旦有人
+      #    调整镜像里的目录层级就会静默指错（上传的资料落到 volume 外面，重建即丢）。
+      #    这里写死 = 与 volume 挂载点绑定，不可能错。
+      AGENT_DOCS_DIR: /app/app/data/agent_docs
     volumes:
       # ⚠️ 数据必须落卷：角色 / 会话 / 上传的资料都在这里，
       # 不挂的话 `docker compose up --build` 重建容器就全没了。

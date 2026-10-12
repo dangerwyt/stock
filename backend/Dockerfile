@@ -18,6 +18,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+# ⚠️ 关于配置读取（踩过的坑，别删这段注释）：
+#
+# `app/config.py` 的 env_file 指向 **仓库根目录的 .env**，路径是这么推出来的：
+#     _REPO_ROOT = Path(__file__).resolve().parents[2]      # app/config.py → 上两级
+# 本机布局是 `<repo>/backend/app/config.py` → parents[2] = <repo> ✅
+# 但容器里布局是 `/app/app/config.py`     → parents[2] = `/`  → 它会去找 `/.env`（不存在）。
+#
+# 之所以仍能正常工作：**环境变量优先级高于 env_file**（pydantic-settings 的固定顺序），
+# 而 compose 的 `env_file: .env` 会把这些键作为**环境变量**注入容器。
+# 所以凭据全部走环境变量进来，那个找不到的 `/.env` 只是被静默跳过，不影响功能。
+#
+# 结论：不要往镜像里 COPY .env（凭据不进镜像）；需要加配置项时，
+#       同时改根目录 `.env`（compose 会注入）和 `.env.example`（文档）。
+#       想验证最终生效值，跑：docker compose exec backend python -m app.scripts.check_connectivity
+
 # 数据目录（角色 / 会话 / 上传资料）—— compose 里挂成 volume，
 # 这样重建容器不会丢数据。首次启动该目录为空是正常的。
 RUN mkdir -p /app/app/data
