@@ -161,11 +161,10 @@ def get_preferences():
 
 # --- 证据 / 量化工具（占位，按需扩展）--------------------------------------
 
-@router.get("/api/top50/evidence")
-def top50_evidence(predictionId: str = Query(default="")):
-    return {"status": "empty", "predictionId": predictionId, "evidence": None}
-
-
+# ⚠️ ``GET /api/top50/evidence`` 的**真实现**在上面的「平台状态 / 行情 / TOP50」段里
+# （走 ``top50_engine.get_evidence``）。这里**不要**再定义一个同名占位路由 ——
+# Starlette 按注册顺序匹配，先注册的生效，后定义的会变成永远跑不到的死代码，
+# 而且读代码的人会以为这个端点还是占位。
 @router.get("/api/accuracy/evidence")
 def accuracy_evidence(predictionId: str = Query(default="")):
     return {"status": "empty", "predictionId": predictionId, "evidence": None}

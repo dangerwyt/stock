@@ -58,6 +58,12 @@ const backtestStart = ref('2025-01-01')
 const backtestEnd = ref(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date()))
 
 const stockOptions = computed(() => (top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map(hydrateStock))
+// el-select 要显式的 label/value 对（原生 <option> 的插值写法在 EP 里不成立）。
+// 周期选项固定 4 个；标的选项跟着冻结榜单走，所以是 computed。
+const cycleOptions = ['超短', '短线', '波段', '中长线']
+const stockChoices = computed(() =>
+  stockOptions.value.map((item) => ({ label: `${item.name} ${item.code}`, value: item.code })),
+)
 watch(stockOptions, (list) => {
   if (!stockCode.value && list[0]) stockCode.value = list[0].code
 }, { immediate: true })
@@ -136,7 +142,7 @@ function fmtMoney(v) {
     <!-- 行情 -->
     <div v-if="tool === 'market'" class="tool-workspace">
       <div class="tool-form-row">
-        <select v-model="cycle"><option v-for="c in ['超短', '短线', '波段', '中长线']" :key="c">{{ c }}</option></select>
+        <el-select v-model="cycle" class="ep-form-control ep-form-control--cycle" aria-label="持有周期"><el-option v-for="c in cycleOptions" :key="c" :label="c" :value="c" /></el-select>
         <button class="primary-button" @click="run('行情快照已读取', 'market')">读取真实行情快照</button>
       </div>
       <section class="panel screener-result">
@@ -163,7 +169,7 @@ function fmtMoney(v) {
     <!-- 分析 -->
     <div v-if="tool === 'analysis'" class="tool-workspace">
       <div class="tool-form-row">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
         <button class="primary-button" @click="run(analysisRunLabel, 'analysis')">运行完整分析</button>
       </div>
       <div v-if="!toolResult" class="account-empty"><IconFileAnalytics :size="22" /><strong>运行后显示真实结果</strong><p>因子画像分析需要读取冻结快照。</p></div>
@@ -187,9 +193,9 @@ function fmtMoney(v) {
     <!-- 回测 -->
     <div v-if="tool === 'backtest'" class="tool-workspace">
       <div class="tool-form-row">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
-        <input v-model="backtestStart" type="date" aria-label="回测开始日期" />
-        <input v-model="backtestEnd" type="date" aria-label="回测结束日期" />
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
+        <el-date-picker v-model="backtestStart" type="date" value-format="YYYY-MM-DD" class="ep-form-control ep-form-control--date" aria-label="回测开始日期" :clearable="false" />
+        <el-date-picker v-model="backtestEnd" type="date" value-format="YYYY-MM-DD" class="ep-form-control ep-form-control--date" aria-label="回测结束日期" :clearable="false" />
         <button class="primary-button" @click="run('回测完成', 'backtest', { startDate: backtestStart, endDate: backtestEnd })">开始真实历史回测</button>
       </div>
       <div v-if="!toolResult" class="account-empty"><IconChartCandle :size="22" /><strong>选择日期并运行真实历史回测</strong><p>运行后显示真实结果</p></div>
@@ -213,7 +219,7 @@ function fmtMoney(v) {
     <!-- 信号 -->
     <div v-if="tool === 'signals'" class="tool-workspace">
       <div class="tool-form-row">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
         <button class="primary-button" @click="run('风险信号已计算', 'signals')">计算真实因子信号</button>
       </div>
       <div v-if="!toolResult" class="account-empty"><IconBell :size="22" /><strong>运行后显示真实结果</strong><p>读取冻结因子快照后计算分歧。</p></div>
@@ -234,7 +240,7 @@ function fmtMoney(v) {
     <!-- 选股 -->
     <div v-if="tool === 'screener'" class="tool-workspace">
       <div class="tool-form-row screener-form">
-        <select v-model="cycle"><option v-for="c in ['超短', '短线', '波段', '中长线']" :key="c">{{ c }}</option></select>
+        <el-select v-model="cycle" class="ep-form-control ep-form-control--cycle" aria-label="持有周期"><el-option v-for="c in cycleOptions" :key="c" :label="c" :value="c" /></el-select>
         <button class="primary-button" @click="run('风险门控后的TOP50扫描完成', 'screener', { limit: 30 })">扫描真实TOP50</button>
       </div>
       <section class="panel screener-result">
@@ -261,8 +267,8 @@ function fmtMoney(v) {
     <!-- 预判 -->
     <div v-if="tool === 'predict'" class="tool-workspace predict-workspace">
       <div class="tool-form-row">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
-        <select v-model="cycle"><option v-for="c in ['超短', '短线', '波段', '中长线']" :key="c">{{ c }}</option></select>
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
+        <el-select v-model="cycle" class="ep-form-control ep-form-control--cycle" aria-label="持有周期"><el-option v-for="c in cycleOptions" :key="c" :label="c" :value="c" /></el-select>
         <button class="primary-button" @click="run('预判已从冻结TOP50读取', 'predict')">生成预判</button>
       </div>
       <section class="panel predict-result-card">
@@ -291,7 +297,7 @@ function fmtMoney(v) {
     <!-- 评估 -->
     <div v-if="tool === 'evaluate'" class="tool-workspace evaluate-workspace">
       <div class="tool-form-row">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
         <button class="primary-button" @click="run('风险评估已更新', 'evaluate')">运行评估</button>
       </div>
       <section class="panel evaluation-result">
@@ -323,8 +329,8 @@ function fmtMoney(v) {
         <div><span>数据性质</span><strong>本机模拟</strong></div>
       </div>
       <div class="tool-form-row simulation-order">
-        <select v-model="stockCode"><option v-for="s in stockOptions" :key="s.code" :value="s.code">{{ s.name }} {{ s.code }}</option></select>
-        <input v-model.number="quantity" type="number" min="100" step="100" aria-label="模拟交易股数" />
+        <el-select v-model="stockCode" class="ep-form-control ep-form-control--stock" filterable placeholder="选择标的" aria-label="选择标的"><el-option v-for="s in stockChoices" :key="s.value" :label="s.label" :value="s.value" /></el-select>
+        <el-input-number v-model="quantity" :min="100" :step="100" :precision="0" class="ep-form-control ep-form-control--number" aria-label="模拟交易股数" />
         <button class="primary-button" @click="trade('买入')">模拟买入</button>
         <button class="danger-button" @click="trade('卖出')">模拟卖出</button>
       </div>

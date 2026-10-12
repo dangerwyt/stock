@@ -1292,3 +1292,119 @@ a {
   background: #f2f7ff;
 }
 
+/* ===========================================================================
+   15) 原生控件 → Element Plus（2026-10-12，任务 ①）
+   ---------------------------------------------------------------------------
+   替换掉的：QuantPage 的 9 个 <select> + 2 个 date + 1 个 number、
+   AccuracyPage 3 个 <select>、OperationsPage 1 个 <select>、
+   4 处 .search-field 里的原生 <input>、ReviewPage 1 个 date。
+
+   两件事必须在这里补：
+   15a) **防穿透**：legacy 里有一批 `.tool-form-row input{...}` / `.accuracy-controls select{...}`
+        / `.review-controls input{...}` 这类**后代**规则。EP 的 .el-input__inner 和
+        .el-select__input 都是**真正的 <input>**，会被这些规则命中，于是在 EP 的 wrapper
+        里再套一个「带边框、深底、固定 32px 高」的 input —— 表现为双框 + 深色块。
+        统一用 .ep-form-control（(0,2,0)）把内部 input 还原成"透明、无边框"。
+   15b) **尺寸对齐**：原生控件原来是「min-width:150px / 高 40px / 字 12px」。
+        EP 默认 .el-select 是 width:var(--el-select-width,100%)、.el-input 是 width:100%、
+        .el-date-editor 是 220px —— 直接用会撑满整行，所以逐个给明确宽度。
+   =========================================================================== */
+
+/* 15a) EP 内部原生 <input> 脱敏（外观完全交给 .el-input__wrapper / .el-select__wrapper） */
+.ep-form-control .el-input__inner,
+.ep-form-control .el-select__input {
+  height: auto;
+  min-width: 0;
+  max-width: none;
+  flex: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* 15b) 量化工具页：表单行里的 EP 控件 */
+.tool-form-row .el-select,
+.tool-form-row .el-date-editor,
+.tool-form-row .el-input-number {
+  margin-right: 0;
+}
+
+.tool-form-row .ep-form-control--cycle { width: 132px; }
+
+.tool-form-row .ep-form-control--stock { width: 214px; }
+
+.tool-form-row .ep-form-control--date {
+  width: 160px;
+  --el-date-editor-width: 160px;
+  /* EP 的 .el-date-editor 固定 32px 高，而这一行的 select/按钮都是 40px —— 不拉齐会错位 */
+  height: 40px;
+}
+.tool-form-row .ep-form-control--date .el-input__wrapper {
+  height: 100%;
+  min-height: 0;
+}
+
+.tool-form-row .ep-form-control--number { width: 150px; }
+
+.tool-form-row .el-select__wrapper,
+.tool-form-row .el-input__wrapper {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+/* 15c) 准确率页 / 运行状态页的筛选下拉 */
+.accuracy-controls .ep-form-control--filter { width: 190px; }
+.quality-filters .ep-form-control--filter { width: 110px; }
+.accuracy-controls .el-select__wrapper,
+.quality-filters .el-select__wrapper {
+  min-height: 30px;
+  font-size: 11px;
+}
+.quality-filters .el-select,
+.quality-filters .el-select__wrapper { margin-right: 0; }
+
+/* 15d) 复盘页日期选择器（与旁边 40px 的「刷新报告」按钮对齐） */
+.review-controls .ep-form-control--date {
+  width: 152px;
+  --el-date-editor-width: 152px;
+  height: 40px;
+}
+.review-controls .ep-form-control--date .el-input__wrapper {
+  height: 100%;
+  min-height: 0;
+}
+.review-controls .el-input__wrapper { min-height: 36px; font-size: 13px; }
+
+/* 15e) 搜索框：**保留 .search-field 这个 <label> 的外框**（它的宽度/min-width/媒体查询
+   都在 legacy 里，改成 EP 根元素后那些分层规则会被 EP 的无层 width:100% 压掉），
+   只把里面的原生 <input> 换成 el-input —— 于是布局零改动，EP 负责光标/清除按钮/键盘行为。 */
+.search-field>.el-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.search-field>.el-input .el-input__wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.search-field>.el-input .el-input__inner { font-size: inherit; }
+/* 补一个聚焦反馈：原生的 <input> 去掉 outline 后本来就没有可见焦点态 */
+.search-field:focus-within {
+  border-color: #a9c9ee;
+  box-shadow: 0 0 0 3px #dbe9fb;
+}
+
+/* 15f) 窄屏：表单行的 EP 控件改回「可伸缩」（对齐 legacy 里 select 的 flex:1 行为） */
+@media (max-width: 1180px) {
+  .tool-form-row .ep-form-control {
+    flex: 1 1 130px;
+    width: auto;
+    min-width: 130px;
+  }
+}
+
+

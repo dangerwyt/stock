@@ -12,6 +12,11 @@ const { data: review, state } = useSnapshot(`/api/review?date=${date.value}`, { 
 const report = computed(() => (review.value?.date === date.value ? review.value?.report : null))
 const active = computed(() => report.value?.cycles?.find((c) => c.cycle === cycle.value))
 const pct = (v) => (v == null ? '--' : `${v > 0 ? '+' : ''}${Number(v).toFixed(2)}%`)
+// 不允许选未来日期。原来是原生 <input type="date" :max="today">，EP 用 disabled-date 回调；
+// 比较运算放这里而不是模板属性里（约定：模板属性内禁止内联比较/三元）。
+function disableFutureDate(value) {
+  return value.getTime() > new Date(`${today}T23:59:59`).getTime()
+}
 </script>
 
 <template>
@@ -19,7 +24,7 @@ const pct = (v) => (v == null ? '--' : `${v > 0 ? '+' : ''}${Number(v).toFixed(2
     <div class="page-toolbar">
       <div><h1>盘后复盘</h1><p>真实收盘数据 × 盘前冻结榜单 · 报告生成不依赖AI回答</p></div>
       <div class="review-controls">
-        <label>报告日期 <input aria-label="复盘日期" type="date" :value="date" :max="today" @input="date = $event.target.value || today" /></label>
+        <label>报告日期 <el-date-picker v-model="date" type="date" value-format="YYYY-MM-DD" class="ep-form-control ep-form-control--date" aria-label="复盘日期" :clearable="false" :disabled-date="disableFutureDate" /></label>
         <button class="toolbar-button" @click="refresh++"><IconRefresh :size="15" /> 刷新报告</button>
       </div>
     </div>

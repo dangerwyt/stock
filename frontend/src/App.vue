@@ -264,7 +264,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
     <div v-if="searchOpen" class="stock-search-dialog" role="dialog" aria-label="搜索股票">
       <header><strong>搜索股票 / 代码 / 行业</strong><button aria-label="关闭" @click="searchOpen = false">✕</button></header>
       <div class="search-field">
-        <input v-model="searchQuery" placeholder="输入代码、名称或行业" @keyup.enter="runSearch" />
+        <el-input v-model="searchQuery" class="ep-form-control" placeholder="输入代码、名称或行业" clearable @keyup.enter="runSearch" />
         <button class="table-action" @click="runSearch">搜索</button>
       </div>
       <div class="stock-search-results">

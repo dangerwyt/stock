@@ -36,6 +36,29 @@ const versions = computed(() => [
   ),
 ])
 const REGIME_LABEL = { bull: '偏强', risk_off: '风险收缩', range: '震荡', unknown: '未记录' }
+
+// el-select 需要 {label,value}（原生 <option> 的插值/内联三元在 EP 里不成立）。
+const versionChoices = computed(() => [
+  { value: 'all', label: '全部历史版本（不是当前策略表现）' },
+  ...versions.value.map((item) => ({
+    value: item,
+    label: `${item === snapshot.value?.currentFactorVersion ? '当前版本' : '历史版本'} · ${item}`,
+  })),
+])
+const cycleChoices = [
+  { value: 'all', label: '全部策略' },
+  { value: '超短', label: '超短' },
+  { value: '短线', label: '短线' },
+  { value: '波段', label: '波段' },
+  { value: '中长线', label: '中长线' },
+]
+const horizonChoices = [
+  { value: 'all', label: '全部期限' },
+  { value: '1d', label: '1日' },
+  { value: '5d', label: '5日' },
+  { value: '20d', label: '20日' },
+  { value: '60d', label: '60日' },
+]
 const breakdowns = computed(() => [
   ['预测方向', [['看涨', snapshot.value?.directions?.up], ['看跌', snapshot.value?.directions?.down]]],
   ['四周期', Object.entries(snapshot.value?.cycles || {})],
@@ -128,12 +151,9 @@ const EVENT_REASON = { maturity_market_data_available: '已取得目标交易日
 
     <div class="accuracy-controls">
       <label>统计版本
-        <select v-model="version">
-          <option value="all">全部历史版本（不是当前策略表现）</option>
-          <option v-for="item in versions" :key="item" :value="item">
-            {{ item === snapshot?.currentFactorVersion ? '当前版本' : '历史版本' }} · {{ item }}
-          </option>
-        </select>
+        <el-select v-model="version" class="ep-form-control ep-form-control--filter" aria-label="统计版本">
+          <el-option v-for="c in versionChoices" :key="c.value" :label="c.label" :value="c.value" />
+        </el-select>
       </label>
       <span>验证截止 {{ formatShanghaiDateTime(snapshot?.lastEvaluatedAt) }} · 满30条才披露指标</span>
     </div>
@@ -189,14 +209,14 @@ const EVENT_REASON = { maturity_market_data_available: '已取得目标交易日
 
     <div class="accuracy-controls">
       <label>记录策略
-        <select v-model="cycle">
-          <option v-for="v in ['all', '超短', '短线', '波段', '中长线']" :key="v" :value="v">{{ v === 'all' ? '全部策略' : v }}</option>
-        </select>
+        <el-select v-model="cycle" class="ep-form-control ep-form-control--filter" aria-label="记录策略">
+          <el-option v-for="c in cycleChoices" :key="c.value" :label="c.label" :value="c.value" />
+        </el-select>
       </label>
       <label>验证期限
-        <select v-model="horizon">
-          <option v-for="[value, label] in [['all', '全部期限'], ['1d', '1日'], ['5d', '5日'], ['20d', '20日'], ['60d', '60日']]" :key="value" :value="value">{{ label }}</option>
-        </select>
+        <el-select v-model="horizon" class="ep-form-control ep-form-control--filter" aria-label="验证期限">
+          <el-option v-for="c in horizonChoices" :key="c.value" :label="c.label" :value="c.value" />
+        </el-select>
       </label>
       <span>仅筛选最近20条记录，不代表全历史覆盖率</span>
     </div>

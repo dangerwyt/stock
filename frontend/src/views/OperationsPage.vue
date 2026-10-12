@@ -24,6 +24,8 @@ const components = computed(() =>
 const qQuery = ref('')
 const qResult = ref('all')
 const qLabels = { ready: '有效响应', failed: '请求失败', empty: '空数据' }
+// el-select 要 {label,value} 数组（原来靠 <option v-for="(label, id) in qLabels"> 遍历对象）。
+const qResultChoices = [{ value: 'all', label: '全部状态' }, ...Object.entries(qLabels).map(([value, label]) => ({ value, label }))]
 const endpoints = computed(() =>
   (quality.value?.endpoints || []).filter(
     (item) =>
@@ -69,11 +71,10 @@ const endpoints = computed(() =>
       <div class="panel-head">
         <div><h2>数据源质量</h2><span>{{ quality?.window || '等待真实接口观测' }}</span></div>
         <div class="quality-filters">
-          <label class="search-field"><IconSearch :size="14" /><input v-model="qQuery" placeholder="搜索数据源 / 接口" /></label>
-          <select v-model="qResult" aria-label="接口响应状态">
-            <option value="all">全部状态</option>
-            <option v-for="(label, id) in qLabels" :key="id" :value="id">{{ label }}</option>
-          </select>
+          <label class="search-field"><IconSearch :size="14" /><el-input v-model="qQuery" class="ep-form-control" placeholder="搜索数据源 / 接口" clearable /></label>
+          <el-select v-model="qResult" class="ep-form-control ep-form-control--filter" aria-label="接口响应状态">
+            <el-option v-for="c in qResultChoices" :key="c.value" :label="c.label" :value="c.value" />
+          </el-select>
         </div>
       </div>
       <div v-if="state === 'unavailable'" class="review-warning" role="status">质量记录读取失败，不能据此认定数据源正常。</div>

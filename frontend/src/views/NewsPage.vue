@@ -42,7 +42,7 @@ const filtered = computed(() =>
         <div class="news-tabs" role="tablist" aria-label="资讯层级切换">
           <button v-for="c in newsCategories" :key="c" role="tab" :aria-selected="category === c" :class="{ active: category === c }" @click="category = c; visibleCount = 8">{{ c }}</button>
         </div>
-        <label class="search-field"><IconSearch :size="15" /><input v-model="query" placeholder="搜索资讯 / 股票 / 代码" /></label>
+        <label class="search-field"><IconSearch :size="15" /><el-input v-model="query" class="ep-form-control" placeholder="搜索资讯 / 股票 / 代码" clearable /></label>
         <button :class="['top50-toggle', top50Only ? 'active' : '']" @click="top50Only = !top50Only"><IconStar :size="14" /> 仅TOP50</button>
       </div>
 

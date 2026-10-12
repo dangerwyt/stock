@@ -278,7 +278,7 @@ function goAI(stock) {
         </div>
         <label class="search-field">
           <IconSearch :size="15" />
-          <input v-model="query" placeholder="搜索股票 / 代码 / 行业" />
+          <el-input v-model="query" class="ep-form-control" placeholder="搜索股票 / 代码 / 行业" clearable />
         </label>
         <button :class="['toolbar-button', { active: showFilters }]" @click="showFilters = !showFilters">
           <IconFilter :size="15" /> 筛选
