@@ -1,0 +1,31 @@
+# 后端镜像：单进程 uvicorn（FastAPI + APScheduler 进程内调度）
+#
+# ⚠️ 必须单 worker：定时任务（每天 9:00 自动提炼画像）跑在进程内的 AsyncIOScheduler 上，
+# 多 worker 会变成「每个 worker 各跑一遍」，同一批角色被重复塞进模型。
+# 也正因为如此这里不用 gunicorn 多进程，直接 uvicorn 单进程。
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=Asia/Shanghai
+
+WORKDIR /app
+
+# 先装依赖再拷代码：改了业务代码不会让依赖层缓存失效
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+
+# 数据目录（角色 / 会话 / 上传资料）—— compose 里挂成 volume，
+# 这样重建容器不会丢数据。首次启动该目录为空是正常的。
+RUN mkdir -p /app/app/data
+
+EXPOSE 8000
+
+# healthcheck 用 python 自带库发请求，避免为它多装 curl
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status==200 else 1)"
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

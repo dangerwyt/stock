@@ -1,0 +1,10 @@
+# ⚠️ 这份必须放在 build context 的根目录（compose 里 context 是 ./frontend）。
+# 不排除 node_modules 的话，宿主机那几百 MB 依赖会被整个塞进构建上下文，
+# 既慢又可能把 Windows/macOS 平台的二进制（如 @esbuild/*）带进 Linux 镜像。
+
+node_modules/
+dist/
+.vite/
+
+.env
+.env.*

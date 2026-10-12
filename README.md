@@ -78,6 +78,28 @@ npm run dev
 
 ---
 
+## 部署
+
+已提供 Docker Compose 部署（两容器：nginx 托管前端 + `/api` 反代 → FastAPI 单进程）。
+数据全落 JSON 文件、无外部中间件，因此**不需要** PG / Redis / Milvus。
+
+```bash
+cp .env.example .env      # 填凭据（怎么填见下节）
+docker compose up -d --build
+docker compose exec backend python -m app.scripts.check_connectivity   # 先自检再使用
+```
+
+访问 `http://<服务器IP>:8080`。
+
+⚠️ 两个关键约束：
+
+- **后端必须单进程**：定时任务（每天 09:00 自动提炼画像）跑在进程内的 APScheduler 上，多 worker 会重复执行。
+- **数据挂 volume**：`./backend/app/data`，否则 `up --build` 重建容器会丢角色与会话。
+
+完整步骤（含 Mac 服务器、自检判读、排障表）见 **[`docs/DEPLOY.md`](docs/DEPLOY.md)**。
+
+---
+
 ## 环境变量（仓库根 `.env`）
 
 `backend/app/config.py` 的 `env_file` **只认仓库根 `.env`**；要覆盖就用**环境变量**（优先级高于 `.env`）。

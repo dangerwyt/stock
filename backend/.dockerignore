@@ -1,0 +1,15 @@
+# ⚠️ 这份必须放在 build context 的根目录（compose 里 context 是 ./backend），
+# 根目录那份 .dockerignore 对这里不生效 —— Docker 只读 context 根下的。
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 数据走 volume 挂载，不进镜像（否则每次重建都会用镜像里的旧数据覆盖服务器上的新数据）
+app/data/
+
+# 凭据绝不进镜像：运行时由 compose 的 env_file 注入
+.env
+.env.*

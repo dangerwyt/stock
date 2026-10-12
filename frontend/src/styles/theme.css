@@ -190,7 +190,7 @@ a { color: inherit; text-decoration: none; }
 /* 副信息与名称之间留 6px：inline 元素里 content:' ' 会被折叠，必须用 margin */
 .composer-select-dropdown .composer-option-sub { color: var(--muted); margin-left: 6px; }
 .composer-select-dropdown .composer-select-empty {
-  margin: 0; padding: 6px 4px; color: var(--muted); font-size: 11px; line-height: 1.6;
+  margin: 0; padding: 6px 14px; color: var(--muted); font-size: 11px; line-height: 1.6;
 }
 
 /* 7) 自建角色标记 + 未评分单元格（自定义角色只对 TOP10 打分） */
