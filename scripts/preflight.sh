@@ -12,7 +12,16 @@
 #
 # 退出码：0 = 可以部署；1 = 有阻断项，先修。
 
-set -u
+# ⚠️ 刻意不用 `set -u`：
+# 本脚本要同时兼容 macOS 自带的 bash 3.2 / Linux bash 5 / Windows Git Bash。
+# 2026-10-12 在 macOS（Darwin/arm64，bash 3.2）实测：开 `set -u` 会在下面的
+# `SRV="$(docker info ...)"` 处误报 `SRV: unbound variable`，而且**报的行号是错的**
+# （报 line 69，实际在 58-59 行，69 行是空行）；同一份脚本在 Git Bash 5.2 上跑
+# 是 PASS 24 / FAIL 0 全绿。这是 bash 3.2 对「if 块内命令替换赋值 + set -u」的定位 bug。
+# 预检是只读诊断脚本 —— 宁可变量为空走兜底，也不能整段中断。
+# 所以不用 set -u，改为**所有变量先显式初始化**，用不到的兜底值靠 `${VAR:-默认}`。
+SRV=''; OS=''; ARCH=''; PORT_LINE=''; HOST_PORT=''; PORT_BUSY=0
+ENV_SRC=''; v=''; TU=''; AVAIL_KB=''; AVAIL_GB=0; N_FILES=0
 
 # ---------- 小工具 ----------
 if [ -t 1 ]; then
@@ -55,8 +64,9 @@ else
 fi
 
 if docker info >/dev/null 2>&1; then
-  SRV="$(docker info --format '{{.ServerVersion}}' 2>/dev/null)"
-  ok 'docker daemon' "已运行（引擎 $SRV）"
+  # `--format` 在个别 Docker 版本上可能不被支持 —— 失败就让 SRV 保持空，显示「未知」
+  SRV="$(docker info --format '{{.ServerVersion}}' 2>/dev/null || true)"
+  ok 'docker daemon' "已运行（引擎 ${SRV:-未知}）"
 else
   bad 'docker daemon' '连不上 —— Docker Desktop 没启动？打开它等鲸鱼图标稳定后再试'
 fi

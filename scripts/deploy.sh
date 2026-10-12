@@ -104,14 +104,16 @@ fi
 # 3. 预检
 # ==============================================================
 head_ '3/7 环境预检'
-if [ -f scripts/preflight.sh ]; then
-  if bash scripts/preflight.sh; then
-    printf '  %s✓%s 预检通过\n' "$C_G" "$C_0"
-  else
-    die "预检有阻断项（见上方 ✗）。修好后再跑一次。"
-  fi
-else
+if [ "${SKIP_PREFLIGHT:-0}" = "1" ]; then
+  printf '  %s!%s SKIP_PREFLIGHT=1 —— 已按要求跳过预检\n' "$C_Y" "$C_0"
+elif [ ! -f scripts/preflight.sh ]; then
   printf '  %s!%s 没有 scripts/preflight.sh，跳过预检\n' "$C_Y" "$C_0"
+elif bash scripts/preflight.sh; then
+  printf '  %s✓%s 预检通过\n' "$C_G" "$C_0"
+else
+  printf '  %s✗%s 预检有阻断项（见上方 ✗）。修好后再跑一次。\n' "$C_R" "$C_0"
+  printf '  确认无碍、想跳过预检强制继续：%sSKIP_PREFLIGHT=1 bash scripts/deploy.sh%s\n' "$C_Y" "$C_0"
+  exit 1
 fi
 
 # ==============================================================
@@ -137,7 +139,7 @@ printf '\n  %s✓%s compose 已启动\n' "$C_G" "$C_0"
 head_ '5/7 等待容器 healthy'
 
 wait_healthy() {
-  name="$1"; timeout="$2"; i=0
+  name="$1"; timeout="$2"; i=0; st=''
   while [ "$i" -lt "$timeout" ]; do
     st="$(docker inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null || echo 'missing')"
     case "$st" in
