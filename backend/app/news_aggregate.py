@@ -415,10 +415,15 @@ async def fetch_tushare_news() -> list[dict]:
 # --------------------------------------------------------------------------- #
 # 聚合入口
 # --------------------------------------------------------------------------- #
-async def build_news_snapshot() -> dict:
+async def build_news_snapshot(force: bool = False) -> dict:
+    """聚合实时资讯。
+
+    ``force=True`` 时跳过 300s 缓存强制重拉 —— 调度器在轮次窗口内要的是"这一轮的新鲜
+    快照"，不能因为几分钟前浏览器请求过就拿到旧数据。
+    """
     cached = _cache.get("data")
     ts = _cache.get("ts") or 0.0
-    if cached is not None and (time.time() - ts) < _CACHE_TTL:
+    if not force and cached is not None and (time.time() - ts) < _CACHE_TTL:
         return cached
 
     generated_at = _now_shanghai()

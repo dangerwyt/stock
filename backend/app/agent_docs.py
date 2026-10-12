@@ -40,8 +40,14 @@ EXTRACTION_IDLE = {
 REJECTED_STATUS = "rejected"
 
 
+_DEFAULT_ROOT = Path(__file__).resolve().parent / "data" / "agent_docs"
+
+
 def _root() -> Path:
-    return Path(settings.agent_docs_dir)
+    # `.env.example` 里 ``AGENT_DOCS_DIR`` 留空（表示"用默认"），但空串会让 ``Path('')``
+    # 解析成当前目录 —— 上传的资料会静默落到 CWD，重建即丢。这里显式兜住默认值。
+    raw = (settings.agent_docs_dir or "").strip()
+    return Path(raw) if raw else _DEFAULT_ROOT
 
 
 def agent_dir(agent_id: str) -> Path:

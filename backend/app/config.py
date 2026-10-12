@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     # Where uploaded agent documents live
     agent_docs_dir: str = str(_BACKEND_DIR / "app" / "data" / "agent_docs")
 
+    # 调度运行记录（per-round 去重锁 + attempt + 最近一次运行快照）。
+    # 与 custom_agents.json / ai_threads.json 同处 app/data/ —— 都是运行态 JSON，
+    # 已在 .gitignore 里，删了不影响代码，只是"今天这轮跑没跑"的记忆会丢。
+    job_runs_path: str = str(_BACKEND_DIR / "app" / "data" / "job_runs.json")
+
     # 上传资料的相关性过滤（T2）：入库判定整篇是否属于股票财经范畴。
     # 关掉后所有能解析的文件都直接入库，不做内容判断。
     doc_relevance_enabled: bool = True

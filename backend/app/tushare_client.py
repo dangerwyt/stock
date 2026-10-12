@@ -348,6 +348,25 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
     raise TushareError("无法取得最近交易日的全市场行情（daily 为空或不足 50 行）")
 
 
+async def is_market_open(date_str: str) -> bool:
+    """查 ``trade_cal`` 判断某日是否 A 股交易日。
+
+    ``date_str`` 接受 ``YYYY-MM-DD`` 或 ``YYYYMMDD``。对应 reference-react 的
+    ``detectTradingDay``：交易日历不可用时**不要**在这里回落近似值 —— 由调用方决定
+    （抛 ``TushareError`` 让调度退到"周末即休市"的近似）。
+    """
+    compact = _compact(date_str)
+    cal = await _call(
+        "trade_cal",
+        {"exchange": "SSE", "start_date": compact, "end_date": compact},
+        "cal_date,is_open",
+    )
+    for row in cal:
+        if str(row.get("cal_date")) == compact:
+            return str(row.get("is_open")) == "1"
+    return False
+
+
 async def fetch_top50_universe() -> tuple[list[dict], str]:
     """拉 TOP50 量化引擎的输入：最近交易日全市场 daily + daily_basic + stock_basic。
 

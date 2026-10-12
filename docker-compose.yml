@@ -30,6 +30,9 @@ services:
       #    调整镜像里的目录层级就会静默指错（上传的资料落到 volume 外面，重建即丢）。
       #    这里写死 = 与 volume 挂载点绑定，不可能错。
       AGENT_DOCS_DIR: /app/app/data/agent_docs
+      # 同理：调度运行记录也必须落在 volume 里，否则重建容器后"这一轮跑没跑"的记忆全丢，
+      # 会出现同一天同一轮次被重复执行（例如 TOP50 一晚上跑两遍）。
+      JOB_RUNS_PATH: /app/app/data/job_runs.json
     volumes:
       # ⚠️ 数据必须落卷：角色 / 会话 / 上传的资料都在这里，
       # 不挂的话 `docker compose up --build` 重建容器就全没了。

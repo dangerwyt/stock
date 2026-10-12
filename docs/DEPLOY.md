@@ -106,11 +106,15 @@ docker compose logs -f backend
 `backend` 日志里应出现：
 
 ```
-自动画像更新已启动：每天 09:00（Asia/Shanghai）巡检一轮
-下次巡检时间：2026-10-13T09:00:00+08:00
+自动画像更新已启动：每天 00:30（Asia/Shanghai）巡检一轮
+下次巡检时间：2026-10-13T00:30:00+08:00
 ```
 
 看到这两行就说明 FastAPI 与定时任务都起来了。
+
+（交易日轮次调度是**外部 tick**，后端启动日志里没有它的痕迹 —— 想确认它通了，
+curl 一下 `/health` 看 `jobRuns` 字段，或在宿主机上跑一次
+`bash scripts/scheduler-tick.sh --once`，见第八节「定时任务」。）
 
 ## 六、连通性自检（**关键一步**）
 
@@ -174,6 +178,7 @@ docker compose logs -f --tail=100 backend
 backend/app/data/
 ├── custom_agents.json      # 自建角色
 ├── ai_threads.json         # 会话与消息
+├── job_runs.json           # 交易日调度的运行记录（per-round 去重锁 + 最近一轮结果）
 └── agent_docs/<角色id>/    # 上传的资料原文
 ```
 
@@ -187,12 +192,83 @@ tar czf sip-data-$(date +%Y%m%d).tar.gz backend/app/data
 
 ### 定时任务
 
-`auto-extract-profiles` 每天 **09:00（Asia/Shanghai）** 跑一轮，按「资料 + 会话历史」更新自建角色画像。
+本服务有**两套**互不干扰的定时机制：
 
-- 它是**进程内**调度（APScheduler），所以后端必须是**单进程** —— 镜像里已经是 `uvicorn` 单 worker，别改成 gunicorn 多 worker，否则每个 worker 各跑一遍，同一批角色被重复塞进模型。
+| | 跑什么 | 谁在计时 | 频率 |
+|---|---|---|---|
+| 进程内 APScheduler | `auto-extract-profiles`：按「资料 + 会话历史」更新自建角色画像 | 后端进程自己 | 每天 **00:30**（Asia/Shanghai） |
+| 外部 tick 调度 | 交易日 8 轮任务（TOP50 / 资讯 / 收盘刷新…） | **仓库外的计时器**每分钟敲一次接口 | 每 60s 一次「敲」，由服务端判定该不该跑 |
+
+#### 1）画像自动更新（进程内，开箱即用）
+
+- 时间是**绝对时刻**不是间隔，所以重启不会漂移；代价是进程若在当天 00:30 之后才启动，当天跳过。
 - 时间点改了要动 `.env` 的 `AUTO_EXTRACT_HOUR` / `AUTO_EXTRACT_MINUTE` 并重启后端。
-- 想看某天跑没跑：`docker compose exec backend ls -l --time-style=full-iso app/data/` —— `custom_agents.json` 的 mtime 就是最后一次巡检写盘的时间（09:00 触发，因为要调模型，通常 09:05 前落盘）。
+- 它有**指纹变更检测**：资料/会话没变就跳过，不会每天空烧模型额度。
 - 觉得吵可以关：`.env` 里 `AUTO_EXTRACT_ENABLED=false`。
+
+#### 2）交易日轮次调度（外部 tick）
+
+**为什么要在外部计时**：tick 只负责"敲一下"，服务端根据上海时间和磁盘上的持久锁决定
+"此刻该不该跑、这一轮跑没跑过"。进程重启后下一分钟自动接上，且同一轮不会被反复 tick 重复执行。
+
+外部计时器只需要一条命令，每 60 秒执行一次：
+
+```bash
+bash scripts/scheduler-tick.sh --once
+```
+
+**上线前先手动验证一次**（这一步同时验证 `.env` 里的 `ADMIN_API_TOKEN` 是否被正确读取）：
+
+```bash
+# Docker 部署：backend 没有对外端口，走 nginx（8080）进
+LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8080 bash scripts/scheduler-tick.sh --once
+echo "退出码 $?（0 = 通；1 = 鉴权或网络问题）"
+```
+
+然后再挂到系统计时器上（三选一）：
+
+```bash
+# ① crontab（最省事）
+crontab -e
+* * * * * /bin/bash /path/to/repo/scripts/scheduler-tick.sh --once >> /tmp/sip-tick.log 2>&1
+
+# ② macOS launchd（与本项目 v1 的模型一致）
+#    新建 ~/Library/LaunchAgents/com.stock-intelligence.scheduler.plist：
+#    ProgramArguments = ["/bin/bash", "/path/to/repo/scripts/scheduler-tick.sh", "--once"]
+#    StartInterval     = 60
+#    launchctl load ~/Library/LaunchAgents/com.stock-intelligence.scheduler.plist
+
+# ③ 前台常驻（调试用，Ctrl-C 退出）
+LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8080 bash scripts/scheduler-tick.sh
+```
+
+轮次表（交易日，宽限窗 **5 分钟**：`07:20` 会在 07:20–07:24 之间被命中）：
+
+| 时刻 | 任务 | 本项目状态 |
+|---|---|---|
+| 07:20 | us-etf-map · global-news · market-close · **top50** | top50 / news / market-close 已落地，us-etf-map 为占位 |
+| 09:26 | opening-auction · global-news | opening-auction 占位 |
+| 10:30 / 13:05 / 14:00 | market-pulse · intraday-news | market-pulse 占位，资讯已落地 |
+| 11:35 | market-pulse · intraday-news · midday-review | 同上 |
+| 17:40 | market-close · post-close · accuracy · global-news | post-close / accuracy 占位 |
+| 22:00 | global-news · market-close · post-close · accuracy | 同上 |
+
+- **非交易日**只跑 `08:30` 与 `22:00` 两轮 `global-news`；**周日 22:00** 额外追加 `teacher-distillation`（画像蒸馏）。
+- 交易日判定优先查 Tushare `trade_cal`；查不到时退到「周末即休市」的近似。
+- 占位任务会如实返回 `stubbed`（不是假装成功），在 tick 日志里能看到。
+- **不补造数据**：错过的窗口就让它错过，等下一轮 —— 计划外请求会让快照时间戳和轮次表对不上。
+
+想查「上一轮跑了什么」：
+
+```bash
+curl -s http://127.0.0.1:8080/health | python -m json.tool
+# jobRuns.lastRunAt / jobRuns.lastSlot / jobRuns.lastResults 就是最近一次 tick 的记账
+```
+
+> 运行记录写在 `backend/app/data/job_runs.json`（同样在 volume 上）。
+> 想看某个时刻会命中哪一轮（不改系统时钟）：
+> `curl -s "http://127.0.0.1:8080/api/admin/scheduled?at=2026-10-12T14:01" -H "Authorization: Bearer $ADMIN_API_TOKEN"`
+> —— 注意 `?at=` 只在 `APP_ENV=development` 生效，容器里是 `production`，所以这条要在本地 uvicorn 上试。
 
 ---
 

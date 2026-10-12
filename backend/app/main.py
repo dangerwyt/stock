@@ -11,9 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import scheduler
+from app import job_runs, scheduler
 from app.config import settings
-from app.routers import agent_documents, agents, snapshots, research
+from app.routers import admin, agent_documents, agents, snapshots, research
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +60,24 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "env": settings.app_env, "scheduler": scheduler.describe()}
+    return {
+        "status": "ok",
+        "env": settings.app_env,
+        "scheduler": scheduler.describe(),
+        # 外部 tick 调度的运行态（per-round 锁 / 上一轮跑了什么）。
+        "jobRuns": job_runs.describe(),
+        "adminScheduler": {
+            "endpoint": "POST /api/admin/scheduled",
+            "tokenConfigured": bool(settings.admin_api_token),
+        },
+    }
 
 
 app.include_router(snapshots.router)
 app.include_router(research.router)
 app.include_router(agents.router)
 app.include_router(agent_documents.router)
+app.include_router(admin.router)
 
 
 if __name__ == "__main__":

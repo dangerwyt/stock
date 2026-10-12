@@ -11,6 +11,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from app import fixtures
+from app import market_clock
 from app import tushare_client
 from app import news_aggregate
 from app import top50_engine
@@ -21,11 +22,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _live_session() -> dict:
+    """页头「当前交易日时段」标签 —— 复用 :mod:`app.market_clock` 的统一时钟。
+
+    之前这里自己算了一遍上海时间，调度器又算一遍，两处口径容易漂。现在时钟来源只有
+    ``market_clock`` 一处，页头用 :func:`market_clock.header_session`（简化标签集），
+    调度用 ``market_clock.shanghai_session``（8 段完整口径）。
+
+    注意 ``session`` 只是**时钟派生**的展示标签（日期/时刻/上下午），不是行情数据，
+    所以不需要 Tushare 交易日历；周末/非交易时段如实标「休市」，不冒充交易中。
+    """
+    return market_clock.header_session()
+
+
 # --- 平台状态 / 行情 / TOP50 / 新闻 / 验证 / 运行 ---------------------------
 
 @router.get("/api/status")
 def status():
-    return fixtures.load("status")
+    # fixtures.load 是 lru_cache 的共享对象，**不能原地改**；这里重建外层 dict。
+    payload = fixtures.load("status")
+    return {**payload, "session": _live_session()}
 
 
 @router.get("/api/market")
