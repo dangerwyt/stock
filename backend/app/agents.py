@@ -4,6 +4,12 @@ The built-in 12 personas live in the read-only ``teachers`` fixture; anything a
 user creates from the AI research page is appended to a small writable JSON file
 so it survives restarts and is shared by every browser / every page.
 
+**种子数据（seed）**：原版 12 位策略画像当前是作为「自建角色」存在的
+（``custom_agents.json`` + ``agent_docs/<id>/meta.json``），而这两个路径都在
+``.gitignore`` 里 —— 结果是本地能用、**部署不到新环境**。所以把它们的初始值
+抽到 ``custom_agents.seed.json`` 一并入库：运行态文件**不存在**时（新机器 /
+重建容器）自动注入并落盘，之后就和普通自建角色一样可增删改。
+
 Design notes
 ------------
 * Single uvicorn worker in dev, so a plain ``threading.Lock`` around the
@@ -25,6 +31,8 @@ from app import fixtures
 
 DATA_DIR = Path(__file__).parent / "data"
 STORE_PATH = DATA_DIR / "custom_agents.json"
+# 种子数据（入库）。只在运行态文件不存在时使用，见 ``_read``。
+SEED_PATH = DATA_DIR / "custom_agents.seed.json"
 
 _LOCK = threading.Lock()
 
@@ -56,9 +64,51 @@ def builtin_teachers() -> list[dict]:
     return [_with_field_aliases(item) for item in (items or [])]
 
 
+# --------------------------------------------------------------- 种子数据（入库）
+# 进程内缓存一次：种子文件是只读的，没必要反复读盘。
+_seed_cache: dict[str, Any] | None = None
+
+
+def _seed_payload() -> dict[str, Any]:
+    """读种子文件（读不到就返回空 dict，绝不让它把请求打挂）。"""
+    global _seed_cache
+    if _seed_cache is None:
+        try:
+            with SEED_PATH.open(encoding="utf-8") as fh:
+                data = json.load(fh)
+            _seed_cache = data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            _seed_cache = {}
+    return _seed_cache
+
+
+def seed_agents() -> list[dict]:
+    """种子里的角色列表（原版 12 位策略画像）。"""
+    items = _seed_payload().get("agents") or []
+    return [item for item in items if isinstance(item, dict)]
+
+
+def seed_profile(agent_id: str) -> dict[str, Any] | None:
+    """种子里某个角色的画像（即 ``agent_docs/<id>/meta.json`` 的全文）。
+
+    ⚠️ ``agent_docs`` 依赖本模块（它 import ``agents``），所以这个读取函数必须放在
+    这里、由 ``agent_docs`` 反向调用 —— 反过来 import 会成环。
+    """
+    profiles = _seed_payload().get("profiles") or {}
+    item = profiles.get(str(agent_id or ""))
+    return item if isinstance(item, dict) and item else None
+
+
 def _read() -> list[dict]:
     if not STORE_PATH.exists():
-        return []
+        # 运行态文件不存在 = 全新环境（新机器 / 重建容器）→ 用种子初始化并落盘。
+        #
+        # ⚠️ 判据必须是「文件不存在」，**不能**是「列表为空」：用户主动删掉最后一位
+        # 老师后文件里就是空列表，若那时又注入回来，角色将永远删不掉。
+        seeded = seed_agents()
+        if seeded:
+            _write(seeded)
+        return seeded
     try:
         with STORE_PATH.open(encoding="utf-8") as fh:
             payload = json.load(fh)

@@ -45,10 +45,10 @@
 │       ├── news_aggregate.py# 晴红 → NewsAPI → Tushare major_news → fixtures 逐级降级
 │       ├── agent_*.py       # 资料 → 画像 → 打分 → 因子映射 的 AI 链路
 │       ├── llm.py           # init_chat_model 懒单例（MiniMax-M3，关思考）
-│       ├── scheduler.py     # 每天 9:00 巡检自建角色，带指纹变更检测
+│       ├── scheduler.py     # 每天 00:30 巡检自建角色，带指纹变更检测
 │       ├── guardrails.py    # 话题守门（AI 只答股票财经）
 │       ├── fixtures/        # 内置样例 JSON（**仅作降级兜底**）
-│       └── data/            # 运行态存储（custom_agents / ai_threads / agent_docs），已 gitignore
+│       └── data/            # 运行态存储；除 custom_agents.seed.json（入库种子）外均已 gitignore
 ├── reference-react/     # 原 React + Cloudflare Worker 原型，仅作设计/逻辑参考
 └── docs/                # 需求、设计规范、技术架构、AI 研究待办（T0–T6）
 ```
@@ -140,8 +140,12 @@ docker compose exec backend python -m app.scripts.check_connectivity   # 先自�
 - **两个分母别混**：`meta.teacherCount` = 自建老师**总数**（界面「x/N」）；
   `meta.agentCount` = **参与打分**的画像数（没学出画像的角色不投票）。
 - **话题守门**（`guardrails.py`）：AI 只答股票财经相关问题；拦截时走流式 `refused` 帧，**不返回 HTTP 400**。
-- **内置 12 位老师已从产品移除**：界面里不存在，只在后端引擎内部作**兜底基线**与防重名。
-- **运行态数据不入库**：`backend/app/data/` 下的三个 JSON 存储已 gitignore，缺失时会自动重建（返回空列表）。
+- **原版 12 位老师的当前状态**：以 `custom:true` 角色存在（`custom_agents.json` + 各自的画像），
+  所以**界面可见、也参与打分**；初始值由入库种子 `custom_agents.seed.json` 播种。引擎内的
+  `_AGENT_FORMULAS` 同名公式仍作兜底基线与防重名。
+- **运行态数据不入库**：`backend/app/data/` 下的 JSON 存储已 gitignore（缺失时会自动重建）；
+  其中 12 位老师的角色与画像由 `custom_agents.seed.json`（**入库**）自动播种 —— 这样新机器 /
+  重建容器也能一次到位，不必手工搬数据。
 
 ---
 

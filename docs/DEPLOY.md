@@ -177,11 +177,12 @@ docker compose logs -f --tail=100 backend
 
 ```
 backend/app/data/
-├── custom_agents.json      # 自建角色
-├── ai_threads.json         # 会话与消息
-├── job_runs.json           # 交易日调度的运行记录（per-round 去重锁 + 最近一轮结果）
-├── top50_snapshot.json     # TOP50 快照（同一「数据窗口」内复用，重启不重算）
-└── agent_docs/<角色id>/    # 上传的资料原文
+├── custom_agents.json       # 自建角色（运行态，不入库；缺失时用种子自动注入）
+├── custom_agents.seed.json  # ← 原版 12 位策略画像的种子（**入库**，随代码部署）
+├── ai_threads.json          # 会话与消息
+├── job_runs.json            # 交易日调度的运行记录（per-round 去重锁 + 最近一轮结果）
+├── top50_snapshot.json      # TOP50 快照（同一「数据窗口」内复用，重启不重算）
+└── agent_docs/<角色id>/     # 画像 meta.json + 上传的资料原文（运行态）
 ```
 
 备份就是拷这个目录：
@@ -190,7 +191,23 @@ backend/app/data/
 tar czf sip-data-$(date +%Y%m%d).tar.gz backend/app/data
 ```
 
-> ⚠️ 服务器上是从零开始的（本地数据没有搬过去）—— 需要先在页面上新建角色、上传资料。
+#### 12 位老师怎么上去的（种子机制）
+
+原版 12 位策略画像**不是内置角色**，而是以「自建角色」形式存在的（`custom_agents.json`
++ `agent_docs/<id>/meta.json`）。这两个路径都在 `.gitignore` 里 —— 所以初始值另存了一份
+**入库**的种子 `custom_agents.seed.json`：
+
+- **运行态文件不存在时**（新机器 / 重建容器 / 清空数据）→ 首次读取自动注入并落盘
+- 之后就和普通自建角色一样，**可增删改**；删掉的老师**不会**被下次启动加回来
+  （判据是「文件不存在」而不是「列表为空」，这一点很关键）
+- 想强制恢复出厂：删掉 `custom_agents.json` 与 `agent_docs/<12个id>/` 后重启后端
+
+> ⚠️ 画像（`meta.json` 里的 `factorWeights`）是 TOP50 的**打分依据**，和角色记录缺一不可：
+> `agent_factor_score.custom_teacher_specs()` 要求画像非空才把角色纳入打分。
+> 种子文件里两者都带了，所以新环境一次到位。
+
+> ⚠️ 服务器上**自建的角色与上传的资料**仍是从零开始的（那才是真正的用户数据，
+> 不入库）—— 需要时自行搬运 `custom_agents.json` 与 `agent_docs/<你的角色id>/`。
 
 ### 额度与缓存
 

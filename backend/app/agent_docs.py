@@ -74,6 +74,14 @@ def _default_meta() -> dict[str, Any]:
 def _read_meta(agent_id: str) -> dict[str, Any]:
     path = _meta_path(agent_id)
     if not path.exists():
+        # 全新环境（新机器 / 重建容器）：画像从种子数据恢复。
+        # ⚠️ 这一步不是可有可无 —— ``agent_factor_score.custom_teacher_specs`` 要求
+        # ``profile`` 非空才把角色纳入打分，画像缺失会让 12 位老师直接不参与 TOP50。
+        seeded = agents.seed_profile(agent_id)
+        if seeded:
+            meta = {**_default_meta(), **seeded}
+            _write_meta(agent_id, meta)
+            return meta
         return _default_meta()
     try:
         with path.open(encoding="utf-8") as fh:

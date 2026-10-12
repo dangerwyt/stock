@@ -1,0 +1,653 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-12T18:10:00+08:00",
+  "description": "原版 12 位策略画像的种子数据。运行态文件（custom_agents.json / agent_docs/<id>/）不存在时由 agents.py 与 agent_docs.py 自动注入并落盘 —— 这样它们能随代码部署到新环境（Mac / 新容器）。详见 docs/DEPLOY.md。",
+  "agents": [
+    {
+      "id": "a1b2c3d4e5f6",
+      "name": "陈江挺",
+      "style": "趋势交易",
+      "subtitle": "原版策略画像",
+      "decision": "基本面决定关注对象，市场和行业强弱决定是否承担风险，趋势临界点决定买入。",
+      "select": "上升趋势、行业强度、临界位置清晰、盈亏比至少3:1。",
+      "risk": "买入前确定止损和仓位，只加盈利且被市场确认的仓。",
+      "horizon": "短线 / 波段",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "b2c3d4e5f6a1",
+      "name": "养家",
+      "style": "超短情绪",
+      "subtitle": "原版策略画像",
+      "decision": "先判断情绪周期，再选主流题材和市场竞争形成的龙头。",
+      "select": "主流题材、赚钱效应、核心龙头、首次分歧转一致与弱转强。",
+      "risk": "退潮期不格局，不及预期即撤，仓位随周期和确定性变化。",
+      "horizon": "日内 / 超短",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "c3d4e5f6a1b2",
+      "name": "谭琦",
+      "style": "价值研究",
+      "subtitle": "原版策略画像",
+      "decision": "先控制下限，再等待预期差被经营数据验证。",
+      "select": "安全边际、基本面改善、市场预期偏低且价格阶段合适。",
+      "risk": "财务造假、盈利证伪和估值严重透支一票否决。",
+      "horizon": "中长线",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "d4e5f6a1b2c3",
+      "name": "曹名长",
+      "style": "深度价值",
+      "subtitle": "原版策略画像",
+      "decision": "用债券和现金流思维判断企业长期生存与合理价值。",
+      "select": "自由现金流、低估值、稳定分红、低杠杆和内生增长。",
+      "risk": "不加杠杆、适度分散，警惕永久性损失和价值陷阱。",
+      "horizon": "长期",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "e5f6a1b2c3d4",
+      "name": "产业调研凌",
+      "style": "产业研究",
+      "subtitle": "原版策略画像",
+      "decision": "沿主要矛盾、产业短板、客户验证和重复订单逐级确认。",
+      "select": "国产替代、供给短板、客户验证、订单兑现和份额提升。",
+      "risk": "未完成客户验证只进观察池，警惕产业叙事和估值透支。",
+      "horizon": "波段 / 中线",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "f6a1b2c3d4e5",
+      "name": "曹靖楠",
+      "style": "宏观策略",
+      "subtitle": "原版策略画像",
+      "decision": "把政策和地缘事件沿流动性、成本、订单传导到企业利润。",
+      "select": "国家战略、供应链安全、政策兑现与企业真实受益。",
+      "risk": "宏观判断必须落到公司财务，多源核验且保留不交易选项。",
+      "horizon": "中线 / 配置",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "a2b3c4d5e6f7",
+      "name": "产业调研福总",
+      "style": "产业波段",
+      "subtitle": "原版策略画像",
+      "decision": "从涨价叙事切换到资本开支、产能瓶颈和订单兑现。",
+      "select": "扩产节奏、设备订单、关键瓶颈、交付和回款验证。",
+      "risk": "产业知识不能成为高位被套的借口，扩产不等于盈利。",
+      "horizon": "波段",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "b3c4d5e6f7a2",
+      "name": "菠萝",
+      "style": "概率择时",
+      "subtitle": "原版策略画像",
+      "decision": "先判断持股环境，再等待产业、资金与情绪形成概率叠加。",
+      "select": "基本面未坏、系统性错杀、催化临近、赔率突出。",
+      "risk": "允许长期空仓，不无限补仓，环境越差容错越低。",
+      "horizon": "波段 / 配置",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "c4d5e6f7a2b3",
+      "name": "曾剑枫",
+      "style": "产业成长",
+      "subtitle": "原版策略画像",
+      "decision": "用产业阶段、订单、季度利润和现金流验证成长。",
+      "select": "真实需求、竞争壁垒、业绩兑现与估值增速匹配。",
+      "risk": "不追无业绩题材，不满仓不高杠杆，警惕技术路线变化。",
+      "horizon": "中线",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "d5e6f7a2b3c4",
+      "name": "寻龙一手",
+      "style": "盘面推演",
+      "subtitle": "原版策略画像",
+      "decision": "盘前建立多种场景，盘中依据核心股和板块共振选择。",
+      "select": "事件驱动、资金聚焦、核心反馈、竞价和关键时点验证。",
+      "risk": "不猜资金意图，不把单股脉冲当板块修复，场景失效即降仓。",
+      "horizon": "日内 / 超短",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "e6f7a2b3c4d5",
+      "name": "龙一",
+      "style": "题材交易",
+      "subtitle": "原版策略画像",
+      "decision": "核验产业数据后判断题材所处交易阶段，只做最强验证环节。",
+      "select": "主营利润、重复采购、订单兑现、量价转强和核心辨识度。",
+      "risk": "中线逻辑不代表短线可追，高位放量下跌尊重价格信号。",
+      "horizon": "超短 / 波段",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    },
+    {
+      "id": "f7a2b3c4d5e6",
+      "name": "短线委员会",
+      "style": "多因子短线",
+      "subtitle": "原版策略画像",
+      "decision": "按数据、市场、产业、财务、资金、量价和情景依次验证。",
+      "select": "趋势、资金、事件、情绪和赔率同时达标，多Agent投票确认。",
+      "risk": "硬风险一票否决，结论必须包含失效条件、仓位上限和回撤线。",
+      "horizon": "短线",
+      "custom": true,
+      "materialCount": 0,
+      "candidateCount": 0,
+      "productionVersion": {
+        "id": "agent-factor-v1"
+      },
+      "createdAt": "2026-10-12T08:00:00.000000+00:00"
+    }
+  ],
+  "profiles": {
+    "a1b2c3d4e5f6": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.453752+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "趋势交易",
+        "subtitle": "原版策略画像",
+        "horizon": "短线 / 波段",
+        "decision": "基本面决定关注对象，市场和行业强弱决定是否承担风险，趋势临界点决定买入。",
+        "select": "上升趋势、行业强度、临界位置清晰、盈亏比至少3:1。",
+        "risk": "买入前确定止损和仓位，只加盈利且被市场确认的仓。",
+        "factorWeights": [
+          {
+            "factor": "趋势",
+            "weight": 0.63
+          },
+          {
+            "factor": "情绪",
+            "weight": 0.37
+          }
+        ],
+        "evidence": [
+          "基本面决定关注对象，市场和行业强弱决定是否承担风险，趋势临界点决定买入。",
+          "上升趋势、行业强度、临界位置清晰、盈亏比至少3:1。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "b2c3d4e5f6a1": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.455524+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "超短情绪",
+        "subtitle": "原版策略画像",
+        "horizon": "日内 / 超短",
+        "decision": "先判断情绪周期，再选主流题材和市场竞争形成的龙头。",
+        "select": "主流题材、赚钱效应、核心龙头、首次分歧转一致与弱转强。",
+        "risk": "退潮期不格局，不及预期即撤，仓位随周期和确定性变化。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.53
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.47
+          }
+        ],
+        "evidence": [
+          "先判断情绪周期，再选主流题材和市场竞争形成的龙头。",
+          "主流题材、赚钱效应、核心龙头、首次分歧转一致与弱转强。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "c3d4e5f6a1b2": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.473207+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "价值研究",
+        "subtitle": "原版策略画像",
+        "horizon": "中长线",
+        "decision": "先控制下限，再等待预期差被经营数据验证。",
+        "select": "安全边际、基本面改善、市场预期偏低且价格阶段合适。",
+        "risk": "财务造假、盈利证伪和估值严重透支一票否决。",
+        "factorWeights": [
+          {
+            "factor": "估值",
+            "weight": 0.854
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.146
+          }
+        ],
+        "evidence": [
+          "先控制下限，再等待预期差被经营数据验证。",
+          "安全边际、基本面改善、市场预期偏低且价格阶段合适。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "d4e5f6a1b2c3": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.475139+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "深度价值",
+        "subtitle": "原版策略画像",
+        "horizon": "长期",
+        "decision": "用债券和现金流思维判断企业长期生存与合理价值。",
+        "select": "自由现金流、低估值、稳定分红、低杠杆和内生增长。",
+        "risk": "不加杠杆、适度分散，警惕永久性损失和价值陷阱。",
+        "factorWeights": [
+          {
+            "factor": "估值",
+            "weight": 1.0
+          }
+        ],
+        "evidence": [
+          "用债券和现金流思维判断企业长期生存与合理价值。",
+          "自由现金流、低估值、稳定分红、低杠杆和内生增长。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "e5f6a1b2c3d4": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.478929+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "产业研究",
+        "subtitle": "原版策略画像",
+        "horizon": "波段 / 中线",
+        "decision": "沿主要矛盾、产业短板、客户验证和重复订单逐级确认。",
+        "select": "国产替代、供给短板、客户验证、订单兑现和份额提升。",
+        "risk": "未完成客户验证只进观察池，警惕产业叙事和估值透支。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.389
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.306
+          },
+          {
+            "factor": "情绪",
+            "weight": 0.306
+          }
+        ],
+        "evidence": [
+          "沿主要矛盾、产业短板、客户验证和重复订单逐级确认。",
+          "国产替代、供给短板、客户验证、订单兑现和份额提升。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "f6a1b2c3d4e5": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.480769+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "宏观策略",
+        "subtitle": "原版策略画像",
+        "horizon": "中线 / 配置",
+        "decision": "把政策和地缘事件沿流动性、成本、订单传导到企业利润。",
+        "select": "国家战略、供应链安全、政策兑现与企业真实受益。",
+        "risk": "宏观判断必须落到公司财务，多源核验且保留不交易选项。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.455
+          },
+          {
+            "factor": "估值",
+            "weight": 0.303
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.242
+          }
+        ],
+        "evidence": [
+          "把政策和地缘事件沿流动性、成本、订单传导到企业利润。",
+          "国家战略、供应链安全、政策兑现与企业真实受益。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "a2b3c4d5e6f7": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.516085+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "产业波段",
+        "subtitle": "原版策略画像",
+        "horizon": "波段",
+        "decision": "从涨价叙事切换到资本开支、产能瓶颈和订单兑现。",
+        "select": "扩产节奏、设备订单、关键瓶颈、交付和回款验证。",
+        "risk": "产业知识不能成为高位被套的借口，扩产不等于盈利。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.45
+          },
+          {
+            "factor": "情绪",
+            "weight": 0.31
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.24
+          }
+        ],
+        "evidence": [
+          "从涨价叙事切换到资本开支、产能瓶颈和订单兑现。",
+          "扩产节奏、设备订单、关键瓶颈、交付和回款验证。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "b3c4d5e6f7a2": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.519395+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "概率择时",
+        "subtitle": "原版策略画像",
+        "horizon": "波段 / 配置",
+        "decision": "先判断持股环境，再等待产业、资金与情绪形成概率叠加。",
+        "select": "基本面未坏、系统性错杀、催化临近、赔率突出。",
+        "risk": "允许长期空仓，不无限补仓，环境越差容错越低。",
+        "factorWeights": [
+          {
+            "factor": "估值",
+            "weight": 0.54
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.46
+          }
+        ],
+        "evidence": [
+          "先判断持股环境，再等待产业、资金与情绪形成概率叠加。",
+          "基本面未坏、系统性错杀、催化临近、赔率突出。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "c4d5e6f7a2b3": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.526149+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "产业成长",
+        "subtitle": "原版策略画像",
+        "horizon": "中线",
+        "decision": "用产业阶段、订单、季度利润和现金流验证成长。",
+        "select": "真实需求、竞争壁垒、业绩兑现与估值增速匹配。",
+        "risk": "不追无业绩题材，不满仓不高杠杆，警惕技术路线变化。",
+        "factorWeights": [
+          {
+            "factor": "趋势",
+            "weight": 0.37
+          },
+          {
+            "factor": "估值",
+            "weight": 0.329
+          },
+          {
+            "factor": "资金",
+            "weight": 0.301
+          }
+        ],
+        "evidence": [
+          "用产业阶段、订单、季度利润和现金流验证成长。",
+          "真实需求、竞争壁垒、业绩兑现与估值增速匹配。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "d5e6f7a2b3c4": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.533088+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "盘面推演",
+        "subtitle": "原版策略画像",
+        "horizon": "日内 / 超短",
+        "decision": "盘前建立多种场景，盘中依据核心股和板块共振选择。",
+        "select": "事件驱动、资金聚焦、核心反馈、竞价和关键时点验证。",
+        "risk": "不猜资金意图，不把单股脉冲当板块修复，场景失效即降仓。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.55
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.45
+          }
+        ],
+        "evidence": [
+          "盘前建立多种场景，盘中依据核心股和板块共振选择。",
+          "事件驱动、资金聚焦、核心反馈、竞价和关键时点验证。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "e6f7a2b3c4d5": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.538374+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "题材交易",
+        "subtitle": "原版策略画像",
+        "horizon": "超短 / 波段",
+        "decision": "核验产业数据后判断题材所处交易阶段，只做最强验证环节。",
+        "select": "主营利润、重复采购、订单兑现、量价转强和核心辨识度。",
+        "risk": "中线逻辑不代表短线可追，高位放量下跌尊重价格信号。",
+        "factorWeights": [
+          {
+            "factor": "趋势",
+            "weight": 0.52
+          },
+          {
+            "factor": "资金",
+            "weight": 0.25
+          },
+          {
+            "factor": "情绪",
+            "weight": 0.23
+          }
+        ],
+        "evidence": [
+          "核验产业数据后判断题材所处交易阶段，只做最强验证环节。",
+          "主营利润、重复采购、订单兑现、量价转强和核心辨识度。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    },
+    "f7a2b3c4d5e6": {
+      "documents": [],
+      "extraction": {
+        "status": "completed",
+        "error": null,
+        "startedAt": null,
+        "finishedAt": "2026-10-12T07:52:24.541813+00:00",
+        "documentCount": 0,
+        "historyCount": 0
+      },
+      "profile": {
+        "style": "多因子短线",
+        "subtitle": "原版策略画像",
+        "horizon": "短线",
+        "decision": "按数据、市场、产业、财务、资金、量价和情景依次验证。",
+        "select": "趋势、资金、事件、情绪和赔率同时达标，多Agent投票确认。",
+        "risk": "硬风险一票否决，结论必须包含失效条件、仓位上限和回撤线。",
+        "factorWeights": [
+          {
+            "factor": "资金",
+            "weight": 0.43
+          },
+          {
+            "factor": "趋势",
+            "weight": 0.4
+          },
+          {
+            "factor": "情绪",
+            "weight": 0.17
+          }
+        ],
+        "evidence": [
+          "按数据、市场、产业、财务、资金、量价和情景依次验证。",
+          "趋势、资金、事件、情绪和赔率同时达标，多Agent投票确认。"
+        ]
+      },
+      "scores": null,
+      "autoExtract": null
+    }
+  }
+}
