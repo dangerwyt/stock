@@ -35,12 +35,14 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 import math
 import re
-import time
+import threading
 import uuid
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -117,11 +119,23 @@ _AGENT_FORMULAS: dict[str, dict[str, float]] = {
     "短线委员会": {"m": 0.25, "l": 0.23, "t": 0.20, "v": 0.17, "range": 0.15},
 }
 
-_CACHE_TTL = 300  # 与前端 useSnapshot refreshMs=300000 对齐
 # evidence 按 predictionId 累积保留：AI 学习会生成新 snapshotId，但历史预测记录必须
 # 仍可回验（「旧预测保持不动」）。上限防止长时间运行后内存无界增长，约等于留最近 20 批。
 _MAX_EVIDENCE_ENTRIES = 4000
-_CACHE: dict[str, Any] = {"snapshot": None, "evidence": {}, "ts": 0.0, "specSig": ""}
+
+# 快照按「数据窗口」冻结（窗口定义见 ``tushare_client._data_window``）。
+#
+# 为什么不是 TTL：同一窗口（同一交易日的同一份行情）+ 同一份画像指纹 → 榜单结果**必然
+# 相同**，按时间反复重算是纯浪费 —— 每次重算都是一轮全市场 ``daily`` + ``daily_basic``。
+# 画像变了有 ``specSig`` 指纹兜底，行情变了会切窗口，两者都不需要靠 TTL 发现。
+_CACHE: dict[str, Any] = {"snapshot": None, "evidence": {}, "window": None, "specSig": ""}
+
+# 落盘：uvicorn 重启后同窗口内直接恢复，不再全量重算 —— 省额度最直接的一条。
+# 失败只记 warning，绝不影响本轮结果（缓存本来就是可选项）。
+_DEFAULT_SNAPSHOT_FILE = Path(__file__).resolve().parent / "data" / "top50_snapshot.json"
+_SNAPSHOT_LOCK = threading.Lock()
+_SNAPSHOT_MAX_BYTES = 24 * 1024 * 1024
+_restore_attempted = False
 
 
 # --------------------------------------------------------------------------- #
@@ -718,8 +732,7 @@ def build_top50(
         "status": "ready",
         "sourceMode": "live",
         "marketProvider": "Tushare",
-        "cachePolicy": "in-process-ttl",
-        "ttlSeconds": _CACHE_TTL,
+        "cachePolicy": "in-process-data-window",
         "selectionEngine": (
             f"{agent_count}套因子画像周期加权"
             f"（内置{builtin_active} + AI学习{len(custom_names)}）"
@@ -760,27 +773,124 @@ def _spec_signature(specs: list[dict]) -> str:
     return "|".join(sorted(parts)) + f"@{tilt_part}@{float(settings.cycle_tilt_strength):.3f}"
 
 
+def _snapshot_file() -> Path:
+    """落盘路径：优先 ``settings.top50_snapshot_path``。
+
+    ⚠️ 空串必须兜回默认值 —— ``Path("")`` 会解析成当前工作目录，
+    数据会静默落到 CWD（agent_docs / job_runs 都踩过这个坑）。
+    """
+    raw = (settings.top50_snapshot_path or "").strip()
+    return Path(raw) if raw else _DEFAULT_SNAPSHOT_FILE
+
+
+def _persist_snapshot() -> None:
+    """把当前快照 + 证据落盘（临时文件 + ``replace`` 原子写）。
+
+    目的：**uvicorn 重启后同一数据窗口内不需要重算** —— 省额度最直接的一条。
+    落盘失败只记 warning，绝不影响本轮结果（缓存本来就是可选项）。
+    """
+    try:
+        payload = {
+            "savedAt": datetime.now(SHANGHAI).isoformat(),
+            "window": _CACHE.get("window"),
+            "specSig": _CACHE.get("specSig"),
+            "snapshot": _CACHE.get("snapshot"),
+            "evidence": _CACHE.get("evidence") or {},
+        }
+        text = json.dumps(payload, ensure_ascii=False)
+        size = len(text.encode("utf-8"))
+        if size > _SNAPSHOT_MAX_BYTES:
+            logger.warning("TOP50 快照过大（%.1f MB），跳过落盘", size / 1048576)
+            return
+        path = _snapshot_file()
+        with _SNAPSHOT_LOCK:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(text, encoding="utf-8")
+            tmp.replace(path)
+        logger.info(
+            "TOP50 快照已落盘：%s（窗口 %s，%.1f MB）",
+            path.name,
+            _CACHE.get("window"),
+            size / 1048576,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("TOP50 快照落盘失败（不影响本轮结果）：%s", exc)
+
+
+def _restore_from_disk(window: str) -> None:
+    """启动后首次取快照时尝试从落盘文件恢复（每个进程只试一次）。
+
+    ⚠️ 只有「文件里的窗口 == 当前窗口」才认：窗口变了说明行情口径已经切换
+    （早晨缓存的昨日数据到收盘后就该过期），此时必须重算，不能拿旧快照冒充实时。
+    """
+    global _restore_attempted
+
+    # 内存里已有同窗口快照（比如刚跑完 top50 job）就不用读盘了。
+    if _CACHE["snapshot"] is not None and _CACHE.get("window") == window:
+        return
+    if _restore_attempted:
+        return
+    _restore_attempted = True
+
+    try:
+        path = _snapshot_file()
+        if not path.exists():
+            return
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("TOP50 落盘快照不可读，忽略：%s", exc)
+        return
+
+    saved_window = payload.get("window")
+    if saved_window != window:
+        logger.info(
+            "TOP50 落盘快照的窗口 %s 与当前 %s 不符，丢弃并重算", saved_window, window
+        )
+        return
+
+    snapshot = payload.get("snapshot")
+    if not isinstance(snapshot, dict) or not snapshot.get("cycles"):
+        return
+
+    _CACHE["snapshot"] = snapshot
+    _CACHE["evidence"] = payload.get("evidence") or {}
+    _CACHE["window"] = saved_window
+    _CACHE["specSig"] = payload.get("specSig") or ""
+    logger.info(
+        "TOP50 已从落盘快照恢复（窗口 %s，保存于 %s），本窗口内无需重算",
+        saved_window,
+        payload.get("savedAt"),
+    )
+
+
 def invalidate_cache() -> None:
     """显式标记快照过期（画像提炼 / 打分完成后调用）。
 
     指纹机制其实已经能自动发现变化，这个入口用于「同一份画像想强制重算」的场景。
+    把窗口清空即可 —— 下次取快照时会重新计算。
     """
-    _CACHE["ts"] = 0.0
+    _CACHE["window"] = None
 
 
 async def get_top50_snapshot(force: bool = False) -> dict:
-    """构建/取缓存的 TOP50 快照。数据不可用时抛 TushareError（由调用方回落）。"""
-    now = time.time()
+    """构建/取缓存的 TOP50 快照。数据不可用时抛 TushareError（由调用方回落）。
+
+    缓存判据是「同一数据窗口 + 同一份画像指纹」，**不是** TTL —— 理由见 ``_CACHE``
+    的注释。``force=True`` 给调度 job 用：保证每天至少按最新数据重算一次。
+    """
     specs = agent_factor_score.custom_teacher_specs()
     signature = _spec_signature(specs)
+    window = tushare_client._data_window()
 
-    if (
-        not force
-        and _CACHE["snapshot"] is not None
-        and (now - _CACHE["ts"]) < _CACHE_TTL
-        and _CACHE.get("specSig") == signature
-    ):
-        return _CACHE["snapshot"]
+    if not force:
+        _restore_from_disk(window)
+        if (
+            _CACHE["snapshot"] is not None
+            and _CACHE.get("window") == window
+            and _CACHE.get("specSig") == signature
+        ):
+            return _CACHE["snapshot"]
 
     rows, reference_date = await tushare_client.fetch_top50_universe()
     eligible, excluded, total = screen_tradable_universe(rows, reference_date)
@@ -799,6 +909,8 @@ async def get_top50_snapshot(force: bool = False) -> dict:
         "excluded": excluded,
     }
 
+    snapshot["meta"]["dataWindow"] = window
+
     _CACHE["snapshot"] = snapshot
     # 累积而非替换：新批次有自己的 snapshotId/predictionId，不会覆盖旧键。
     merged_evidence = dict(_CACHE.get("evidence") or {})
@@ -808,7 +920,8 @@ async def get_top50_snapshot(force: bool = False) -> dict:
             merged_evidence.pop(stale_key, None)
     _CACHE["evidence"] = merged_evidence
     _CACHE["specSig"] = signature
-    _CACHE["ts"] = now
+    _CACHE["window"] = window
+    _persist_snapshot()
     logger.info(
         "TOP50 已生成：交易日 %s，全市场 %d → 初筛 %d → 每周期前 %d；"
         "画像 %d 套（内置 %d + AI 学习 %d%s）",

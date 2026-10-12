@@ -466,7 +466,7 @@ function goAI(stock) {
         <div class="stock-data-trust">
           <span :class="trustFresh ? 'fresh' : 'stale'"><i /> {{ trustLabel }}</span>
           <span><IconClock :size="13" /> 行情日期 {{ selected.marketDataDate || snapshotMeta?.marketDataDate || '待更新' }}</span>
-          <span><IconDatabase :size="13" /> TOP50生成 {{ formatShanghaiTime(snapshotMeta?.generatedAt) }} · 共享缓存 {{ snapshotMeta?.ttlSeconds || 300 }}秒</span>
+          <span><IconDatabase :size="13" /> TOP50生成 {{ formatShanghaiTime(snapshotMeta?.generatedAt) }} · 数据窗口 {{ snapshotMeta?.dataWindow || '—' }} 内复用</span>
           <span><IconUsersGroup :size="13" /> {{ snapshotMeta?.selectionEngine || `${teacherCount}套可审计因子画像` }} · AI风险复核</span>
         </div>
 

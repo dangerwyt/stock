@@ -8,9 +8,13 @@
 首批已落地（用户选定）：``top50`` / ``global-news`` / ``intraday-news`` / ``market-close``，
 外加把 v2 已有的画像巡回复用为 ``teacher-distillation``。
 
-⚠️ 口径提醒：这里只**搬运数据到各自模块的缓存**（TOP50 快照、资讯快照、最近交易日全市场
-行情），job 之间不共享中间结果。``market-close`` 目前只做"最近交易日行情可用性校验"，
-尚未把结果灌进 ``/api/market``（那还是 fixtures）—— 属于后续任务。
+⚠️ 口径提醒：这些 job 把数据搬进各自模块的缓存（TOP50 快照、资讯快照、最近交易日
+全市场行情）。**「最近交易日全市场行情」是多 job 共用的**：``top50`` 与 ``market-close``
+拉的是同一份数据，统一走 ``tushare_client._latest_market_trade_date()`` 的「数据窗口」
+缓存，一天只真拉 2 次（收盘前后各一次），不再各自重拉。
+
+``market-close`` 目前只做「最近交易日行情可用性校验」，尚未把结果灌进 ``/api/market``
+（那还是 fixtures）—— 属于后续任务。
 """
 from __future__ import annotations
 
@@ -71,6 +75,9 @@ async def _job_news() -> dict:
 
 async def _job_market_close() -> dict:
     """收盘刷新：确认最近一个交易日的全市场行情可取，并记录交易日与标的数。
+
+    与 ``top50`` job 共用 ``_latest_market_trade_date()`` 的数据窗口缓存 —— 同一轮里
+    先跑谁都不会重复拉取（07:20 轮次的执行顺序是 market-close 在前、top50 在后）。
 
     ⚠️ 目前只做可用性校验 + 记录，**不写回** ``/api/market``（那仍是 fixtures 快照）。
     """

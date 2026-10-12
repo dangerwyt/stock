@@ -33,6 +33,9 @@ services:
       # 同理：调度运行记录也必须落在 volume 里，否则重建容器后"这一轮跑没跑"的记忆全丢，
       # 会出现同一天同一轮次被重复执行（例如 TOP50 一晚上跑两遍）。
       JOB_RUNS_PATH: /app/app/data/job_runs.json
+      # TOP50 快照同样落在 volume 上：同一「数据窗口」内重启容器可以直接复用快照，
+      # 不必再打一轮全市场行情（Tushare 额度很紧，重启一次的代价不小）。
+      TOP50_SNAPSHOT_PATH: /app/app/data/top50_snapshot.json
     volumes:
       # ⚠️ 数据必须落卷：角色 / 会话 / 上传的资料都在这里，
       # 不挂的话 `docker compose up --build` 重建容器就全没了。

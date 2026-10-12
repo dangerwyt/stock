@@ -16,6 +16,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -23,11 +24,20 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# 上海时区。**不要**用裸 ``datetime.now()`` 去算交易日边界：容器多半跑在 UTC，
+# 那样算出来的「今天」会跟 A 股交易日错开 8 小时（上海已次日、UTC 还是当天）。
+_SHANGHAI = ZoneInfo("Asia/Shanghai")
+
 # 全市场股票池缓存时长。原项目也是缓存 24h（state_store expirationTtl=24*3600），
 # 这里用进程内 TTL 缓存，避免每次搜索都打一次 stock_basic（5000+ 行，容易被限流）。
 _UNIVERSE_TTL_SECONDS = 24 * 3600
 _UNIVERSE: dict[str, Any] = {"at": 0.0, "data": None}
 _UNIVERSE_LOCK = asyncio.Lock()
+
+# 「最近交易日全市场行情」进程内缓存，键是「数据窗口」（见 ``_data_window``）。
+# 存在的意义：``top50`` job 与 ``market-close`` job（每天 3 轮）拉的**是同一份数据**，
+# 缓存后一天只真拉 2 次（收盘前后各一次），而不是各自重拉。
+_LATEST_CACHE: dict[str, Any] = {"window": None, "trade_date": None, "rows": None}
 
 
 class TushareError(RuntimeError):
@@ -315,13 +325,46 @@ async def get_stock_snapshot(code: str) -> dict:
     return snap
 
 
+def _data_window(now: datetime | None = None) -> str:
+    """当前「数据窗口」标识（YYYYMMDD），跨过 15:30 才换窗口。
+
+    A 股 15:00 收盘，Tushare 的 ``daily`` 全市场数据通常 15:30 前后落库。所以：
+
+    * 15:30 **前** —— 当日行情还没落库，「最近有数据的交易日」是上一交易日；
+    * 15:30 **后** —— 当日行情已可用，「最近有数据的交易日」是当日。
+
+    同一窗口内这个答案稳定不变，可以直接复用进程内缓存。窗口之间必须是两套结果，
+    所以不能用「自然日」当键（那会让 07:20 缓存的昨日数据一直用到深夜）。
+    """
+    value = now or datetime.now(_SHANGHAI)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=_SHANGHAI)
+    value = value.astimezone(_SHANGHAI)
+    day = value.date()
+    if value.hour < 15 or (value.hour == 15 and value.minute < 30):
+        day = day - timedelta(days=1)
+    return day.strftime("%Y%m%d")
+
+
 async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tuple[str, list[dict]]:
     """返回最近一个「有全市场行情数据」的交易日（YYYYMMDD）及其 daily 行。
 
     用 ``trade_cal`` 列出近 N 个交易日，从最新往前试 ``daily``，取第一个 ≥50 行的
     日期（含节假日/盘中未出数据的情况都能自愈）。
+
+    ⚠️ 结果按「数据窗口」缓存在进程内：同一窗口内的所有调用方（``top50`` job、
+    ``market-close`` job、TOP50 引擎）共享这一份全市场行情，不再各自重拉 ——
+    这是省 Tushare 额度最关键的一处。
     """
-    end = datetime.now()
+    window = _data_window()
+    cached_rows = _LATEST_CACHE["rows"]
+    if _LATEST_CACHE["window"] == window and cached_rows is not None:
+        logger.debug(
+            "最近交易日行情命中数据窗口缓存：窗口 %s，%d 行", window, len(cached_rows)
+        )
+        return _LATEST_CACHE["trade_date"], cached_rows
+
+    end = datetime.now(_SHANGHAI)
     start = end - timedelta(days=days_back)
     cal = await _call(
         "trade_cal",
@@ -344,8 +387,18 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
         except TushareError:
             continue
         if len(rows) >= 50:
+            # 只在「取到的交易日 == 当前窗口日」时才缓存。
+            # 15:31 这种刚过窗口、数据还没落库的时刻会拿到上一交易日；若把它当成
+            # 窗口日的答案缓存，之后数据真出来了也刷不到 —— 宁可下次重拉。
+            if d == window:
+                _LATEST_CACHE.update(window=window, trade_date=d, rows=rows)
             return d, rows
     raise TushareError("无法取得最近交易日的全市场行情（daily 为空或不足 50 行）")
+
+
+def invalidate_latest_market_cache() -> None:
+    """测试或强制刷新时清空「最近交易日全市场行情」缓存。"""
+    _LATEST_CACHE.update(window=None, trade_date=None, rows=None)
 
 
 async def is_market_open(date_str: str) -> bool:
