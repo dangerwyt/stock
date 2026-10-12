@@ -76,32 +76,35 @@ HOST_PORT="$(printf '%s' "$PORT_LINE" | sed -E 's/^[^0-9]*([0-9]+):[0-9]+.*$/\1/
 case "$HOST_PORT" in
   ''|*[!0-9]*) HOST_PORT=8080 ;;   # 提取失败就退回默认值，别让脚本崩
 esac
+# 先只判断「有没有被占」，再单独判断「占用者是不是我们自己的容器」。
+# 为什么要分开：重复部署是常规操作（git pull 后重跑 deploy.sh），
+# 那时端口正是被**本项目上一次起的容器**占着 —— 那是正常情况，不该拦。
+PORT_BUSY=0
 if command -v lsof >/dev/null 2>&1; then
-  if lsof -nP -iTCP:"$HOST_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-    bad "端口 $HOST_PORT" "已被占用 —— 换 compose 里的映射（如 \"8081:80\"）或先停掉占用进程"
-  else
-    ok "端口 $HOST_PORT" '空闲'
-  fi
+  lsof -nP -iTCP:"$HOST_PORT" -sTCP:LISTEN >/dev/null 2>&1 && PORT_BUSY=1
 elif command -v ss >/dev/null 2>&1; then
-  if ss -ltn 2>/dev/null | grep -q ":$HOST_PORT "; then
-    bad "端口 $HOST_PORT" '已被占用'
-  else
-    ok "端口 $HOST_PORT" '空闲'
-  fi
+  ss -ltn 2>/dev/null | grep -q ":$HOST_PORT " && PORT_BUSY=1
 elif command -v nc >/dev/null 2>&1; then
-  if nc -z 127.0.0.1 "$HOST_PORT" >/dev/null 2>&1; then
-    bad "端口 $HOST_PORT" '已被占用'
-  else
-    ok "端口 $HOST_PORT" '空闲'
-  fi
+  nc -z 127.0.0.1 "$HOST_PORT" >/dev/null 2>&1 && PORT_BUSY=1
 else
   # 最后的兜底：bash 内建 /dev/tcp 探一下（只在 bash 下可用）
-  if (exec 3<>/dev/tcp/127.0.0.1/"$HOST_PORT") >/dev/null 2>&1; then
-    exec 3<&- 2>/dev/null
-    bad "端口 $HOST_PORT" '已被占用'
-  else
-    ok "端口 $HOST_PORT" '空闲（/dev/tcp 探测）'
-  fi
+  (exec 3<>/dev/tcp/127.0.0.1/"$HOST_PORT") >/dev/null 2>&1 && PORT_BUSY=1
+fi
+
+# 占用者是本项目的 frontend 容器？看它有没有把这个宿主端口映射出去。
+# `docker ps` 的 Ports 形如 "0.0.0.0:8080->80/tcp, [::]:8080->80/tcp"
+port_owner_is_ours() {
+  command -v docker >/dev/null 2>&1 || return 1
+  docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null \
+    | grep -E '^sip-frontend[[:space:]]' | grep -q ":$1->"
+}
+
+if [ "$PORT_BUSY" -eq 0 ]; then
+  ok "端口 $HOST_PORT" '空闲'
+elif port_owner_is_ours "$HOST_PORT"; then
+  ok "端口 $HOST_PORT" "被本项目容器 sip-frontend 占用（重复部署的正常情况）"
+else
+  bad "端口 $HOST_PORT" "被其它程序占用 —— 换 compose 里的映射（如 \"8081:80\"）或先停掉占用进程"
 fi
 
 # ---------- 4. 配置文件 ----------
