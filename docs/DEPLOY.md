@@ -225,22 +225,53 @@ LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8080 bash scripts/scheduler-tick.sh --
 echo "退出码 $?（0 = 通；1 = 鉴权或网络问题）"
 ```
 
-然后再挂到系统计时器上（三选一）：
+然后再挂到系统计时器上（四种方式任选）：
 
 ```bash
-# ① crontab（最省事）
+# ① macOS —— 一条命令装成 launchd 服务（推荐，对齐本项目 v1 的模型）
+bash scripts/install-mac-scheduler.sh                    # 默认打 :8080（Docker 部署）
+bash scripts/install-mac-scheduler.sh --status           # 查状态 + 看日志
+bash scripts/install-mac-scheduler.sh --uninstall        # 卸载
+# 本机 uvicorn 而非 Docker 时：LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8000 bash scripts/install-mac-scheduler.sh
+
+# ② crontab（Linux / macOS 都行，最省事）
 crontab -e
 * * * * * /bin/bash /path/to/repo/scripts/scheduler-tick.sh --once >> /tmp/sip-tick.log 2>&1
 
-# ② macOS launchd（与本项目 v1 的模型一致）
-#    新建 ~/Library/LaunchAgents/com.stock-intelligence.scheduler.plist：
-#    ProgramArguments = ["/bin/bash", "/path/to/repo/scripts/scheduler-tick.sh", "--once"]
-#    StartInterval     = 60
-#    launchctl load ~/Library/LaunchAgents/com.stock-intelligence.scheduler.plist
+# ③ systemd timer（Linux 服务器）
+#    /etc/systemd/system/sip-tick.service :
+#      [Service]
+#      Type=oneshot
+#      Environment=LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8080
+#      ExecStart=/bin/bash /path/to/repo/scripts/scheduler-tick.sh --once
+#    /etc/systemd/system/sip-tick.timer :
+#      [Timer]
+#      OnBootSec=1min
+#      OnUnitActiveSec=60s
+#      [Install]
+#      WantedBy=timers.target
+#    systemctl enable --now sip-tick.timer
 
-# ③ 前台常驻（调试用，Ctrl-C 退出）
+# ④ 前台常驻（调试用，Ctrl-C 退出）
 LOCAL_SCHEDULER_BASE_URL=http://127.0.0.1:8080 bash scripts/scheduler-tick.sh
 ```
+
+**Windows 开发机**（正式部署不在 Windows，但本地想让它自动跑）—— 用任务计划程序：
+
+```powershell
+# 先找到 Git Bash 的 bash.exe（一般是这个路径）
+$bash = "C:\Program Files\Git\bin\bash.exe"
+$repo = "E:\workspace\stock-intelligence-platform-v2"
+
+schtasks /Create /TN "sip-scheduler-tick" /SC MINUTE /MO 1 /F `
+  /TR "`"$bash`" `"$repo\scripts\scheduler-tick.sh`" --once"
+schtasks /Run    /TN "sip-scheduler-tick"     # 立刻试跑一次
+schtasks /Query  /TN "sip-scheduler-tick" /V /FO LIST   # 看上次结果码
+schtasks /Delete /TN "sip-scheduler-tick" /F  # 卸载
+```
+
+> ⚠️ 任务计划程序跑的是**登录用户**上下文，仓库根 `.env` 必须存在（tick 要从里面读 `ADMIN_API_TOKEN`）。
+> 另外注意 `schtasks` 的 `--once` 与 bash 路径都要带引号，否则含空格的路径会被截断。
 
 轮次表（交易日，宽限窗 **5 分钟**：`07:20` 会在 07:20–07:24 之间被命中）：
 
