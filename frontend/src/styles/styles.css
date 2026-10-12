@@ -700,7 +700,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .conflict div span { font-size: 8px; font-weight: 600; }
 .conflict div p { margin: 4px 0 0; color: var(--muted); font-size: 7px; }
 
-.ai-layout { height: 100%; display: grid; grid-template-columns: 244px minmax(440px, 1fr) 310px; background: #0a1420; }
+.ai-layout { height: 100%; display: grid; grid-template-columns: 244px minmax(440px, 1fr) 310px; grid-template-rows: minmax(0, 1fr); background: #0a1420; }
 .thread-list, .research-context { min-height: 0; overflow-y: auto; }
 .thread-list { border-right: 1px solid var(--line); background: #0b1521; padding: 10px 8px; }
 .thread-head { height: 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 5px; }
@@ -709,11 +709,11 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .thread-tabs { display: flex; gap: 8px; padding: 7px 5px 9px; border-bottom: 1px solid var(--line); }
 .thread-tabs button { border: 0; background: transparent; color: var(--muted); font-size: 8px; cursor: pointer; }
 .thread-tabs button.active { color: #fff; }
-.thread-list > button { width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; text-align: left; padding: 10px 8px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; }
-.thread-list > button:hover, .thread-list > button.active { background: #14263d; border-radius: 4px; }
-.thread-list > button strong { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-list > button span { color: var(--muted); font-size: 7px; }
-.thread-list > button small { color: var(--muted); font-size: 8px; margin-top: 5px; grid-column: 1 / -1; }
+.thread-items > button { width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; text-align: left; padding: 10px 8px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; }
+.thread-items > button:hover, .thread-items > button.active { background: #14263d; border-radius: 4px; }
+.thread-items > button strong { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-items > button span { color: var(--muted); font-size: 7px; }
+.thread-items > button small { color: var(--muted); font-size: 8px; margin-top: 5px; grid-column: 1 / -1; }
 .thread-bottom { display: flex; justify-content: space-between; color: var(--muted); font-size: 8px; padding: 12px 5px; }
 .thread-bottom button { border: 0; background: transparent; color: var(--blue); font-size: 8px; cursor: pointer; }
 .thread-empty { margin: 18px 8px; padding: 20px 12px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); text-align: center; display: grid; justify-items: center; gap: 7px; }
@@ -2473,10 +2473,10 @@ footer { font-size: 11px; }
 .thread-tabs button,
 .thread-bottom,
 .thread-bottom button { font-size: 11px; }
-.thread-list > button { min-height: 72px; padding: 13px 10px; }
-.thread-list > button strong { font-size: 13px; }
-.thread-list > button span,
-.thread-list > button small { font-size: 11px; }
+.thread-items > button { min-height: 72px; padding: 13px 10px; }
+.thread-items > button strong { font-size: 13px; }
+.thread-items > button span,
+.thread-items > button small { font-size: 11px; }
 .chat-main { grid-template-rows: 62px minmax(0, 1fr) auto; }
 .chat-head h1 { font-size: 17px; }
 .chat-head span { margin-top: 4px; font-size: 11px; }

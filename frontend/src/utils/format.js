@@ -33,6 +33,15 @@ export function displayField(value, fallback = '--') {
   return value == null || value === '' ? fallback : String(value)
 }
 
+// 成交额单位换算：value 为 Tushare 的 amount（单位＝千元）。
+// unit === 'yuan' 时按元换算（÷1e8），否则按千元换算（÷1e5），结果统一为「亿」。
+export function formatDailyAmount(value, unit) {
+  const amount = Number(value)
+  return Number.isFinite(amount)
+    ? `${(amount / (unit === 'yuan' ? 100000000 : 100000)).toFixed(2)}亿`
+    : '--'
+}
+
 export function hydrateStock(item) {
   const base = {}
   const liveRankedItem = Boolean(item?.code && item?.agentScores)

@@ -96,17 +96,28 @@ const systemMessage = {
   type: 'system',
 }
 const activeThread = computed(() => threadItems.value.find((item) => item.id === activeThreadId.value))
-// 固定会话「通用研究」：后端用 ``general: true`` 标记，id 前缀做兜底（两道判据与后端
-// ``threads.is_general`` 保持一致）。它不绑定任何角色 —— 发送时不带老师、
-// 界面上也不展示任何角色相关的元素，且不进「共 N 条会话」的计数。
-const isGeneralThread = computed(() => {
-  const thread = activeThread.value
+// 判据与后端 ``threads.is_general`` 保持一致：优先看 ``general`` 标记，id 前缀做兜底。
+function isGeneralItem(thread) {
   if (!thread) return false
   if (thread.general === true) return true
   return String(thread.id || '').split('::', 1)[0] === 'general'
-})
+}
+// 固定会话「通用研究」：后端用 ``general: true`` 标记，id 前缀做兜底。它不绑定任何角色 ——
+// 发送时不带老师、界面上也不展示任何角色相关的元素，且不进「共 N 条会话」的计数。
+const isGeneralThread = computed(() => isGeneralItem(activeThread.value))
+// 左侧列表分两段渲染：固定区（通用研究 + 「全部老师」提示，不随列表滚动）与滚动区
+// （老师会话 + 未开始老师）。通用研究单独抽出来常驻顶部。
+const generalThread = computed(() => threadItems.value.find(isGeneralItem) || null)
+const teacherThreadItems = computed(() => threadItems.value.filter((t) => !isGeneralItem(t)))
 // 会话计数只面向"老师会话"：固定会话不计入数量（它不算一条研究会话）。
-const conversationCount = computed(() => threadItems.value.filter((t) => !t.general).length)
+const conversationCount = computed(() => teacherThreadItems.value.length)
+// 左侧「研究会话」列表除真实会话外，再把 12 位老师也列出来：点击即可与该老师开始
+// 1 对 1 研究。已经有一条以该老师为 `teacherName` 的会话时，不再重复列出（那条会话
+// 本身就以老师名显示，见 thread.teacherName || thread.title），避免一个人出现两次。
+const teacherQuickStarts = computed(() => {
+  const existing = new Set(threadItems.value.map((t) => t.teacherName).filter(Boolean))
+  return agentItems.value.filter((item) => !existing.has(item.name))
+})
 // 标题栏副标题：模板属性里禁止内联三元（项目约定），整段在这里拼好。
 const chatHeadSubtitle = computed(() => {
   if (isGeneralThread.value) {
@@ -412,6 +423,24 @@ async function submitNewRole() {
   }
 }
 // 没有活动会话时先建一个，避免发出的问题无处可存
+
+// 左侧「研究会话」列表里的老师项：点一下与该老师开始 1 对 1 研究。
+// 已有以该老师为 teacherName 的会话 → 直接打开；否则新建一条老师会话再打开。
+async function startTeacherSession(name) {
+  const existing = threadItems.value.find((t) => t.teacherName === name)
+  if (existing) {
+    await loadThread(existing.id)
+    return
+  }
+  try {
+    const { data } = await http.post('/api/ai/threads', {
+      clientId: clientId.value, title: name, teacherName: name, teacherNames: [name], stockCode: null,
+    })
+    await refreshThreads(data.thread?.id)
+  } catch {
+    messages.value = [systemMessage]
+  }
+}
 async function ensureThread() {
   if (activeThreadId.value) return activeThreadId.value
   // 固定会话是常驻的，任何"没有选中会话"的兜底都应该落回它 —— 另建一条空的老师会话
@@ -646,20 +675,58 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
     <!-- 研究会话列表 -->
     <aside class="thread-list">
       <div class="thread-head"><h2>研究会话</h2><button @click="openRoleDialog"><IconPlus :size="15" /> 新建角色</button></div>
-      <button
-        v-for="thread in threadItems"
-        :key="thread.id"
-        :class="{ active: activeThreadId === thread.id, pinned: thread.general }"
-        @click="loadThread(thread.id)"
-      >
-        <strong>{{ thread.teacherName || thread.title }}</strong>
-        <span>{{ formatShanghaiTime(thread.updatedAt) }}</span>
-        <small><em v-if="thread.general" class="thread-pin-tag">固定</em>{{ thread.messageCount ? `${thread.messageCount} 条消息 · 已同步` : '通用助手作答 · 可直接提问' }}</small>
-      </button>
-      <div v-if="!threadItems.length" class="thread-empty">
-        <IconMessageCircle2 :size="22" /><strong>暂无研究会话</strong>
-        <span>点击“新建角色”开始。本浏览器可恢复会话；不同浏览器不会自动共享。</span>
+
+      <!-- 固定区（不随老师列表滚动）：固定会话「通用研究」+「全部老师」提示。
+           这里复用 .thread-items 类，是为了让唯一那颗按钮直接命中「.thread-items > button」
+           这套既有样式；它本身不在 el-scrollbar 里，由 .thread-pinned-zone 保证不被压缩。 -->
+      <div class="thread-items thread-pinned-zone">
+        <button
+          v-if="generalThread"
+          class="pinned"
+          :class="{ active: activeThreadId === generalThread.id }"
+          @click="loadThread(generalThread.id)"
+        >
+          <strong>{{ generalThread.teacherName || generalThread.title }}</strong>
+          <span>{{ formatShanghaiTime(generalThread.updatedAt) }}</span>
+          <small><em class="thread-pin-tag">固定</em>{{ generalThread.messageCount ? `${generalThread.messageCount} 条消息 · 已同步` : '通用助手作答 · 可直接提问' }}</small>
+        </button>
+
+        <div v-if="agentItems.length" class="thread-hint">
+          <span>全部老师</span><small>点击与老师开始 1 对 1 研究</small>
+        </div>
       </div>
+
+      <!-- 滚动区：老师会话 + 未开始老师 -->
+      <el-scrollbar class="thread-scroll">
+        <div class="thread-items">
+          <button
+            v-for="thread in teacherThreadItems"
+            :key="thread.id"
+            :class="{ active: activeThreadId === thread.id }"
+            @click="loadThread(thread.id)"
+          >
+            <strong>{{ thread.teacherName || thread.title }}</strong>
+            <span>{{ formatShanghaiTime(thread.updatedAt) }}</span>
+            <small>{{ thread.messageCount ? `${thread.messageCount} 条消息 · 已同步` : '通用助手作答 · 可直接提问' }}</small>
+          </button>
+
+          <button
+            v-for="teacher in teacherQuickStarts"
+            :key="`teacher-${teacher.name}`"
+            class="teacher-quick"
+            @click="startTeacherSession(teacher.name)"
+          >
+            <strong>{{ teacher.name }}</strong>
+            <span class="teacher-quick-tag">未开始</span>
+            <small>{{ teacher.style && teacher.style !== '自定义' ? teacher.style : '点击开始 1 对 1 研究' }}</small>
+          </button>
+
+          <div v-if="!teacherThreadItems.length && !teacherQuickStarts.length" class="thread-empty">
+            <IconMessageCircle2 :size="22" /><strong>暂无研究会话</strong>
+            <span>点击“新建角色”开始。本浏览器可恢复会话；不同浏览器不会自动共享。</span>
+          </div>
+        </div>
+      </el-scrollbar>
       <div class="thread-bottom"><span>共 {{ conversationCount }} 条会话</span><span>最多保留100条</span></div>
     </aside>
 

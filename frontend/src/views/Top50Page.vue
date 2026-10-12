@@ -9,6 +9,7 @@ import {
   displayField,
   formatShanghaiTime,
   formatShanghaiDateTime,
+  formatDailyAmount,
 } from '@/utils/format'
 import {
   IconSearch,
@@ -19,13 +20,25 @@ import {
   IconDatabase,
   IconBrain,
   IconAlertTriangle,
+  IconBriefcase2,
+  IconTargetArrow,
+  IconActivity,
+  IconTrendingUp,
+  IconCircleCheck,
+  IconStar,
+  IconFileAnalytics,
+  IconClock,
+  IconUsersGroup,
+  IconBell,
+  IconShieldCheck,
 } from '@tabler/icons-vue'
 
 const router = useRouter()
 const { data: snapshot, state, sourceMode } = useSnapshot('/api/top50', { refreshMs: 300000 })
 
-// 票数分母 = 用户自己创建的老师总数（引擎 meta.teacherCount）。原来写死 12，
-// 但内置 12 位是原版 mock 人设，已从产品里去掉；没有自建老师时兜 1，避免除零。
+// 票数分母 = 用户自己创建的老师总数（引擎 meta.teacherCount）。原版 12 位老师现已作为
+// 自建角色写入 custom_agents.json（见任务②），所以分母回到 /12；仍不写死 12（用户可继续
+// 增删角色），没有自建老师时兜 1 避免除零。
 const teacherCount = computed(() => Number(snapshot.value?.meta?.teacherCount) || 1)
 
 const CYCLES = ['超短', '短线', '波段', '中长线']
@@ -34,6 +47,13 @@ const page = ref(1)
 const cycle = ref('超短')
 const showFilters = ref(false)
 const selectedCode = ref(null)
+// ① 还原原版 top50「点击行 / 股票 → 弹窗」：基于 Element Plus el-dialog（用户要求）。
+// 右栏曾是手写 aside，现改为居中弹窗，遮罩/Esc/点击遮罩关闭/焦点陷阱全交给 EP 接管。
+const dialogOpen = ref(false)
+function openDialog(code) {
+  selectedCode.value = code
+  dialogOpen.value = true
+}
 
 const cycleData = computed(() => snapshot.value?.cycles?.[cycle.value] || null)
 const rankedStocks = computed(() =>
@@ -55,16 +75,101 @@ const selected = computed(() => rankedStocks.value.find((s) => s.code === select
 const selectedIndex = computed(() =>
   selected.value ? rankedStocks.value.findIndex((s) => s.code === selected.value.code) : -1,
 )
-// 共识进度条宽度：模板里不做运算（约定：模板属性内禁止内联表达式）。
-const voteBarWidth = computed(() => {
-  const votes = Number(selected.value?.agentVotes ?? selected.value?.consensus ?? 0)
-  const total = teacherCount.value || 1
-  return `${Math.min(100, Math.max(0, (votes / total) * 100))}%`
-})
 function changeSelected(offset) {
   if (!rankedStocks.value.length) return
   const next = (selectedIndex.value + offset + rankedStocks.value.length) % rankedStocks.value.length
   selectedCode.value = rankedStocks.value[next].code
+}
+
+// ---- 还原原版 SingleStockDecisionCard 的监控指标与决策数据 ----
+// getMonitorMetrics 直接搬 reference-react/App.jsx:595；amount 字段走 formatDailyAmount。
+function buildMonitorMetrics(stock) {
+  if (!stock) return null
+  const probability = Number(stock.probabilityUp)
+  return {
+    volumeRatio: Number.isFinite(Number(stock.volumeRatio)) ? Number(stock.volumeRatio) : null,
+    turnover: Number.isFinite(Number(stock.turnoverRate)) ? Number(stock.turnoverRate) : null,
+    amount: formatDailyAmount(stock.amount, stock.amountUnit),
+    amplitude: Number.isFinite(Number(stock.amplitude)) ? `${Number(stock.amplitude).toFixed(2)}%` : '--',
+    pe: Number.isFinite(Number(stock.peTtm)) && Number(stock.peTtm) > 0 ? Number(stock.peTtm).toFixed(1) : '--',
+    upProb: Number.isFinite(probability) ? Math.round(probability * 100) : null,
+    signal: stock.trend || '暂无量价结论',
+    confidence: Number.isFinite(probability) ? Math.round(probability * 100) : null,
+  }
+}
+const monitorMetrics = computed(() => buildMonitorMetrics(selected.value))
+
+// 票数：原版 Math.min(12, agentVotes)，本项目分母随实际老师数变化（task②）。
+const displayConsensus = computed(() =>
+  Math.min(teacherCount.value, Number(selected.value?.agentVotes ?? selected.value?.consensus ?? 0)),
+)
+const trendLabel = computed(() => {
+  const up = monitorMetrics.value?.upProb
+  if (up == null) return '待计算'
+  return up >= 60 ? '偏多' : up >= 50 ? '中性偏多' : '偏弱'
+})
+const recommendation = computed(() => {
+  const status = selected.value?.status
+  return status === '可试仓' ? '满足触发后可小仓试错' : status === '等待确认' ? '等待右侧确认' : '仅观察'
+})
+
+// 决策卡进度条宽度：模板属性内只放计算好的百分比字符串（约定：禁止内联表达式）。
+const powerTrackWidth = computed(() => {
+  const total = teacherCount.value || 1
+  return `${Math.min(100, Math.max(0, (displayConsensus.value / total) * 100))}%`
+})
+const powerTrackRest = computed(() => {
+  const total = teacherCount.value || 1
+  return `${Math.min(100, Math.max(0, (1 - displayConsensus.value / total) * 100))}%`
+})
+
+// 半环仪表盘（替换原版 Recharts PieChart；三色段 谨慎/中性/乐观，纯 SVG，无额外依赖）。
+const gaugeColors = ['#f05e65', '#d8a63d', '#59bf79']
+function polarPoint(cx, cy, r, deg) {
+  const a = (deg * Math.PI) / 180
+  return [cx + r * Math.cos(a), cy - r * Math.sin(a)]
+}
+function arcPath(cx, cy, r, a1, a2) {
+  const [x1, y1] = polarPoint(cx, cy, r, a1)
+  const [x2, y2] = polarPoint(cx, cy, r, a2)
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
+}
+const gaugeArcs = computed(() => {
+  const segments = [35, 30, 35]
+  let start = 180
+  return segments.map((s, i) => {
+    const end = start - (s / 100) * 180
+    const d = arcPath(60, 60, 48, start, end)
+    start = end
+    return { d, color: gaugeColors[i] }
+  })
+})
+
+// 自选 / 提醒（原版本地 state；本项目暂做 UI 态，不落盘）。
+const tracked = ref(true)
+const watchlisted = ref(false)
+const followup = ref({ price: false, risk: false, preMarket: false })
+function toggleWatchlist() {
+  watchlisted.value = !watchlisted.value
+}
+function toggleFollowup(key) {
+  followup.value[key] = !followup.value[key]
+}
+
+// 数据可信度条文案（原版 StockDecisionModal 的 stock-data-trust）。
+const trustLabel = computed(() => {
+  if (sourceMode.value === 'live' && state.value === 'ready') return '当日快照'
+  return '数据待更新'
+})
+const trustFresh = computed(() => sourceMode.value === 'live' && state.value === 'ready')
+const snapshotMeta = computed(() => snapshot.value?.meta || null)
+
+function goPortfolio() {
+  router.push('/portfolio')
+}
+function openFullAnalysis(stock) {
+  // 「完整分析」：本项目用冻结选股证据弹窗承接（TOP50 标的都带 predictionId）。
+  if (stock?.predictionId) openEvidence(stock, { stopPropagation() {} })
 }
 
 // 四个周期在「自建老师完全接管」下每位 Agent 的权重都是 100%，看着一模一样，
@@ -199,7 +304,7 @@ function goAI(stock) {
               v-for="stock in pageStocks"
               :key="stock.code"
               :class="{ selected: selectedCode === stock.code }"
-              @click="selectedCode = stock.code"
+              @click="openDialog(stock.code)"
             >
               <td><span :class="`rank rank-${stock.rank}`">{{ stock.rank }}</span></td>
               <td><strong>{{ stock.name }}</strong><small>{{ stock.code }}</small></td>
@@ -247,7 +352,7 @@ function goAI(stock) {
           v-for="stock in filtered"
           :key="`${cycle}-${stock.code}`"
           class="top50-mobile-card"
-          @click="selectedCode = stock.code"
+          @click="openDialog(stock.code)"
         >
           <div class="top50-mobile-head">
             <strong>#{{ stock.rank }} {{ stock.name }}</strong>
@@ -262,7 +367,7 @@ function goAI(stock) {
           </div>
           <small>{{ stock.reason || stock.trend }}</small>
           <div class="top50-mobile-actions">
-            <button @click.stop="selectedCode = stock.code">查看详情</button>
+            <button @click.stop="openDialog(stock.code)">查看详情</button>
             <button class="primary" :disabled="!stock.predictionId" @click="openEvidence(stock, $event)">选股证据</button>
           </div>
           <small class="top50-mobile-cutoff">行情日 {{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }} · 失效：{{ stock.invalid || '待更新' }}</small>
@@ -325,53 +430,194 @@ function goAI(stock) {
       </details>
     </main>
 
-    <!-- 个股详情右栏 -->
-    <aside v-if="selected" class="right-rail stock-detail">
-      <div class="stock-detail-head">
-        <div><h2>{{ selected.name }} <small>{{ selected.code }}</small></h2><p>{{ selected.industry }}</p></div>
-        <button aria-label="关闭个股详情" @click="selectedCode = null"><IconX :size="17" /></button>
-      </div>
-      <div class="stock-quote">
-        <strong>{{ selected.price.toFixed(2) }}</strong>
-        <span :class="selected.pct >= 0 ? 'price-up' : 'price-down'">{{ selected.pct >= 0 ? '+' : '' }}{{ selected.pct }}%</span>
-        <small>{{ selected.marketDataDate || '行情截止时间待更新' }}</small>
-      </div>
-      <div class="detail-score-grid">
-        <div><span>TOP50排名</span><strong>#{{ selected.rank }}</strong></div>
-        <div><span>综合分</span><strong>{{ selected.score }}</strong></div>
-        <div><span>方向因子</span><strong>{{ selected.confidence ?? '--' }}/100</strong></div>
-      </div>
-      <div class="detail-section">
-        <h3>策略匹配</h3>
-        <div class="tag-row"><span>{{ cycle }}</span><span>{{ teacherCount }}套因子加权</span><span>AI复核</span></div>
-        <p>持有周期：{{ cycleData?.holdingPeriod || '2—8周' }}</p>
-      </div>
-      <div class="detail-section agent-consensus-detail">
-        <div class="section-line"><h3>{{ cycle }} · {{ teacherCount }}套因子盘前结果</h3><strong>{{ selected.agentVotes ?? selected.consensus ?? 0 }}/{{ teacherCount }}</strong></div>
-        <p>领先Agent：{{ selected.topAgents?.join('、') || '暂无' }}</p>
-        <div class="agent-vote-track"><i :style="{ width: voteBarWidth }" /></div>
-      </div>
-      <div class="detail-section evidence">
-        <div class="section-line"><h3>当前冻结证据</h3><span>{{ selected.marketDataDate || '截止时间待更新' }}</span></div>
-        <ol>
-          <li><b>因子依据</b><p>{{ selected.reason || '真实因子依据待更新' }}</p></li>
-          <li><b>量价状态</b><p>{{ selected.trend || '真实量价状态待更新' }}</p></li>
-          <li><b>估值字段</b><p>{{ selected.valuation || '真实估值字段待更新' }}</p></li>
-        </ol>
-      </div>
-      <div class="detail-section risk-list">
-        <h3>当前风险边界</h3>
-        <p><IconAlertTriangle :size="14" /> 风险等级：{{ selected.risk || '待评估' }}</p>
-        <p><IconAlertTriangle :size="14" /> {{ selected.invalid || '真实失效位待更新' }}</p>
-      </div>
-      <div class="detail-section trade-state">
-        <div><span>交易状态</span><StatusBadge :status="selected.status" /></div>
-        <p><span>建议关注区间</span><b>{{ selected.trigger }}</b></p>
-        <p><span>止损参考</span><b>{{ selected.invalid }}</b></p>
-      </div>
-      <button class="primary-button" @click="goAI(selected)"><IconBrain :size="17" /> 按多策略问AI</button>
-      <p class="disclaimer">本信息仅供研究，不构成投资建议。市场有风险，投资需谨慎。</p>
-    </aside>
+    <!-- 个股决策弹窗（基于 Element Plus el-dialog，内容还原原版 reference-react 的
+         StockDecisionModal + SingleStockDecisionCard）。
+         ⚠️ 与 AILabPage 新建角色 / AccuracyPage 证据弹窗同源：遮罩、Esc、点击遮罩关闭、
+         焦点陷阱、body 滚动锁全由组件接管；容器级样式在 theme.css 6e)。
+         `class="stock-decision-dialog"` 经 EP 的 mergeProps($attrs) 落在 `.el-dialog` 元素上。 -->
+    <el-dialog
+      v-model="dialogOpen"
+      class="stock-decision-dialog"
+      align-center
+      append-to-body
+      :show-close="false"
+      @close="selectedCode = null"
+    >
+      <template v-if="selected" #default>
+        <header class="stock-modal-head">
+          <div class="stock-modal-title">
+            <span>TOP50 · 单股决策</span>
+            <h2 id="stock-decision-title">{{ selected.name }} <small>{{ selected.code }}</small></h2>
+          </div>
+          <div class="stock-modal-actions">
+            <div class="stock-modal-stepper" aria-label="切换股票">
+              <button aria-label="上一只股票" @click="changeSelected(-1)"><IconChevronLeft :size="16" /></button>
+              <span>{{ selectedIndex + 1 }}/{{ rankedStocks.length }}</span>
+              <button aria-label="下一只股票" @click="changeSelected(1)"><IconChevronRight :size="16" /></button>
+            </div>
+            <button :class="['watch-toggle', { watchlisted }]" @click="toggleWatchlist">
+              <IconStar :size="16" :fill="watchlisted ? 'currentColor' : 'none'" />
+              {{ watchlisted ? '已加入自选' : '加入自选股' }}
+            </button>
+            <button class="stock-modal-close" aria-label="关闭单股决策浮层" @click="dialogOpen = false"><IconX :size="18" /></button>
+          </div>
+        </header>
+
+        <div class="stock-data-trust">
+          <span :class="trustFresh ? 'fresh' : 'stale'"><i /> {{ trustLabel }}</span>
+          <span><IconClock :size="13" /> 行情日期 {{ selected.marketDataDate || snapshotMeta?.marketDataDate || '待更新' }}</span>
+          <span><IconDatabase :size="13" /> TOP50生成 {{ formatShanghaiTime(snapshotMeta?.generatedAt) }} · 共享缓存 {{ snapshotMeta?.ttlSeconds || 300 }}秒</span>
+          <span><IconUsersGroup :size="13" /> {{ snapshotMeta?.selectionEngine || `${teacherCount}套可审计因子画像` }} · AI风险复核</span>
+        </div>
+
+        <div v-if="watchlisted" class="watchlist-actionbar">
+          <span><IconCircleCheck :size="14" /><b>自选已保存</b><small>本机保存 · 可同步匿名设备提醒</small></span>
+          <div>
+            <button :class="{ active: followup.price }" @click="toggleFollowup('price')">
+              <IconBell :size="14" /><span>{{ followup.price ? '已开启价格提醒' : '价格提醒' }}<small>{{ selected.trigger }}</small></span>
+            </button>
+            <button :class="{ active: followup.risk }" @click="toggleFollowup('risk')">
+              <IconShieldCheck :size="14" /><span>{{ followup.risk ? '已开启风险预警' : '风险预警' }}<small>{{ selected.invalid }}</small></span>
+            </button>
+            <button :class="{ active: followup.preMarket }" @click="toggleFollowup('preMarket')">
+              <IconClock :size="14" /><span>{{ followup.preMarket ? '已开启盘前复核' : '盘前复核' }}<small>明日 07:20</small></span>
+            </button>
+          </div>
+        </div>
+        <div v-else class="watchlist-prompt"><IconStar :size="14" /> 加入自选后可开启价格提醒、风险预警与盘前复核</div>
+
+        <div class="stock-modal-scroll">
+          <div class="single-stock-workspace">
+            <!-- 左：个股决策卡 -->
+            <article class="benchmark-stock-card" :aria-label="`${selected.name}单股票决策卡`">
+              <header class="benchmark-stock-head">
+                <div>
+                  <h3>{{ selected.name }}<button @click="goPortfolio"><IconBriefcase2 :size="13" /> 模拟买入</button></h3>
+                  <span>{{ selected.code }}</span>
+                  <small>数据来自TOP50冻结行情与{{ teacherCount }}套可审计因子画像；未接入字段显示“--”</small>
+                </div>
+                <div>
+                  <button :class="{ active: tracked }" aria-label="行情追踪开关" @click="tracked = !tracked"><IconTargetArrow :size="16" /></button>
+                  <StatusBadge :status="selected.status" />
+                </div>
+              </header>
+
+              <div class="benchmark-stock-quote">
+                <strong>{{ selected.price.toFixed(2) }}</strong>
+                <span :class="selected.pct >= 0 ? 'price-up' : 'price-down'">
+                  {{ selected.pct >= 0 ? '+' : '' }}{{ selected.pct }}%　{{ selected.pct >= 0 ? '+' : '' }}{{ (selected.price * selected.pct / 100).toFixed(2) }}
+                </span>
+              </div>
+
+              <div class="benchmark-metric-grid">
+                <div>
+                  <span>量比</span>
+                  <strong>{{ monitorMetrics && monitorMetrics.volumeRatio == null ? '--' : monitorMetrics.volumeRatio.toFixed(2) }}</strong>
+                  <small>{{ monitorMetrics && monitorMetrics.volumeRatio == null ? '数据未提供' : monitorMetrics.volumeRatio >= 1.8 ? '明显放量' : '正常区间' }}</small>
+                </div>
+                <div>
+                  <span>换手率</span>
+                  <strong>{{ monitorMetrics && monitorMetrics.turnover == null ? '--' : `${monitorMetrics.turnover.toFixed(2)}%` }}</strong>
+                  <small>{{ monitorMetrics && monitorMetrics.turnover == null ? '数据未提供' : monitorMetrics.turnover > 2 ? '较活跃' : '正常区间' }}</small>
+                </div>
+                <div><span>成交额</span><strong>{{ monitorMetrics?.amount }}</strong></div>
+                <div><span>振幅 / 市盈率（PE）</span><strong>{{ monitorMetrics?.amplitude }} / {{ monitorMetrics?.pe }}</strong></div>
+              </div>
+
+              <div class="benchmark-average-strip" aria-label="均价指标">
+                <div><span>30日均价</span><strong>--</strong><small>历史数据不足</small></div>
+                <div><span>60日均价</span><strong>--</strong><small>历史数据不足</small></div>
+                <div><span>今日分时均价</span><strong>--</strong><small>当前行情未覆盖</small></div>
+              </div>
+
+              <div class="benchmark-signal"><IconActivity :size="15" /><span>量价信号</span><strong>{{ monitorMetrics?.signal }}</strong></div>
+
+              <section class="benchmark-decision-block">
+                <div class="benchmark-block-head"><span><IconTrendingUp :size="14" /> {{ recommendation }}</span><strong>{{ selected.score }}分</strong></div>
+                <div class="benchmark-power-track"><i :style="{ width: powerTrackWidth }" /><b :style="{ width: powerTrackRest }" /></div>
+                <div class="benchmark-power-labels"><span>{{ displayConsensus }}/{{ teacherCount }} 因子支持</span><span>{{ teacherCount - displayConsensus }}/{{ teacherCount }}未达支持线</span></div>
+                <div class="benchmark-factor-tags">
+                  <span>画像均分 {{ selected.agentAverage ?? '--' }}</span>
+                  <span>{{ monitorMetrics?.signal }}</span>
+                  <span>风险 {{ selected.risk || '--' }}</span>
+                </div>
+              </section>
+
+              <section class="benchmark-prediction-block">
+                <div class="benchmark-block-head"><span><IconTargetArrow :size="14" /> 冻结方向因子 <b>{{ trendLabel }}</b></span><strong>因子 {{ monitorMetrics?.confidence == null ? '--' : `${monitorMetrics.confidence}/100` }}</strong></div>
+                <div class="benchmark-prediction-body">
+                  <div class="benchmark-gauge">
+                    <svg viewBox="0 0 120 66" role="img" aria-label="方向因子概率">
+                      <path
+                        v-for="(seg, i) in gaugeArcs"
+                        :key="i"
+                        :d="seg.d"
+                        :stroke="seg.color"
+                        stroke-width="11"
+                        fill="none"
+                        stroke-linecap="butt"
+                      />
+                      <text x="60" y="58" text-anchor="middle" class="benchmark-gauge-value">{{ monitorMetrics?.upProb ?? '--' }}</text>
+                    </svg>
+                  </div>
+                  <div class="benchmark-probabilities">
+                    <div><span>{{ monitorMetrics?.upProb == null ? '--' : `${monitorMetrics.upProb}/100` }}</span><i><b :style="{ width: `${monitorMetrics?.upProb || 0}%` }" /></i><small>看多因子</small></div>
+                    <div><span>{{ monitorMetrics?.upProb == null ? '--' : `${100 - monitorMetrics.upProb}/100` }}</span><i><b :style="{ width: `${monitorMetrics?.upProb == null ? 0 : 100 - monitorMetrics.upProb}%` }" /></i><small>反向因子</small></div>
+                  </div>
+                </div>
+                <p><strong>{{ monitorMetrics?.upProb == null ? '暂无因子' : `${monitorMetrics.upProb}/100` }}</strong> · 规则评分，未经概率校准，不是胜率或准确率</p>
+                <div class="benchmark-prediction-factors">
+                  <span><IconCircleCheck :size="13" /> {{ displayConsensus }}/{{ teacherCount }} 因子支持</span>
+                  <span><IconCircleCheck :size="13" /> {{ monitorMetrics?.signal }}</span>
+                  <span :class="selected.risk === '低' ? '' : 'warn'"><IconAlertTriangle :size="13" /> {{ selected.risk === '低' ? '尾盘承接积极' : '谨防追高' }}</span>
+                </div>
+              </section>
+
+              <section class="benchmark-flow-block warn">
+                <div class="benchmark-block-head"><span><IconBriefcase2 :size="14" /> 资金流向</span><strong>{{ tracked ? '追踪中' : '未追踪' }}</strong></div>
+                <p>当前数据源未提供可核验的主力净流入与峰值数据，不作推算。</p>
+              </section>
+
+              <section class="benchmark-tracking-block">
+                <div class="benchmark-block-head"><span><IconTargetArrow :size="14" /> 行情追踪</span><strong>冻结快照</strong></div>
+                <p>当日高 {{ Number.isFinite(Number(selected.high)) ? Number(selected.high).toFixed(2) : '--' }}　|　当日低 {{ Number.isFinite(Number(selected.low)) ? Number(selected.low).toFixed(2) : '--' }}</p>
+                <p>成交额 <b>{{ monitorMetrics?.amount }}</b>　振幅 <b>{{ monitorMetrics?.amplitude }}</b></p>
+              </section>
+
+              <footer class="benchmark-stock-actions">
+                <button @click="goAI(selected)"><IconBrain :size="14" /> 问AI复核</button>
+                <button @click="openFullAnalysis(selected)"><IconFileAnalytics :size="14" /> 完整分析</button>
+                <button class="primary-button" @click="goPortfolio"><IconBriefcase2 :size="14" /> 模拟交易</button>
+              </footer>
+            </article>
+
+            <!-- 右：决策增强层 -->
+            <aside class="single-stock-context">
+              <section>
+                <div class="single-context-head"><span>我们的决策增强层</span><StatusBadge :status="selected.status" /></div>
+                <h3>{{ teacherCount }}套因子画像</h3>
+                <div class="single-agent-score"><strong>{{ displayConsensus }}/{{ teacherCount }}</strong><span>看多</span><i><b :style="{ width: powerTrackWidth }" /></i></div>
+                <p>AI不决定排名，只汇总老师证据并检查风险边界。</p>
+              </section>
+              <section>
+                <h3>核心证据</h3>
+                <ol>
+                  <li><IconCircleCheck :size="14" /><span><strong>产业与基本面</strong>{{ selected.reason }}</span></li>
+                  <li><IconCircleCheck :size="14" /><span><strong>量价与流动性</strong>{{ monitorMetrics?.signal }}，成交额 {{ monitorMetrics?.amount }}</span></li>
+                  <li><IconCircleCheck :size="14" /><span><strong>估值与赔率</strong>{{ selected.valuation }}，综合分 {{ selected.score }}</span></li>
+                </ol>
+              </section>
+              <section class="single-risk-discipline">
+                <h3>风险纪律</h3>
+                <p><span>允许动作</span><strong>{{ selected.status === '可试仓' ? '回踩试仓 · 单笔≤5%' : '等待确认 · 不追价' }}</strong></p>
+                <p><span>触发条件</span><strong>{{ selected.trigger }}</strong></p>
+                <p><span>失效条件</span><strong class="price-down">{{ selected.invalid }}</strong></p>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
 
     <!-- 冻结选股证据 -->
     <div
