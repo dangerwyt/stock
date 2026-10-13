@@ -32,6 +32,8 @@ backend/app/agent_docs/
 backend/app/data/job_runs.json
 backend/app/data/top50_snapshot.json
 backend/app/data/market_snapshot.json
+# 每日定时任务汇总 MD（scheduler-summary --out-dir 默认产物）：运行态产物，不入库
+backend/app/data/summaries/
 
 # ---------- Python ----------
 __pycache__/
