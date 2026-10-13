@@ -28,9 +28,10 @@ backend/app/data/custom_agents.json
 backend/app/data/ai_threads.json
 backend/app/data/agent_docs/
 backend/app/agent_docs/
-# 调度去重锁 / TOP50 快照：纯运行态，删了顶多重跑一次，不该入库
+# 调度去重锁 / TOP50 快照 / 收盘行情快照：纯运行态，删了顶多重跑一次，不该入库
 backend/app/data/job_runs.json
 backend/app/data/top50_snapshot.json
+backend/app/data/market_snapshot.json
 
 # ---------- Python ----------
 __pycache__/

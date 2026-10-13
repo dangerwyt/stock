@@ -5,7 +5,9 @@ render identical business content.
 """
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -20,6 +22,21 @@ from app import agents
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# post-close 调度任务落盘的真实收盘行情快照（仅当与当前数据窗口的交易日一致时才优先服务，
+# 否则回落静态 fixtures，避免用旧值冒充实时）。
+# ⚠️ 本文件在 ``app/routers/`` 下，数据目录在上一级 ``app/data``，所以是 ``.parent.parent``。
+_MARKET_SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "data" / "market_snapshot.json"
+
+
+def _load_market_snapshot() -> dict | None:
+    if not _MARKET_SNAPSHOT_PATH.exists():
+        return None
+    try:
+        data = json.loads(_MARKET_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _live_session() -> dict:
@@ -46,6 +63,16 @@ def status():
 
 @router.get("/api/market")
 def market(refresh: int = 0):
+    """行情快照：优先服务 post-close 落盘的真实收盘行情，否则回落 fixtures 静态样例。
+
+    ⚠️ 只在本进程已拉过当天行情（``_LATEST_CACHE.trade_date`` 指向当前窗口交易日）且
+    快照的 ``tradeDate`` 与之相符时才用真实数据；其余情况一律回落 fixtures，决不用旧值冒充。
+    """
+    snapshot = _load_market_snapshot()
+    if snapshot:
+        latest = tushare_client._LATEST_CACHE.get("trade_date")
+        if snapshot.get("meta", {}).get("tradeDate") == latest:
+            return snapshot
     return fixtures.load("market")
 
 
