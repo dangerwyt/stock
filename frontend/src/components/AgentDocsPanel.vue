@@ -33,9 +33,18 @@ const agentId = computed(() => props.agent?.id || null)
 const running = computed(() => extraction.value?.status === 'running')
 
 // 后端会把「与股票财经无关」的资料标成 rejected：仍然留档可查，但不参与画像提炼。
+// ⚠️ 但 OCR/解析失败的资料也是 status=rejected 且带 error——这两类必须分开显示，
+// 否则会把"服务端缺 rapidocr"之类的识别失败误标成"与股票财经无关"（曾误导排查）。
 const isRejected = (doc) => String(doc?.status || '').toLowerCase() === 'rejected'
+// 识别/解析失败：ocrStatus=failed 或带 error（与"内容不相关"是两回事）。
+const isOcrFailed = (doc) =>
+  String(doc?.ocrStatus || '').toLowerCase() === 'failed' || !!doc?.error
 const effectiveDocuments = computed(() => documents.value.filter((doc) => !isRejected(doc)))
-const rejectedDocuments = computed(() => documents.value.filter(isRejected))
+// 真正"因内容不相关被过滤"的（不含 OCR 失败的）。
+const relevanceRejectedDocuments = computed(() =>
+  documents.value.filter((doc) => isRejected(doc) && !doc?.error),
+)
+const failedDocuments = computed(() => documents.value.filter(isOcrFailed))
 // 图片 / 扫描件 PDF 在后台 OCR 中（ocrStatus=pending）：此时文本未就绪，
 // 不应允许「提炼画像」，否则会漏掉这份资料。轮询（schedulePoll）会在 OCR 完成后翻回 ready。
 const hasPending = computed(() => documents.value.some((doc) => doc.ocrStatus === 'pending'))
@@ -49,14 +58,23 @@ const documentStatus = computed(() => {
     return '上传 PDF / MD / TXT / 图片（研报截图、扫描件）研究资料，AI 会据此提炼该角色的策略画像；图片与扫描件 PDF 会自动 OCR 提取文字；此角色会话中的问答会作为补充线索一并参考。'
   }
   const parts = []
-  parts.push(
-    effectiveDocuments.value.length
-      ? `已上传 ${effectiveDocuments.value.length} 份资料，可提炼画像。`
-      : '已上传的资料均与股票财经无关，无法用于提炼。',
-  )
-  if (rejectedDocuments.value.length) {
-    const names = rejectedDocuments.value.map((doc) => doc.filename).join('、')
-    parts.push(`另有 ${rejectedDocuments.value.length} 份因与股票财经无关被排除：${names}。`)
+  if (effectiveDocuments.value.length) {
+    parts.push(`已上传 ${effectiveDocuments.value.length} 份资料，可提炼画像。`)
+  } else if (failedDocuments.value.length && !relevanceRejectedDocuments.value.length) {
+    parts.push('已上传的资料均识别失败，无法用于提炼。')
+  } else if (relevanceRejectedDocuments.value.length && !failedDocuments.value.length) {
+    parts.push('已上传的资料均与股票财经无关，无法用于提炼。')
+  } else {
+    parts.push('已上传的资料均无法用于提炼。')
+  }
+  if (failedDocuments.value.length) {
+    const names = failedDocuments.value.map((doc) => doc.filename).join('、')
+    const err = failedDocuments.value[0]?.error || '识别失败'
+    parts.push(`另有 ${failedDocuments.value.length} 份识别失败（${names}）：${err}`)
+  }
+  if (relevanceRejectedDocuments.value.length) {
+    const names = relevanceRejectedDocuments.value.map((doc) => doc.filename).join('、')
+    parts.push(`另有 ${relevanceRejectedDocuments.value.length} 份因与股票财经无关被排除：${names}。`)
   }
   return parts.join('')
 })
@@ -121,9 +139,13 @@ async function onPick(event) {
     form.append('file', file)
     try {
       const { data } = await http.post(`/api/agents/${agentId.value}/documents`, form)
-      // 后端判为与股票财经无关：文件已留档，但不会参与画像提炼。
+      // 后端判为 rejected：可能是"内容不相关"，也可能是"识别失败"（带 error）。
       if (data?.document && String(data.document.status).toLowerCase() === 'rejected') {
-        rejected.push(`${file.name}（${data.document.relevanceReason || '与股票财经无关'}）`)
+        if (data.document.error) {
+          rejected.push(`${file.name}（识别失败：${data.document.error}）`)
+        } else {
+          rejected.push(`${file.name}（${data.document.relevanceReason || '与股票财经无关'}）`)
+        }
       }
     } catch (e) {
       error.value = `${file.name}：${e?.response?.data?.detail || '上传失败'}`

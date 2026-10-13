@@ -27,6 +27,12 @@ logger = logging.getLogger(__name__)
 HEAD_CHARS = 3000
 TAIL_CHARS = 1000
 
+# A 股 / ETF 代码格式（6 位数字 + 交易所后缀，或前缀写法）。用于相关性判定的
+# 「硬通过」护栏：文本里出现这种代码就直接判为股票相关资料，跳过 LLM 判定。
+# 避免 OCR / LLM 在不同环境（本地 vs Mac）表现不一致时，把明显相关的研报（如
+# 含 600519.SH 的茅台研报）错拒。该格式几乎只出现在 A 股 / ETF 场景，误判风险极低。
+_STOCK_CODE_RE = re.compile(r"\d{6}\.(?:SH|SZ|BJ)|(?:SH|SZ|BJ)\d{6}", re.IGNORECASE)
+
 # 段落太少 / 太短就不值得跑一次筛选调用。
 MIN_SECTIONS_FOR_PRUNE = 4
 MIN_CHARS_FOR_PRUNE = 400
@@ -88,6 +94,11 @@ def judge_document(filename: str, text: str) -> tuple[bool, str]:
     sample = _sample(text)
     if not sample:
         return True, ""
+
+    # 硬通过护栏：文本含 A 股 / ETF 代码即视为股票相关资料，跳过 LLM 判定。
+    # 这是环境无关的强信号——茅台研报必含 600519.SH，任何部署都不会被错拒。
+    if _STOCK_CODE_RE.search(text):
+        return True, "含 A 股代码，硬判定为股票相关资料"
 
     messages = [
         {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
