@@ -45,6 +45,10 @@ const selectedAgentNames = ref([])
 // 不再自己维护输入框的 query —— remote 模式下查询词由 el-select 的 remote-method 传进来。
 const stockResults = ref([])
 const stockSearchState = ref('idle')
+// 后端 /api/stocks/search 在 Tushare 未配置/不可达时返回 503，body 里带真实原因
+// （如 "TUSHARE_TOKEN 未配置" / "HTTP 401" / "请求失败 (ConnectError)"）。把它透出来，
+// 否则 Mac 上只看到一句"行情搜索暂不可用"，排查要翻容器日志，黑盒。
+const stockSearchError = ref('')
 // —— 通用研究会话的「选择角色」（多选）——
 // 只决定"这一问由谁回答"，**不是**把整条会话绑定给角色（会话本身仍不挂在任何角色
 // 名下，后端 threads._belongs_to 也仍把它排除在"整条认领"之外）。
@@ -207,7 +211,10 @@ function stockOptionLabel(item) {
 // loading 态 EP 自己会显示 loading-text，这里兜住"还没输入 / 没结果 / 接口挂了"三种。
 const stockEmptyText = computed(() => {
   if (stockSearchState.value === 'loading') return '正在搜索全市场A股…'
-  if (stockSearchState.value === 'error') return '行情搜索暂不可用，请检查Tushare数据源。'
+  if (stockSearchState.value === 'error')
+    return stockSearchError.value
+      ? `行情搜索暂不可用：${stockSearchError.value}`
+      : '行情搜索暂不可用，请检查Tushare数据源。'
   if (stockSearchState.value === 'ready') return '没有匹配的上市A股。'
   return '输入股票代码或名称，例如 603893 / 瑞芯微'
 })
@@ -319,8 +326,10 @@ function runStockSearch(query) {
       if (seq !== stockSearchSeq) return
       stockResults.value = result.items || []
       stockSearchState.value = 'ready'
-    } catch {
+    } catch (err) {
       if (seq !== stockSearchSeq) return
+      // 抓后端 503 body 里的真实原因（axios 把它放在 err.response.data.error）。
+      stockSearchError.value = err?.response?.data?.error || ''
       stockSearchState.value = 'error'
     }
   }, 250)

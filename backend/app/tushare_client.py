@@ -220,7 +220,9 @@ async def _call(
             errors.append(f"备用: {exc}")
     raise TushareError(
         "；".join(errors)
-        or "TUSHARE_TOKEN 未配置：按「必须实时」策略拒绝回落假数据，请在 .env 填入后重试。"
+        or "TUSHARE_TOKEN 未配置：按「必须实时」策略拒绝回落假数据。"
+        "请在仓库根目录 .env 填入 TUSHARE_TOKEN / TUSHARE_API_URL / TUSHARE_VERIFY_SSL=false"
+        "（Docker 部署需改完 .env 后 `docker compose up -d` 重新注入环境变量，光改文件不重启不生效）。"
     )
 
 
