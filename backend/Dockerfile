@@ -16,6 +16,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# OpenCV（rapidocr 的依赖，GUI 版 opencv-python）在 Debian slim 里缺 libGL 等系统库，
+# 运行时 import cv2 会抛 ImportError，被 documents.py 当成"缺少 rapidocr"误报、且 OCR 直接废掉。
+# 装齐 OpenCV 运行所需的最小系统库集（slim 镜像默认不带 X11/OpenGL 库）。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # 先装依赖再拷代码：改了业务代码不会让依赖层缓存失效
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

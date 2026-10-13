@@ -101,7 +101,10 @@ def _ocr_engine():
         try:
             from rapidocr_onnxruntime import RapidOCR
         except ImportError as exc:  # pragma: no cover - dependency guard
-            raise DocumentError("服务端缺少 rapidocr-onnxruntime，无法识别图片/扫描件") from exc
+            raise DocumentError(
+                "服务端 OCR 依赖未就绪（rapidocr-onnxruntime/opencv 未安装，"
+                "或 Debian 镜像缺 libGL 等系统库），无法识别图片/扫描件"
+            ) from exc
         _OCR_ENGINE = RapidOCR()
     return _OCR_ENGINE
 
