@@ -3,7 +3,11 @@
 # ⚠️ 必须单 worker：定时任务（每天 9:00 自动提炼画像）跑在进程内的 AsyncIOScheduler 上，
 # 多 worker 会变成「每个 worker 各跑一遍」，同一批角色被重复塞进模型。
 # 也正因为如此这里不用 gunicorn 多进程，直接 uvicorn 单进程。
-FROM python:3.13-slim
+#
+# ⚠️ 基镜像锁 3.12，不是 3.13：OCR 依赖 rapidocr-onnxruntime==1.4.4 的
+# Requires-Python 是 >=3.6,<3.13，在 3.13 上装不上（本 PyPI 镜像能装的版本
+# 又要求 <3.12）。保持 3.12 才能让 OCR 跑起来。其余依赖均兼容 3.12。
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
