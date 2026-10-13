@@ -9,9 +9,10 @@
 用途（每个 slot 的 用途 取自下面的 ``PURPOSE``，与轮次表一一对应）。
 
 用法：
-    python scripts/scheduler-summary.py                # 默认：上海时区前一天
+    python scripts/scheduler-summary.py                # 默认：上海时区前一天，打印到 stdout
     python scripts/scheduler-summary.py --date 2026-10-12
     python scripts/scheduler-summary.py --out report.md
+    python scripts/scheduler-summary.py --out-dir docs/scheduler-summary   # 自动写 <date>.md
 
 说明：非交易日调度只跑 ``CLOSED_ROUNDS``（仅 global-news），但本脚本默认按完整交易日
 轮次表输出，未运行的槽会显示为「未执行」——这正是"昨天哪些没跑起来"的有用信号。
@@ -147,6 +148,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="定时任务运行汇总（Markdown）")
     ap.add_argument("--date", help="目标日期 YYYY-MM-DD（默认：前一天）")
     ap.add_argument("--out", help="输出 .md 文件路径（默认打印到 stdout）")
+    ap.add_argument("--out-dir", help="输出目录，自动以 <date>.md 命名（与 --out 互斥，给 cron/launchd 用）")
     ap.add_argument("--closed", action="store_true", help="按非交易日轮次表输出")
     args = ap.parse_args()
 
@@ -163,6 +165,12 @@ def main() -> None:
     if args.out:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(md, encoding="utf-8")
+        print(f"已写入 {out}（{len(md.splitlines())} 行）")
+    elif args.out_dir:
+        out_dir = Path(args.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out = out_dir / f"{date}.md"
         out.write_text(md, encoding="utf-8")
         print(f"已写入 {out}（{len(md.splitlines())} 行）")
     else:
