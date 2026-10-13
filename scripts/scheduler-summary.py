@@ -29,7 +29,27 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.market_schedule import TRADING_ROUNDS, CLOSED_ROUNDS  # noqa: E402
+# 用 AST 直接从 market_schedule.py 抽出两张轮次表，避免触发
+# ``market_schedule → job_runs → config → pydantic_settings`` 的重导入链，
+# 这样脚本在没装后端依赖的机器上也能独立跑。market_schedule.py 仍是唯一数据源。
+def _load_rounds() -> tuple[list, list]:
+    import ast
+
+    src = (ROOT / "backend" / "app" / "market_schedule.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    found: dict[str, list] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name) and tgt.id in ("TRADING_ROUNDS", "CLOSED_ROUNDS"):
+                    found[tgt.id] = ast.literal_eval(node.value)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.target.id in ("TRADING_ROUNDS", "CLOSED_ROUNDS") and node.value is not None:
+                found[node.target.id] = ast.literal_eval(node.value)
+    return found["TRADING_ROUNDS"], found["CLOSED_ROUNDS"]
+
+
+TRADING_ROUNDS, CLOSED_ROUNDS = _load_rounds()
 
 # 每个 (slot, job) 的用途，与轮次表一一对应。
 PURPOSE: dict[str, str] = {
