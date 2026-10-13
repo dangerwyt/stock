@@ -26,6 +26,12 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+try:
+    from zoneinfo import ZoneInfo
+
+    _SHANGHAI = ZoneInfo("Asia/Shanghai")
+except Exception:  # noqa: BLE001 - 极少数环境（如未装 tzdata 的 Windows）缺时区数据，回落系统本地时间
+    _SHANGHAI = None
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
@@ -107,7 +113,11 @@ def load_job_runs(path: Path) -> dict:
 
 
 def target_date(arg_date: str | None) -> str:
-    """返回 YYYY-MM-DD。默认：本地前一天（在 Asia/Shanghai 主机上即上海时区前一天）。
+    """返回 YYYY-MM-DD。
+
+    默认：上海时区的**前一天**（与后端 ``market_clock`` 锁键口径一致，不依赖运行机系统 TZ）。
+    这样无论 Mac/服务器系统时钟是什么时区，生成的文件名都和被后端写进 ``job_runs.json``
+    的锁键日期对齐，不会出现"深夜跑脚本差一天"的错位。
 
     注意：``job_runs.json`` 的锁键用的是**连字符**日期（``job:2026-10-12:...``），
     所以这里也用连字符格式去拼 key，否则会全部匹配不到。
@@ -115,8 +125,17 @@ def target_date(arg_date: str | None) -> str:
     if arg_date:
         d = arg_date.replace("-", "")
         return f"{d[:4]}-{d[4:6]}-{d[6:8]}"
-    prev = datetime.now() - timedelta(days=1)
-    return prev.strftime("%Y-%m-%d")
+    if _SHANGHAI is not None:
+        now = datetime.now(_SHANGHAI)
+    else:
+        # 极少数环境（如未装 tzdata 的 Windows）拿不到上海时区，回落系统本地时间并告警。
+        print(
+            "⚠️ 环境缺少 Asia/Shanghai 时区数据，'昨天'按系统本地时间计算；"
+            "若系统 TZ 非上海，文件名可能与后端锁键日期差一天。",
+            file=sys.stderr,
+        )
+        now = datetime.now()
+    return (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def build_markdown(date: str, rounds: list[tuple[str, list[str]]], locks: dict) -> str:
