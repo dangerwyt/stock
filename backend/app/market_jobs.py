@@ -242,13 +242,23 @@ async def _job_post_close() -> dict:
     if not rows:
         return {"status": "unavailable", "sourceMode": "none", "reason": "收盘行情为空"}
 
+    # 联接股票名称：复用 stock_basic 全市场池（24h 进程内缓存，与搜索/榜单同源，零额外额度）。
+    # 名称池极端情况下拉取失败（行情可用但名称池冷缓存未命中且接口抖动）时降级为空串，
+    # 不因此丢掉已落盘的真实行情。
+    name_by: dict[str, str] = {}
+    try:
+        universe = await tushare_client._stock_basic_universe()
+        name_by = {str(it.get("tsCode") or ""): (it.get("name") or "") for it in universe}
+    except tushare_client.TushareError:
+        logger.warning("post-close 名称池拉取失败，快照将以空名称落盘（行情仍有效）")
+
     quotes = []
     for row in rows:
         ts_code = str(row.get("ts_code") or "")
         quotes.append({
             "tsCode": ts_code,
             "code": ts_code.split(".")[0],
-            "name": "",
+            "name": name_by.get(ts_code, ""),
             "price": _num(row.get("close")),
             "open": _num(row.get("open")),
             "high": _num(row.get("high")),
