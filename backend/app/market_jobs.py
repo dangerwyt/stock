@@ -8,7 +8,11 @@
 首批已落地（用户选定）：``top50`` / ``global-news`` / ``intraday-news`` / ``market-close``，
 外加把 v2 已有的画像巡回复用为 ``teacher-distillation``。
 
-本轮补上 3 个此前 ``stubbed`` 的 job：``us-etf-map`` / ``post-close`` / ``accuracy``。
+此前补上 ``us-etf-map`` / ``post-close`` / ``accuracy``；本轮再补上 ``opening-auction`` /
+``market-pulse`` / ``midday-review`` —— 至此轮次表（``TRADING_ROUNDS``）里引用的 job 已全部移植，
+不再有 ``stubbed``。这三者（集合竞价 / 盘中异动 / 午间复核）本属**实时盘中**范畴，v2 当前
+只有 EOD ``daily`` 源，因此一律基于「最近交易日行情快照」做统计并诚实标 ``sourceMode: cached``，
+**不伪造**实时盘中流。
 
 ⚠️ 口径提醒：这些 job 把数据搬进各自模块的缓存（TOP50 快照、资讯快照、最近交易日
 全市场行情）。**「最近交易日全市场行情」是多 job 共用的**：``top50`` 与 ``market-close``
@@ -42,6 +46,9 @@ PORTED = (
     "us-etf-map",
     "post-close",
     "accuracy",
+    "opening-auction",
+    "market-pulse",
+    "midday-review",
 )
 
 # job 名 → 运行记录里的 component（对齐 v1 runJob 的归类，便于运维侧按板块聚合）。
@@ -53,6 +60,7 @@ COMPONENT = {
     "market-pulse": "market",
     "market-close": "market",
     "post-close": "market",
+    "midday-review": "market",
     "intraday-news": "news",
     "global-news": "news",
     "teacher-distillation": "ai",
@@ -274,6 +282,134 @@ async def _job_post_close() -> dict:
     }
 
 
+async def _job_opening_auction() -> dict:
+    """集合竞价行情采集：用最近交易日 daily 的「开盘价 vs 昨收」刻画集合竞价结果。
+
+    真实盘中集合竞价（9:15-9:25 的 ``rt_k``/auction 流）v2 尚未接入，所以这里**不伪造**实时
+    竞价流，而是基于最近交易日行情快照的开盘数据做统计，诚实标 ``sourceMode: cached``。
+    """
+    try:
+        trade_date, rows = await tushare_client._latest_market_trade_date()
+    except tushare_client.TushareError as exc:
+        return {"status": "unavailable", "sourceMode": "none", "reason": f"行情不可用：{exc}"}
+    if not rows:
+        return {"status": "unavailable", "sourceMode": "none", "reason": "行情为空"}
+    gap_up = gap_down = flat = 0
+    samples = []
+    for row in rows:
+        pre = _num(row.get("pre_close"))
+        op = _num(row.get("open"))
+        if pre in (None, 0) or op is None:
+            flat += 1
+            continue
+        gap = (op / pre - 1) * 100
+        if gap > 0:
+            gap_up += 1
+        elif gap < 0:
+            gap_down += 1
+        else:
+            flat += 1
+        samples.append((str(row.get("ts_code") or ""), round(gap, 3)))
+    samples.sort(key=lambda item: item[1], reverse=True)
+    return {
+        "status": "completed",
+        "sourceMode": "cached",
+        "tradeDate": trade_date,
+        "universe": len(rows),
+        "gapUp": gap_up,
+        "gapDown": gap_down,
+        "flat": flat,
+        "topGapUp": [{"tsCode": code, "gapPct": gap} for code, gap in samples[:5]],
+        "reason": "基于最近交易日开盘快照（尚无实时集合竞价源）",
+    }
+
+
+async def _job_market_pulse() -> dict:
+    """盘中异动和行情监控：基于最近交易日行情快照统计涨跌家数与振幅榜。
+
+    真实盘中异动（``rt_k`` 实时流）v2 尚未接入，这里**不伪造**盘中推送，只基于最近交易日
+    行情快照做统计，诚实标 ``sourceMode: cached``。
+    """
+    try:
+        trade_date, rows = await tushare_client._latest_market_trade_date()
+    except tushare_client.TushareError as exc:
+        return {"status": "unavailable", "sourceMode": "none", "reason": f"行情不可用：{exc}"}
+    if not rows:
+        return {"status": "unavailable", "sourceMode": "none", "reason": "行情为空"}
+    stats = _daily_market_stats(rows)
+    return {
+        "status": "completed",
+        "sourceMode": "cached",
+        "tradeDate": trade_date,
+        "universe": stats["total"],
+        "advancing": stats["advancing"],
+        "declining": stats["declining"],
+        "flat": stats["flat"],
+        "avgChange": stats["avgChange"],
+        "topGainers": stats["topGainers"],
+        "topLosers": stats["topLosers"],
+        "reason": "基于最近交易日行情快照（尚无实时盘中源）",
+    }
+
+
+async def _job_midday_review() -> dict:
+    """午间复核：基于最近交易日行情快照给出午间复盘汇总（涨跌家数 + 振幅榜 + 均价）。"""
+    try:
+        trade_date, rows = await tushare_client._latest_market_trade_date()
+    except tushare_client.TushareError as exc:
+        return {"status": "unavailable", "sourceMode": "none", "reason": f"行情不可用：{exc}"}
+    if not rows:
+        return {"status": "unavailable", "sourceMode": "none", "reason": "行情为空"}
+    stats = _daily_market_stats(rows)
+    breadth = (stats["advancing"] / stats["total"] * 100) if stats["total"] else 0.0
+    return {
+        "status": "completed",
+        "sourceMode": "cached",
+        "tradeDate": trade_date,
+        "universe": stats["total"],
+        "advancing": stats["advancing"],
+        "declining": stats["declining"],
+        "flat": stats["flat"],
+        "breadthPct": round(breadth, 2),
+        "avgChange": stats["avgChange"],
+        "topGainers": stats["topGainers"],
+        "topLosers": stats["topLosers"],
+        "reason": "基于最近交易日行情快照（尚无实时盘中源）",
+    }
+
+
+def _daily_market_stats(rows: list[dict]) -> dict:
+    """从最近交易日 daily 行计算基础统计（真实数据，窗口缓存复用）。"""
+    total = advancing = declining = flat = 0
+    change_sum = 0.0
+    movers: list[tuple[str, float]] = []
+    for row in rows:
+        total += 1
+        pct = _num(row.get("pct_chg"))
+        if pct is not None:
+            change_sum += pct
+            if pct > 0:
+                advancing += 1
+            elif pct < 0:
+                declining += 1
+            else:
+                flat += 1
+            movers.append((str(row.get("ts_code") or ""), pct))
+        else:
+            flat += 1
+    avg_change = (change_sum / total) if total else 0.0
+    movers.sort(key=lambda item: item[1], reverse=True)
+    return {
+        "total": total,
+        "advancing": advancing,
+        "declining": declining,
+        "flat": flat,
+        "avgChange": round(avg_change, 3),
+        "topGainers": [{"tsCode": code, "pctChg": pct} for code, pct in movers[:5]],
+        "topLosers": [{"tsCode": code, "pctChg": pct} for code, pct in movers[-5:][::-1]],
+    }
+
+
 async def _job_stub(name: str) -> dict:
     return {"status": "stubbed", "reason": f"job「{name}」尚未移植，本轮仅登记"}
 
@@ -296,6 +432,12 @@ async def run_job(name: str) -> dict:
         result = await _job_post_close()
     elif name == "accuracy":
         result = await _job_accuracy()
+    elif name == "opening-auction":
+        result = await _job_opening_auction()
+    elif name == "market-pulse":
+        result = await _job_market_pulse()
+    elif name == "midday-review":
+        result = await _job_midday_review()
     else:
         result = await _job_stub(name)
     result = {**result, "durationMs": int((time.time() - started) * 1000)}

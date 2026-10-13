@@ -34,6 +34,14 @@ _UNIVERSE_TTL_SECONDS = 24 * 3600
 _UNIVERSE: dict[str, Any] = {"at": 0.0, "data": None}
 _UNIVERSE_LOCK = asyncio.Lock()
 
+# 单只股票快照缓存（用户反复点同一只股票做分析时，原实现每次都打 3 次 Tushare：
+# stock_basic + daily + daily_basic）。这是「按调用次数计费」下最大的真实漏点，
+# 加一层短 TTL 缓存即可（EOD 数据日内不变，5 分钟足够）。**纯缓存、不碰调度**，
+# 不会和定时任务抢额度、也不改变「调度是唯一拉数方」的模型。
+_SNAPSHOT_TTL_SECONDS = 300
+_SNAPSHOT_CACHE: dict[str, tuple[float, dict]] = {}
+_SNAPSHOT_LOCK = asyncio.Lock()
+
 # 「最近交易日全市场行情」进程内缓存，键是「数据窗口」（见 ``_data_window``）。
 # 存在的意义：``top50`` job 与 ``market-close`` job（每天 3 轮）拉的**是同一份数据**，
 # 缓存后一天只真拉 2 次（收盘前后各一次），而不是各自重拉。
@@ -262,12 +270,29 @@ async def search_stock_basic(query: str, limit: int = 20) -> list[dict]:
 
 
 async def get_stock_snapshot(code: str) -> dict:
-    """为选中股票实时拉 name/industry + 当日行情 + 估值。
+    """为选中股票实时拉 name/industry + 当日行情 + 估值（带 5 分钟 TTL 缓存）。
 
     返回「纯行情快照」，不含 TOP50 排名/因子（那些来自 fixtures 持仓池，由调用方叠加）。
     前端传来的名称/价格一律不采用——只信 6 位代码，其余从 Tushare 重查。
+
+    缓存：同一只股票 5 分钟内重复分析直接走缓存，省掉 3 次 Tushare 调用（见 ``_SNAPSHOT_TTL_SECONDS``）。
     """
     ts_code = _to_ts_code(code)
+    now = time.time()
+    cached = _SNAPSHOT_CACHE.get(ts_code)
+    if cached is not None and now - cached[0] < _SNAPSHOT_TTL_SECONDS:
+        return cached[1]
+    async with _SNAPSHOT_LOCK:
+        cached = _SNAPSHOT_CACHE.get(ts_code)
+        if cached is not None and time.time() - cached[0] < _SNAPSHOT_TTL_SECONDS:
+            return cached[1]
+        snap = await _build_stock_snapshot(ts_code, code)
+        _SNAPSHOT_CACHE[ts_code] = (time.time(), snap)
+        return snap
+
+
+async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
+    """``get_stock_snapshot`` 的真实拉取逻辑（无缓存层），见该函数缓存说明。"""
     end = datetime.now()
     start = end - timedelta(days=40)
     start_s = _compact(start.strftime("%Y-%m-%d"))
