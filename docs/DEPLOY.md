@@ -209,6 +209,29 @@ tar czf sip-data-$(date +%Y%m%d).tar.gz backend/app/data
 > ⚠️ 服务器上**自建的角色与上传的资料**仍是从零开始的（那才是真正的用户数据，
 > 不入库）—— 需要时自行搬运 `custom_agents.json` 与 `agent_docs/<你的角色id>/`。
 
+#### 清理失败上传 + 还原 12 位老师画像
+
+**症状**：早期容器没装 rapidocr / opencv 时上传的图片会 OCR 失败（`ocrStatus:failed`）。
+而 `add_document` 每次上传都会把该角色的 `profile` 置空、OCR 失败又不会重跑提炼
+→ 12 位老师的画像变 `null` → 引擎要求画像非空才纳入打分，老师们直接退出 TOP50。
+上传了一堆 OCR 失败的图后，用这个脚本还原：
+
+```bash
+# 脚本不在镜像里，cp 进容器再跑（无需 --build）
+docker compose cp scripts/clean_failed_docs.py backend:/tmp/clean_failed_docs.py
+
+# 先看清单（dry-run，不落盘）：会列出每个角色「删 N 份垃圾 / 画像已还原(seed)」
+docker compose exec backend python /tmp/clean_failed_docs.py
+# 确认无误再真正执行
+docker compose exec backend python /tmp/clean_failed_docs.py --apply
+```
+
+- **默认（surgical）**：删掉所有 `ocrStatus:failed` / `status:rejected` 的文档（含 `files/` `texts/` 文件），并把因此变空的画像从种子 `custom_agents.seed.json` 还原，使老师们重新参与 TOP50 打分。非种子角色（自己建的）profile 仍为空 —— 它们需重跑提炼，不强行还原。
+- **`--reset`**：对 12 位种子老师**整份还原**（清空所有上传资料 + 写回种子画像/分数）。想彻底清零上传资料时用 `docker compose exec backend python /tmp/clean_failed_docs.py --reset --apply`。
+- 还原后老师们画像恢复，TOP50 立刻重新纳入；想让画像更贴合你的资料，可在前端对老师们跑一次「提炼画像」，或等每天 00:30 的定时提炼。
+
+> ⚠️ 脚本默认只**删失败/被拒的垃圾**，正常上传（已 `ready`）不受影响；先跑一次 dry-run 看清单最稳。
+
 ### 额度与缓存
 
 Tushare 主源的**日额度很紧**，而全市场拉取（一次 5000+ 行）是最大的消耗点。
