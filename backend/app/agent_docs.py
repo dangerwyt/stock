@@ -228,32 +228,16 @@ def _finalize_document(agent_id: str, doc_id: str, name: str, data: bytes) -> No
     """跑 ``extract_text`` + 相关性判定，回填文档记录与 ``texts/<id>.txt``。
 
     同步路径（纯文本）与后台 OCR 线程共用同一份回填逻辑。
+
+    两段式回填（Fix B）：OCR 文字提取**一成功就立刻**把 ``ocrStatus`` 标 ``ready``
+    并落盘文本，前端「识别中」随即消失（只覆盖真正的 OCR 耗时，约 1-2s）；相关性
+    LLM 判定较慢（最坏 ``llm_timeout_seconds``），改为随后**只更新** ``status``
+    （parsed / rejected），绝不卡在 ``pending``。这样「一直在识别」的感知被根除——
+    无论 LLM 多慢，OCR 完成态立刻可见，相关性结果只是过后补一个 rejected 标记。
     """
+    # 1) OCR / 文本提取：失败才标 failed。
     try:
         document = extract_text(name, data)
-        relevant, reason = True, ""
-        if settings.doc_relevance_enabled:
-            relevant, reason = relevance.judge_document(name, document.text)
-        (agent_dir(agent_id) / "texts" / f"{doc_id}.txt").write_text(
-            document.text, encoding="utf-8"
-        )
-        with _LOCK:
-            meta = _read_meta(agent_id)
-            for item in meta.get("documents") or []:
-                if item.get("id") == doc_id:
-                    item.update(
-                        {
-                            "kind": document.kind,
-                            "chars": document.chars,
-                            "pages": document.pages,
-                            "truncated": document.truncated,
-                            "notes": document.notes,
-                            "ocrStatus": "ready",
-                            "status": "parsed" if relevant else REJECTED_STATUS,
-                            "relevanceReason": None if relevant else (reason or "与股票财经无关"),
-                        }
-                    )
-            _write_meta(agent_id, meta)
     except Exception as exc:  # noqa: BLE001 - 解析/OCR 失败不应让整次上传失败
         err = str(exc)
         logger.warning("文档 %s 提取失败：%s", doc_id, err)
@@ -264,6 +248,49 @@ def _finalize_document(agent_id: str, doc_id: str, name: str, data: bytes) -> No
                     item["ocrStatus"] = "failed"
                     item["status"] = REJECTED_STATUS
                     item["error"] = err[:300]
+            _write_meta(agent_id, meta)
+        return
+
+    # 2) OCR 完成：先落盘文本 + 标 ready（前端立即停止「识别中」），乐观置 status=parsed。
+    try:
+        (agent_dir(agent_id) / "texts" / f"{doc_id}.txt").write_text(
+            document.text, encoding="utf-8"
+        )
+    except OSError as exc:  # 文本落盘失败仅告警，记录本身已标 ready
+        logger.warning("文档 %s 文本落盘失败：%s", doc_id, exc)
+    with _LOCK:
+        meta = _read_meta(agent_id)
+        for item in meta.get("documents") or []:
+            if item.get("id") == doc_id:
+                item.update(
+                    {
+                        "kind": document.kind,
+                        "chars": document.chars,
+                        "pages": document.pages,
+                        "truncated": document.truncated,
+                        "notes": document.notes,
+                        "ocrStatus": "ready",
+                        "status": "parsed",
+                        "relevanceReason": None,
+                    }
+                )
+        _write_meta(agent_id, meta)
+
+    # 3) 相关性判定（可能慢，最多 llm_timeout_seconds）：只更新 status，不阻塞 OCR 完成态。
+    if not settings.doc_relevance_enabled:
+        return
+    try:
+        relevant, reason = relevance.judge_document(name, document.text)
+    except Exception as exc:  # noqa: BLE001 - 判定异常按「相关」放行（见 relevance.py 头部约定）
+        logger.warning("文档 %s 相关性判定异常，按相关处理：%s", doc_id, exc)
+        return
+    if not relevant:
+        with _LOCK:
+            meta = _read_meta(agent_id)
+            for item in meta.get("documents") or []:
+                if item.get("id") == doc_id:
+                    item["status"] = REJECTED_STATUS
+                    item["relevanceReason"] = reason or "与股票财经无关"
             _write_meta(agent_id, meta)
 
 

@@ -98,7 +98,9 @@ async function load() {
 
 function schedulePoll() {
   clearTimeout(pollTimer)
-  if (running.value) pollTimer = setTimeout(load, 2500)
+  // 提炼中（running）或 OCR 中（hasPending）都要持续轮询：否则 OCR 在后台跑完、
+  // 记录已变 ready，前端却再也不 load()，会永久停在"正在识别…"。
+  if (running.value || hasPending.value) pollTimer = setTimeout(load, 2500)
 }
 
 function pick() {
