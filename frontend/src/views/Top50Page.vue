@@ -253,7 +253,7 @@ function goAI(stock) {
     <main class="primary-workspace">
       <!-- 状态条 -->
       <div class="top50-status-bar">
-        <span :class="state === 'ready' ? 'ready' : 'warn'"><i /> {{ state === 'ready' ? '真实冻结榜单' : '正在读取榜单' }}</span>
+        <span :class="state === 'ready' ? 'ready' : 'warn'"><i /> {{ state === 'ready' ? '真实冻结榜单' : state === 'computing' ? '榜单计算中…' : '正在读取榜单' }}</span>
         <span>周期 <strong>{{ cycle }}</strong></span>
         <span>入选 <strong>{{ filtered.length }}只</strong></span>
         <span>榜单日 <strong>{{ snapshot?.meta?.tradeDate || '--' }}</strong></span>

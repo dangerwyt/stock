@@ -52,7 +52,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 120
     llm_max_tokens: int = 3000
     max_document_chars: int = 20000
-    max_upload_mb: int = 5
+    # 上传文件大小上限（所有类型）。OCR 文字提取对扫描件 PDF 体积敏感，
+    # 5MB 太容易触发，调到 50MB 容纳多页扫描件；仍可经环境变量 MAX_UPLOAD_MB 覆盖。
+    max_upload_mb: int = 50
     max_pdf_pages: int = 30
     # 走哪个 LLM 通道：
     #   langchain  —— langchain_openai.ChatOpenAI 打 MiniMax 的 OpenAI 兼容端点

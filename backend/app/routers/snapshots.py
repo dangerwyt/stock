@@ -88,7 +88,7 @@ async def top50(cycle: str | None = Query(default=None), mergeAgents: int = Quer
     参数保留仅为兼容既有前端调用，行为上已不再生效。
     """
     try:
-        payload = await top50_engine.get_top50_snapshot()
+        status, payload = await top50_engine.ensure_top50_snapshot()
     except tushare_client.TushareError as exc:
         logger.warning("TOP50 实时引擎不可用，回落 fixtures：%s", exc)
         base = fixtures.load("top50")
@@ -99,6 +99,17 @@ async def top50(cycle: str | None = Query(default=None), mergeAgents: int = Quer
                 "sourceMode": "fixtures",
                 "reason": f"实时行情不可用：{exc}",
             },
+        }
+        return payload
+    if status == "computing":
+        # 缓存未命中（首次计算 / 窗口切换 / 画像变了）：立即返回占位，由后台任务算，
+        # 前端 useSnapshot 检测到 meta.status=="computing" 后短轮询即可，避免请求超时。
+        return {
+            "meta": {
+                "status": "computing",
+                "sourceMode": "live",
+                "message": "榜单计算中（首次拉取全市场行情，约需 20-40 秒）",
+            }
         }
     # 停用 agent_docs.merge_agent_scores：它会把「LLM 主观分」覆盖到「引擎确定性分」上，
     # 正好把「AI 学习改分」这件事抹掉。引擎已在 score_universe 里完成这件事。

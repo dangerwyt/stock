@@ -35,6 +35,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
@@ -46,7 +47,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from app import agent_factor_score, agents, tushare_client
+from app import agent_factor_score, agents, fixtures, tushare_client
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -136,6 +137,11 @@ _DEFAULT_SNAPSHOT_FILE = Path(__file__).resolve().parent / "data" / "top50_snaps
 _SNAPSHOT_LOCK = threading.Lock()
 _SNAPSHOT_MAX_BYTES = 24 * 1024 * 1024
 _restore_attempted = False
+
+# 后台计算任务句柄：HTTP 路由在缓存未命中时立即返回 "computing"，
+# 由这个任务在事件循环里异步跑完 Tushare 拉取 + 打分，写盘缓存后轮询请求即可拿到结果。
+# 这样首次计算（拉全市场行情，约 20-40 秒）不会阻塞前端请求、不会触发客户端超时。
+_COMPUTE_TASK: "asyncio.Future | None" = None
 
 
 # --------------------------------------------------------------------------- #
@@ -871,6 +877,57 @@ def invalidate_cache() -> None:
     把窗口清空即可 —— 下次取快照时会重新计算。
     """
     _CACHE["window"] = None
+
+
+async def _bg_compute_top50() -> None:
+    """后台异步计算 TOP50 快照（供 HTTP 路由非阻塞返回）。
+
+    Tushare 不可用时按路由同款逻辑回落 fixtures 静态快照（标 sourceMode=fixtures），
+    保证轮询最终能拿到一份可用的榜单，而不是永远停在 computing。
+    """
+    try:
+        await get_top50_snapshot()
+    except tushare_client.TushareError as exc:
+        logger.warning("TOP50 实时引擎不可用，后台回落 fixtures：%s", exc)
+        base = fixtures.load("top50")
+        snapshot = {
+            **base,
+            "meta": {
+                **(base.get("meta") or {}),
+                "sourceMode": "fixtures",
+                "reason": f"实时行情不可用：{exc}",
+            },
+        }
+        _CACHE["snapshot"] = snapshot
+        _CACHE["window"] = tushare_client._data_window()
+        _CACHE["specSig"] = _spec_signature(agent_factor_score.custom_teacher_specs())
+    except Exception as exc:  # noqa: BLE001 - 其他异常不要拖垮整个进程
+        logger.exception("TOP50 后台计算失败：%s", exc)
+
+
+async def ensure_top50_snapshot() -> tuple[str, dict | None]:
+    """HTTP 路由专用：命中窗口+指纹缓存则立即返回 ``("ready", payload)``；
+    否则（首次计算 / 窗口切换 / 画像变了）立即返回 ``("computing", None)`` 并后台开算。
+
+    与 :func:`get_top50_snapshot` 的区别：后者是**阻塞**计算（调度 job 用，需要结果），
+    这里是**非阻塞**——前端拿到 computing 后短轮询即可，永不触发客户端超时。
+    """
+    specs = agent_factor_score.custom_teacher_specs()
+    signature = _spec_signature(specs)
+    window = tushare_client._data_window()
+
+    _restore_from_disk(window)
+    if (
+        _CACHE["snapshot"] is not None
+        and _CACHE.get("window") == window
+        and _CACHE.get("specSig") == signature
+    ):
+        return "ready", _CACHE["snapshot"]
+
+    global _COMPUTE_TASK
+    if _COMPUTE_TASK is None or _COMPUTE_TASK.done():
+        _COMPUTE_TASK = asyncio.ensure_future(_bg_compute_top50())
+    return "computing", None
 
 
 async def get_top50_snapshot(force: bool = False) -> dict:

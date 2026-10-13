@@ -14,6 +14,7 @@ sufficient; swapping in a DB later only means re-implementing this module.
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import threading
 import uuid
@@ -23,7 +24,16 @@ from typing import Any
 
 from app import agents, relevance
 from app.config import settings
-from app.documents import DocumentError, ExtractedDocument, extract_text
+from app.documents import (
+    DocumentError,
+    ExtractedDocument,
+    SUPPORTED_SUFFIXES,
+    IMAGE_SUFFIXES,
+    PDF_SUFFIXES,
+    extract_text,
+)
+
+logger = logging.getLogger(__name__)
 
 _LOCK = threading.Lock()
 
@@ -144,38 +154,49 @@ def get_document(agent_id: str, doc_id: str) -> dict | None:
 def add_document(agent_id: str, filename: str, data: bytes) -> dict:
     """Parse and persist one upload. Raises ``DocumentError`` on bad input.
 
-    ``settings.doc_relevance_enabled`` 打开时会先让模型判定整篇是否属于股票财经范畴。
-    不相关的**照样落盘**（用户需要知道「为什么没收」），只是标 ``rejected`` 且不参与提炼。
+    OCR 类文件（图片 / PDF）文字提取较慢，**挪到后台线程**跑：本函数只落盘原始文件 +
+    写一条 ``ocrStatus="pending"`` 的占位记录并立即返回，OCR 完成后由后台线程回填文本
+    与相关性判定。这样上传请求不会被 OCR 阻塞（否则大扫描件 PDF 上传会超时）。纯文本类
+    （txt/md）提取极快，走同步路径。
+
+    ``settings.doc_relevance_enabled`` 打开时会让模型判定整篇是否属于股票财经范畴；
+    不相关的**照样落盘**（用户要知道「为什么没收」），只是标 ``rejected`` 且不参与提炼。
     """
     name = _safe_filename(filename)
-    document = extract_text(name, data)  # raises DocumentError
+    suffix = Path(name).suffix.lower()
+    if suffix not in SUPPORTED_SUFFIXES:
+        allowed = "、".join(sorted(SUPPORTED_SUFFIXES))
+        raise DocumentError(f"不支持的文件类型 {suffix or '(无扩展名)'}，仅支持 {allowed}")
+    size_mb = len(data) / (1024 * 1024)
+    if size_mb > settings.max_upload_mb:
+        raise DocumentError(
+            f"{name} 大小 {size_mb:.1f}MB，超过 {settings.max_upload_mb}MB 上限"
+        )
+    if not data:
+        raise DocumentError(f"{name} 是空文件")
 
-    relevant, reason = True, ""
-    if settings.doc_relevance_enabled:
-        relevant, reason = relevance.judge_document(name, document.text)
-
+    needs_ocr = suffix in (IMAGE_SUFFIXES | PDF_SUFFIXES)
     doc_id = uuid.uuid4().hex[:12]
     directory = agent_dir(agent_id)
     files_dir = directory / "files"
     texts_dir = directory / "texts"
     for target in (files_dir, texts_dir):
         target.mkdir(parents=True, exist_ok=True)
-
-    (files_dir / f"{doc_id}{document.suffix}").write_bytes(data)
-    (texts_dir / f"{doc_id}.txt").write_text(document.text, encoding="utf-8")
+    (files_dir / f"{doc_id}{suffix}").write_bytes(data)
 
     record = {
         "id": doc_id,
-        "filename": document.filename,
-        "suffix": document.suffix,
-        "kind": document.kind,
-        "chars": document.chars,
-        "pages": document.pages,
-        "truncated": document.truncated,
+        "filename": name,
+        "suffix": suffix,
+        "kind": "image" if suffix in IMAGE_SUFFIXES else ("pdf" if suffix in PDF_SUFFIXES else "text"),
+        "chars": 0,
+        "pages": None,
+        "truncated": False,
         "sizeBytes": len(data),
-        "notes": document.notes,
-        "status": "parsed" if relevant else REJECTED_STATUS,
-        "relevanceReason": None if relevant else (reason or "与股票财经无关"),
+        "notes": [],
+        "ocrStatus": "ready" if not needs_ocr else "pending",
+        "status": "parsed",
+        "relevanceReason": None,
         "error": None,
         "uploadedAt": datetime.now(timezone.utc).isoformat(),
     }
@@ -192,7 +213,63 @@ def add_document(agent_id: str, filename: str, data: bytes) -> dict:
         meta["profile"] = None
         meta["scores"] = None
         _write_meta(agent_id, meta)
+
+    if needs_ocr:
+        # 后台线程跑 OCR（含相关性判定），完成后回填；上传请求立即返回。
+        threading.Thread(
+            target=_ocr_worker, args=(agent_id, doc_id, name, data), daemon=True
+        ).start()
+    else:
+        _finalize_document(agent_id, doc_id, name, data)
     return record
+
+
+def _finalize_document(agent_id: str, doc_id: str, name: str, data: bytes) -> None:
+    """跑 ``extract_text`` + 相关性判定，回填文档记录与 ``texts/<id>.txt``。
+
+    同步路径（纯文本）与后台 OCR 线程共用同一份回填逻辑。
+    """
+    try:
+        document = extract_text(name, data)
+        relevant, reason = True, ""
+        if settings.doc_relevance_enabled:
+            relevant, reason = relevance.judge_document(name, document.text)
+        (agent_dir(agent_id) / "texts" / f"{doc_id}.txt").write_text(
+            document.text, encoding="utf-8"
+        )
+        with _LOCK:
+            meta = _read_meta(agent_id)
+            for item in meta.get("documents") or []:
+                if item.get("id") == doc_id:
+                    item.update(
+                        {
+                            "kind": document.kind,
+                            "chars": document.chars,
+                            "pages": document.pages,
+                            "truncated": document.truncated,
+                            "notes": document.notes,
+                            "ocrStatus": "ready",
+                            "status": "parsed" if relevant else REJECTED_STATUS,
+                            "relevanceReason": None if relevant else (reason or "与股票财经无关"),
+                        }
+                    )
+            _write_meta(agent_id, meta)
+    except Exception as exc:  # noqa: BLE001 - 解析/OCR 失败不应让整次上传失败
+        err = str(exc)
+        logger.warning("文档 %s 提取失败：%s", doc_id, err)
+        with _LOCK:
+            meta = _read_meta(agent_id)
+            for item in meta.get("documents") or []:
+                if item.get("id") == doc_id:
+                    item["ocrStatus"] = "failed"
+                    item["status"] = REJECTED_STATUS
+                    item["error"] = err[:300]
+            _write_meta(agent_id, meta)
+
+
+def _ocr_worker(agent_id: str, doc_id: str, name: str, data: bytes) -> None:
+    """后台 OCR 线程入口（图片 / 扫描件 PDF）。"""
+    _finalize_document(agent_id, doc_id, name, data)
 
 
 def remove_document(agent_id: str, doc_id: str) -> bool:

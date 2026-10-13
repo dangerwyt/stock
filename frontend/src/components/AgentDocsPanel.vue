@@ -36,10 +36,17 @@ const running = computed(() => extraction.value?.status === 'running')
 const isRejected = (doc) => String(doc?.status || '').toLowerCase() === 'rejected'
 const effectiveDocuments = computed(() => documents.value.filter((doc) => !isRejected(doc)))
 const rejectedDocuments = computed(() => documents.value.filter(isRejected))
+// 图片 / 扫描件 PDF 在后台 OCR 中（ocrStatus=pending）：此时文本未就绪，
+// 不应允许「提炼画像」，否则会漏掉这份资料。轮询（schedulePoll）会在 OCR 完成后翻回 ready。
+const hasPending = computed(() => documents.value.some((doc) => doc.ocrStatus === 'pending'))
 
 const documentStatus = computed(() => {
+  if (hasPending.value) {
+    const n = documents.value.filter((doc) => doc.ocrStatus === 'pending').length
+    return `正在识别 ${n} 份图片/扫描件资料（OCR 中），完成后即可提炼画像。`
+  }
   if (!documents.value.length) {
-    return '上传 PDF / MD / TXT 研究资料，AI 会据此提炼该角色的策略画像；此角色会话中的问答会作为补充线索一并参考。'
+    return '上传 PDF / MD / TXT / 图片（研报截图、扫描件）研究资料，AI 会据此提炼该角色的策略画像；图片与扫描件 PDF 会自动 OCR 提取文字；此角色会话中的问答会作为补充线索一并参考。'
   }
   const parts = []
   parts.push(
@@ -193,7 +200,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="primary"
-        :disabled="busy || uploading || !effectiveDocuments.length || running"
+        :disabled="busy || uploading || !effectiveDocuments.length || running || hasPending"
         @click="extract"
       >
         <IconSparkles :size="13" /> {{ running ? '提炼中…' : '提炼画像' }}
@@ -203,7 +210,7 @@ onBeforeUnmount(() => {
       ref="fileInput"
       type="file"
       multiple
-      accept=".pdf,.md,.markdown,.txt"
+      accept=".pdf,.md,.markdown,.txt,.png,.jpg,.jpeg,.webp,.bmp,.gif"
       hidden
       @change="onPick"
     />
