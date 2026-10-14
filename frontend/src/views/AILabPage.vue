@@ -629,8 +629,6 @@ async function send() {
     }
     messages.value = [...messages.value, assistantMessage]
     agentJob.value = null
-    await persistMessages([userMessage, assistantMessage])
-    await refreshThreads(activeThreadId.value)
   } catch (error) {
     messages.value = [...messages.value, {
       role: 'assistant',
@@ -640,9 +638,18 @@ async function send() {
     agentJob.value = { ...(agentJob.value || {}), status: 'failed' }
     // 问题本身仍要留痕，下次进会话还能看到问过什么
     await persistMessages([userMessage])
+    return
   } finally {
     sending.value = false
     scrollToEnd()
+  }
+  // 落库与会话列表刷新属于「已成功拿到回答」后的非阻断动作：
+  // 失败只记日志，不再用"AI 未完成"误导用户（答案已经显示在上文气泡里）。
+  try {
+    await persistMessages([userMessage, assistantMessage])
+    await refreshThreads(activeThreadId.value)
+  } catch (e) {
+    console.warn('[AILab] 会话落库/刷新失败（回答已显示，不影响本次研究）：', e)
   }
 }
 

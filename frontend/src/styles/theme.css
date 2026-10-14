@@ -1433,4 +1433,50 @@ a {
   background: #58b974; /* 反向因子 → 绿（原 #9e3e4b 红） */
 }
 
+/* 17) AI 研究室「运行态 / 总结」面板浅色化（用户诉求，2026-10-14）。
+ * 这些规则原写在 legacy 层 styles.css:801/804-835：深色底 + 浅色字，
+ * 与全站浅色主题冲突，用户反馈为"深色框"。这里用无层规则压过，统一浅色。
+ * 配色走 reference-theme.css 的浅色 token（--panel/--line/--text/--muted/--blue-soft）。 */
+.agent-run-status {
+  background: var(--blue-soft);
+  color: var(--text);
+  border-color: var(--line);
+}
+.agent-run-head b { color: var(--text); }
+.agent-run-summary span {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--line);
+}
+.agent-run-summary b { color: var(--text); }
+.agent-run-summary .fallback {
+  background: #fff7e8;
+  color: #8a6d2f;
+  border-color: #e7d29a;
+}
+.agent-run-alert {
+  background: #fff7e8;
+  color: #8a6d2f;
+  border-color: #e7d29a;
+}
+.agent-progress-grid { gap: 8px; }
+.agent-progress-card {
+  background: #f4f8ff;
+  border-color: var(--line);
+  color: var(--text);
+}
+.agent-progress-top span { color: var(--muted); }
+.agent-progress-detail { color: var(--muted); }
+.agent-final-summary {
+  background: linear-gradient(145deg, #e8f1ff, #f7faff);
+  border-color: var(--line);
+}
+.agent-final-summary-head > div span { color: var(--muted); }
+.agent-final-summary-head > div strong { color: var(--text); }
+.composer textarea {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
 

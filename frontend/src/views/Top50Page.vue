@@ -246,6 +246,9 @@ function onTabKey(event, items, active, onChange) {
 const evidenceId = ref(null)
 const evidence = ref(null)
 const evidenceState = ref('idle')
+// 弹窗标题用的标的。自选跟踪股**没有** predictionId，也就没有可回查的冻结记录，
+// 只能靠这里把名称带进弹窗（否则标题只剩一个光秃秃的代码）。
+const evidenceSubject = ref(null)
 let evidenceToken = 0
 
 function closeEvidence() {
@@ -253,6 +256,7 @@ function closeEvidence() {
   evidenceId.value = null
   evidence.value = null
   evidenceState.value = 'idle'
+  evidenceSubject.value = null
 }
 function onKeydown(event) {
   if (event.key === 'Escape' && evidenceId.value) closeEvidence()
@@ -263,13 +267,22 @@ if (typeof window !== 'undefined') {
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') window.removeEventListener('keydown', onKeydown)
 })
+// 证据弹窗的两个来源：
+//  ① 榜单标的 —— 有 predictionId，去读冻结选股证据；
+//  ② 自选跟踪标的 —— 不在冻结榜单里，**没有**选股证据可读。这里明确落到 watchlist 态
+//     告诉用户"为什么查不到"，而不是静默 return（点了没反应更像 bug）。
 async function openEvidence(stock, event) {
-  const predictionId = stock?.predictionId
-  if (!predictionId) return
-  event.stopPropagation()
+  event?.stopPropagation()
   const token = ++evidenceToken
-  evidenceId.value = predictionId
+  evidenceSubject.value = { name: stock?.name || '', code: stock?.code || '' }
   evidence.value = null
+  const predictionId = stock?.predictionId
+  if (!predictionId) {
+    evidenceId.value = stock?.code || null
+    evidenceState.value = 'watchlist'
+    return
+  }
+  evidenceId.value = predictionId
   evidenceState.value = 'loading'
   try {
     const data = await fetchSnapshot(`/api/top50/evidence?predictionId=${encodeURIComponent(predictionId)}`)
@@ -367,9 +380,12 @@ function goAI(stock) {
               <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else class="top50-invalid">{{ stock.invalid || '待更新' }}</span></td>
               <td><time v-if="stock.isWatchlist" class="muted-dash">—</time><time v-else>{{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }}</time></td>
               <td>
-                <button v-if="stock.isWatchlist" class="table-action remove-watch" @click.stop="store.toggleWatch(stock.code)">
-                  <IconX :size="14" /> 移除自选
-                </button>
+                <template v-if="stock.isWatchlist">
+                  <button class="table-action evidence-trigger" @click="openEvidence(stock, $event)">查看证据</button>
+                  <button class="table-action remove-watch" @click.stop="store.toggleWatch(stock.code)">
+                    <IconX :size="14" /> 移除自选
+                  </button>
+                </template>
                 <button v-else class="table-action evidence-trigger" :disabled="!stock.predictionId" @click="openEvidence(stock, $event)">查看证据</button>
               </td>
             </tr>
@@ -422,7 +438,7 @@ function goAI(stock) {
           <small>{{ stock.reason || stock.trend }}</small>
           <div class="top50-mobile-actions">
             <button @click.stop="openDialog(stock.code)">查看详情</button>
-            <button class="primary" :disabled="!stock.predictionId" @click="openEvidence(stock, $event)">选股证据</button>
+            <button class="primary" :disabled="!stock.predictionId && !stock.isWatchlist" @click="openEvidence(stock, $event)">选股证据</button>
           </div>
           <small class="top50-mobile-cutoff">行情日 {{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }} · 失效：{{ stock.invalid || '待更新' }}</small>
         </article>
@@ -684,7 +700,7 @@ function goAI(stock) {
         <header>
           <div>
             <span>冻结选股证据</span>
-            <h2 id="top50-evidence-title">{{ evidencePrediction?.name || evidencePrediction?.code || evidenceId }}</h2>
+            <h2 id="top50-evidence-title">{{ evidenceSubject?.name || evidencePrediction?.name || evidencePrediction?.code || evidenceId }}</h2>
             <p>{{ evidencePrediction?.code || evidenceId }} · {{ displayField(selectionEvidence?.cycle || evidencePrediction?.cycle, '周期待补充') }} · {{ displayField(evidencePrediction?.horizonLabel || evidencePrediction?.horizon, '期限待补充') }}</p>
           </div>
           <button aria-label="关闭选股证据" @click="closeEvidence"><IconX :size="17" /></button>
@@ -693,6 +709,10 @@ function goAI(stock) {
         <div v-else-if="evidenceState === 'unavailable'" class="top50-evidence-state">
           <IconAlertTriangle :size="18" /><strong>选股证据暂不可用</strong>
           <p>未能读取该 predictionId 的冻结记录；系统不会改用其他股票或静态样例补位。</p>
+        </div>
+        <div v-else-if="evidenceState === 'watchlist'" class="top50-evidence-state">
+          <IconAlertTriangle :size="18" /><strong>自选跟踪股暂无冻结选股证据</strong>
+          <p>{{ evidenceSubject?.name || '该标的' }}（{{ evidenceSubject?.code || evidenceId }}）不在冻结榜单内，没有可核验的选股证据；它仅作本地自选关注，不参与排名与评分。</p>
         </div>
         <div v-else-if="evidenceState === 'ready' && selectionEvidence" class="top50-evidence-body">
           <div class="top50-evidence-meta">
