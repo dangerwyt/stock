@@ -1317,6 +1317,126 @@ a {
   background: #f2f7ff;
 }
 
+/* 14k) 二次清扫（2026-10-14，用户截图报「还有深色」后全站复扫）。
+ *      方法：脚本扫 styles.css 全部深色 background，交叉「selector 未被 ref/theme 覆盖」
+ *      ×「其专有类名仍出现在某个 .vue 里」两条过滤，得到下面这批真·漏网项。
+ *      被过滤掉的 us-etf-map-* / monitor-stock-tabs / heat-filter / sector-filter-banner /
+ *      opportunity-queue / focused-phase-switch / top50-stock-picker / heatmap-grid /
+ *      benchmark-home / active-overview / research-* / feasible-* 等是 React 原型遗留的
+ *      死类（任何 .vue 都不再渲染），本次不动，别为其写覆盖。 */
+
+/* 顶栏「行情降级」状态点（legacy #3a2d15 深橄榄底） */
+.data-state.degraded {
+  background: var(--yellow-soft);
+  color: var(--yellow);
+  border-color: #f0dfae;
+}
+
+/* TOP50 页顶部筛选条（legacy #0e1927 近黑；内部 chip 文字也要从浅灰压深） */
+.filter-bar {
+  background: #fff;
+  border-bottom-color: #d9e6f6;
+}
+
+.filter-bar span {
+  color: #6e86ab;
+  border-color: #d9e6f6;
+}
+
+/* 策略页 · 因子矩阵选中行（legacy #12243a） */
+.strategy-matrix tr:hover,
+.strategy-matrix tr.selected {
+  background: #eaf3ff;
+}
+
+/* 准确率页 · 分组 tab 选中（legacy #203650 深蓝 + #d9eaff 浅字） */
+.accuracy-group-tabs button[aria-selected="true"] {
+  background: #e8f1ff;
+  color: #2176ed;
+  border-color: #a9cafa;
+}
+
+/* 个股决策弹窗 · 头部右侧图标按钮 + 选中态（legacy #0d151f / #12273f） */
+.benchmark-stock-head > div:last-child > button {
+  background: #f4f8ff;
+  border-color: #d5e4f6;
+  color: #6e86ab;
+}
+
+.benchmark-stock-head > div:last-child > button.active {
+  background: #e8f1ff;
+  color: #2176ed;
+  border-color: #a9cafa;
+}
+
+/* 个股决策弹窗 · 单老师评分条槽（legacy #172435 深槽，浅底才看得清填充） */
+.single-agent-score i {
+  background: #e8eff9;
+}
+
+/* 顶栏「搜索股票」弹窗 · 关闭按钮（legacy #111e2d，用户截图实拍的深色方块） */
+.stock-search-dialog > header button {
+  background: #f4f8ff;
+  border-color: #d5e4f6;
+  color: #6e86ab;
+}
+
+.stock-search-dialog > header button:hover {
+  background: #e8f1ff;
+  color: #2176ed;
+}
+
+/* 行情中心页 · 搜索结果行尾部「加自选」按钮（legacy #13253a；.active 深黄 #282316） */
+.market-search-results .market-search-result-row > button:last-child {
+  background: #f4f8ff;
+  border-color: #cce0fc;
+  color: #246ed2;
+}
+
+.market-search-results .market-search-result-row > button:last-child.active {
+  background: var(--yellow-soft);
+  border-color: #f0dfae;
+  color: var(--yellow);
+}
+
+/* 运行状态页 / 复盘页 · 数据不可用提示块（legacy #24191d 深红底 + #a9959c 浅灰字） */
+.operations-unavailable {
+  background: var(--red-soft);
+  border-color: #f3cec8;
+  color: var(--red);
+}
+
+.operations-unavailable small {
+  color: #a06a72;
+}
+
+/* TOP50 移动端操作条 · 主按钮（legacy #24599e 暗蓝 → 主蓝） */
+.top50-mobile-actions button.primary {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* 复盘页 · tab / 历史 选中（legacy #17314b 深蓝 + #8fc7ff 浅字） */
+.review-tabs button[aria-selected="true"],
+.review-history button.active {
+  background: #e8f1ff;
+  color: #2176ed;
+  border-color: #a9cafa;
+}
+
+/* 首页 · 板块快捷 chip（legacy #17324f 深蓝底 + #a9ccf5 浅字） */
+.home-sector-chip {
+  background: #e8f1ff;
+  color: #2176ed;
+  border-color: #cfe1f8;
+}
+
+/* 首页 · TOP50 预览行键盘聚焦（legacy #1b2734） */
+.home-top50-preview-row:focus-visible {
+  background: #eef5ff;
+}
+
 /* ===========================================================================
    15) 原生控件 → Element Plus（2026-10-12，任务 ①）
    ---------------------------------------------------------------------------
