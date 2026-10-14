@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { http, fetchSnapshot, startAiJob, readNdjsonFrame } from '@/api/client'
 import AgentDocsPanel from '@/components/AgentDocsPanel.vue'
@@ -43,7 +43,7 @@ const EMPTY_TEACHER = { name: '暂无角色', style: '尚未创建', productionV
 const selectedAgentNames = ref([])
 // 「搜索A股」内联下拉（EP el-select，remote 模式）的数据源，仍是 /api/stocks/search。
 // 不再自己维护输入框的 query —— remote 模式下查询词由 el-select 的 remote-method 传进来。
-const stockResults = ref([])
+const stockOptions = ref([]) // 搜索结果，由 remote-method(runStockSearch) 填充；每项 { value, label, raw }
 const stockSearchState = ref('idle')
 // 后端 /api/stocks/search 在 Tushare 未配置/不可达时返回 503，body 里带真实原因
 // （如 "TUSHARE_TOKEN 未配置" / "HTTP 401" / "请求失败 (ConnectError)"）。把它透出来，
@@ -190,44 +190,47 @@ function stockValue(item) {
   const raw = item.code ?? item.tsCode
   return raw == null ? '' : String(raw).trim()
 }
-// el-select 的 v-model 直接绑一个「裸 code 字符串」的普通 ref，而不是计算属性。
-// 原因：remote/filterable 下拉在选中后内部 options 会被重算/清空，计算属性 get 经过
-// manualStock→requestStock→stockValue 的级联，el-select 拿 modelValue 去 options 里
-// 匹配选中标签时容易对不上（表现为框空白、但 requestStock 有值、placeholder/当前标的正常）。
-// 普通 ref 让 modelValue 与 option 的 :value 是同一个裸字符串，匹配稳定。
+// 选股下拉：照 element-plus 官方 remote select 写法
+//   - v-model 绑一个裸 ref（selectedStockCode，存归一化后的 code 字符串）
+//   - 选项列表 stockOptions 是一个普通 ref，由 remote-method(runStockSearch) 填充，
+//     每项 { value, label, raw }，和官方示例的 { value, label } 一致
+//   - 不靠 watch 桥接：选中值即 modelValue，只要选项里有对应项 label 就能回显
 const selectedStockCode = ref(stockValue(requestStock.value))
-// 外部导致 requestStock 变化时（切会话 / 清空 / 会话自带 stockCode），把下拉的选中值同步过去。
-watch(
-  requestStock,
-  (s) => {
-    const v = stockValue(s)
-    if (v !== selectedStockCode.value) selectedStockCode.value = v
-  },
-  { immediate: true },
-)
-// 用户在下拉里选了某只：先回全量条目（命中 TOP50 才有行情/因子），再落到 manualStock。
+
+// 选中某只后，保证它在 stockOptions 里有一项；否则 el-select 找不到对应 option，
+// 框里只会显示裸 code 或空白。优先用 top50 / requestStock 凑出 { value, label }。
+function ensureStockOption(code) {
+  if (!code) return
+  if (stockOptions.value.some((o) => o.value === code)) return
+  const raw =
+    labTop50Stocks.value.find((i) => stockValue(i) === code) ||
+    (requestStock.value && stockValue(requestStock.value) === code ? requestStock.value : null)
+  if (raw) {
+    stockOptions.value = [{ value: code, label: stockOptionLabel(raw), raw }, ...stockOptions.value]
+  }
+}
+
+// 外部切换会话 / 清空选股后，把下拉选中值同步到由 requestStock 推导出的标的，
+// 并把该项塞进选项列表，保证回显。放在 loadThread / clearStock 里显式调用，不依赖 watch。
+function syncStockSelect() {
+  const code = stockValue(requestStock.value)
+  selectedStockCode.value = code
+  ensureStockOption(code)
+}
+
+// 用户在下拉里选中某只：先回全量条目（命中 TOP50 才有行情/因子），再落到 manualStock。
 function onStockChange(code) {
   if (!code) {
     clearStock()
     return
   }
-  const hit =
+  const raw =
+    stockOptions.value.find((o) => o.value === code)?.raw ||
     labTop50Stocks.value.find((i) => stockValue(i) === code) ||
-    stockResults.value.find((i) => stockValue(i) === code)
-  if (hit) pickStock(hit)
+    null
+  if (raw) pickStock(raw)
   else selectedStockCode.value = code // 兜底：remote 结果已空但 code 有效，保住回显
 }
-// 下拉选项 = 本次搜索结果；若当前标的还不在结果里（会话自带标的、或上次选完清空了输入），
-// 把它补到最前面，否则 el-select 只能拿裸 code 当 label 显示。
-// ⚠️ 用归一化后的 stockValue 判等，否则 tsCode / code 口径不一会判「不在列表」而漏掉当前项，
-// 导致选中标签解析不出来（select 框空白、但 composerPlaceholder 直接读 requestStock 仍有名字）。
-const stockSelectOptions = computed(() => {
-  const list = stockResults.value.slice()
-  const cur = requestStock.value
-  const curVal = stockValue(cur)
-  if (curVal && !list.some((i) => stockValue(i) === curVal)) list.unshift(cur)
-  return list
-})
 // el-select 选中后显示的是 option 的 **label**（不是插槽内容），插槽只管下拉里的排版，
 // 所以选中态要的「名称 代码」得单独拼一份。
 function stockOptionLabel(item) {
@@ -312,6 +315,7 @@ async function loadThread(threadId) {
   try {
     const result = await fetchSnapshot(`/api/ai/threads/${threadId}?clientId=${encodeURIComponent(clientId.value)}`)
     activeThreadId.value = threadId
+    syncStockSelect()
     const saved = result.thread?.teacherNames?.filter((n) => agentItems.value.some((i) => i.name === n))
     if (saved?.length) selectedAgentNames.value = saved
     else if (result.thread?.teacherName) selectedAgentNames.value = [result.thread.teacherName]
@@ -339,7 +343,7 @@ function runStockSearch(query) {
   const keyword = String(query || '').trim()
   if (!keyword) {
     stockSearchSeq += 1
-    stockResults.value = []
+    stockOptions.value = []
     stockSearchState.value = 'idle'
     return
   }
@@ -350,7 +354,13 @@ function runStockSearch(query) {
     try {
       const result = await fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(keyword)}`)
       if (seq !== stockSearchSeq) return
-      stockResults.value = result.items || []
+      stockOptions.value = (result.items || []).map((it) => ({
+        value: stockValue(it),
+        label: stockOptionLabel(it),
+        raw: it,
+      }))
+      // 搜索结果会替换整个列表，但当前选中的标的必须留在里面，否则框里 label 丢失。
+      ensureStockOption(selectedStockCode.value)
       stockSearchState.value = 'ready'
     } catch (err) {
       if (seq !== stockSearchSeq) return
@@ -369,6 +379,7 @@ function runStockSearch(query) {
 // 之前只能靠"选另一只"来替换，选错了没法退回。
 function clearStock() {
   manualStock.value = null
+  syncStockSelect()
 }
 
 // 选中搜索结果。搜索接口（/api/stocks/search）只返回 code/name/industry，
@@ -912,6 +923,7 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
             placeholder="搜索A股"
             filterable
             remote
+            reserve-keyword
             clearable
             :remote-method="runStockSearch"
             :loading="stockSearchState === 'loading'"
@@ -920,10 +932,10 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
           >
             <template #prefix><IconSearch :size="14" /></template>
             <el-option
-              v-for="item in stockSelectOptions"
-              :key="stockValue(item)"
-              :label="stockOptionLabel(item)"
-              :value="stockValue(item)"
+              v-for="item in stockOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
             <!-- 空态沿用原来的三句文案：下拉自带 no-data 只能给一句，说不出"在加载"和"接口挂了" -->
             <template #empty>
