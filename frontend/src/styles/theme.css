@@ -430,17 +430,26 @@ a {
   outline: none;
 }
 
-.composer-select .el-select__placeholder,
-.composer-select .el-select__selected-item {
+/* ⚠️ el-select 选中文字"视觉空白"根因（2026-10-14 定位）：
+ * filterable 单选下，选中文字渲染进 .el-select__placeholder；该元素 EP 默认 z-index:-1，
+ * 而 legacy 的 `.page-content input { background:#fff }` 会给 EP 内部那个真正的
+ * <input class="el-select__input"> 套上**不透明白底**，它正好盖在 placeholder 之上，
+ * 把下面深色文字整块挡住 → 框里看着空白（DOM 里文字/颜色/opacity 都正常）。
+ * 这里把 .el-select__input 还原透明 + 拔掉 placeholder 的负 z-index，文字才露出来。
+ * 多选角色下拉的选中项显示成 tag（不在 input 内，不受影响），所以只有搜索A股这个炸。 */
+.composer-select .el-select__input {
+  background: transparent;
+  color: inherit;
+  border: 0;
+}
+
+.composer-select .el-select__placeholder {
+  z-index: auto;
   font-size: 12px;
 }
 
-/* 选中态标签复用 .el-select__placeholder 这个元素类（EP 单选机制），
- * 必须显式给选中项深色字，否则会被 placeholder 的浅灰色盖掉、看起来像"没选上"。
- * placeholder（无值时）仍走 --el-text-color-placeholder 的浅灰，两者靠 .el-select__selected-item 区分。 */
 .composer-select .el-select__selected-item {
-  color: var(--text);
-  font-weight: 500;
+  font-size: 12px;
 }
 
 .composer-select .el-select__prefix {
