@@ -56,7 +56,7 @@ vim .env
 | `TUSHARE_VERIFY_SSL` | 主源用自签证书 → 填 `false` | 主源连接失败 |
 | `QINGHONG_API_KEY` | 资讯首选源 | 资讯回落到 NewsAPI / Tushare |
 | `NEWSAPI_KEY` | 资讯次选源 | 可留空（会跳过，不会造假） |
-| `ADMIN_API_TOKEN` | 管理接口鉴权 | 管理接口不可用 |
+| `ADMIN_API_TOKEN` | 管理接口 + 外部 tick 调度鉴权 | 管理接口不可用；**且外部 tick 调度整体静默失效、定时任务全不跑**（tick 脚本读不到 token 直接退出，后端对空 token 一律 401） |
 | `TOP50_SNAPSHOT_PATH` | TOP50 快照落盘路径 | 用默认 `backend/app/data/top50_snapshot.json` |
 
 > ⚠️ **别把 `.env` 拷进镜像**：容器里 `app/config.py` 会去找 `/.env`（找不到，因为镜像里代码在 `/app/app`），
