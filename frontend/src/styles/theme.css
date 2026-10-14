@@ -356,6 +356,12 @@ a {
   display: none;
 }
 
+/* 冻结选股证据浮层：原 z-index:60 低于 EP 决策弹窗（≈2000），从「完整分析」唤起时
+ * 会被决策弹窗盖住看不见。抬到 EP 之上，保证证据层始终可见（2026-10-15 修复）。 */
+.top50-evidence-backdrop {
+  z-index: 3000;
+}
+
 @media (max-width: 820px) {
   .stock-decision-dialog.el-dialog {
     width: calc(100vw - 16px);

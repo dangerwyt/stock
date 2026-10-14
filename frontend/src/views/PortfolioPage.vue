@@ -3,11 +3,13 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { useAppStore } from '@/stores/snapshot'
+import { useStockDecision } from '@/composables/useStockDecision'
 import { resolveWatchlistStocks, buildLiveUniverse } from '@/utils/format'
 import { IconSearch, IconStar, IconDatabase } from '@tabler/icons-vue'
 
 const router = useRouter()
 const store = useAppStore()
+const stockDecision = useStockDecision()
 const transferOpen = ref(false)
 const transferText = ref('')
 const transferMessage = ref('')
@@ -41,7 +43,8 @@ function mergeImport() {
   transferMessage.value = '已合并到当前自选，名称将从行情资料补全。'
 }
 function openStock(item) {
-  router.push('/top50')
+  // 自选组合「查看」：直接弹出与 TOP50 点股票名一致的单股决策弹窗（全局实例）。
+  stockDecision.open({ code: item.code, stock: item })
 }
 function addStock() {
   router.push('/market')

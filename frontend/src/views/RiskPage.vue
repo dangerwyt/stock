@@ -2,16 +2,20 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
+import { useStockDecision } from '@/composables/useStockDecision'
 import { IconShieldCheck, IconAlertTriangle, IconCircleCheck, IconInfoCircle } from '@tabler/icons-vue'
 
 const router = useRouter()
+const stockDecision = useStockDecision()
 const { data: snap, state } = useSnapshot('/api/risk', { refreshMs: 60000 })
 const gates = computed(() => snap.value?.gates || [])
 const alerts = computed(() => snap.value?.alerts || [])
 const dataDate = computed(() => snap.value?.meta?.marketDataDate || '--')
 
 function openStock(item) {
-  router.push('/top50')
+  // 风险中心「查看个股」：有代码则弹出与 TOP50 一致的单股决策弹窗，否则退回原导航。
+  if (item?.code) stockDecision.open({ code: item.code, stock: item })
+  else router.push('/top50')
 }
 </script>
 

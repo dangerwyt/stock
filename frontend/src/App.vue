@@ -3,6 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/snapshot'
 import { fetchSnapshot } from '@/api/client'
+import { useStockDecision } from '@/composables/useStockDecision'
+import StockDecisionDialog from '@/components/StockDecisionDialog.vue'
 import {
   IconHome2,
   IconTrendingUp,
@@ -64,6 +66,7 @@ const mobilePrimaryNavItems = navItems.filter((item) => mobilePrimaryIds.include
 const route = useRoute()
 const router = useRouter()
 const store = useAppStore()
+const stockDecision = useStockDecision()
 
 const active = computed(() => route.name || 'overview')
 const collapsed = ref(false)
@@ -148,8 +151,9 @@ function openSearch() {
 }
 function openStock(item) {
   searchOpen.value = false
+  // 加入自选（仅当尚未加入时）后，直接弹出与 TOP50 点股票名一致的单股决策弹窗。
   if (!store.has(item.code)) store.toggleWatch(item.code)
-  router.push('/top50')
+  stockDecision.open({ code: item.code, stock: item })
 }
 
 // --- 通知中心 ---
@@ -288,6 +292,9 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
         <p v-if="!notifications.length" class="notification-empty">暂无通知</p>
       </div>
     </div>
+
+    <!-- 全局单股决策弹窗 + 冻结选股证据（任意「加自选」入口共用）-->
+    <StockDecisionDialog />
   </div>
 </template>
 

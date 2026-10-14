@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { useStockSearch } from '@/composables/useStockSearch'
 import { useAppStore } from '@/stores/snapshot'
+import { useStockDecision } from '@/composables/useStockDecision'
 import { hydrateStock, formatShanghaiTime } from '@/utils/format'
 import {
   IconSearch,
@@ -16,6 +17,7 @@ import {
 
 const router = useRouter()
 const store = useAppStore()
+const stockDecision = useStockDecision()
 
 const query = ref('')
 const cycle = ref('短线')
@@ -90,6 +92,12 @@ function fmtTime(raw) {
 function goStock(stock) {
   router.push('/top50')
 }
+// 行情中心「加入自选」：加完直接弹出与 TOP50 点股票名一致的单股决策弹窗。
+function toggleWatchAndOpen(item) {
+  const added = !store.has(item.code)
+  store.toggleWatch(item.code)
+  if (added) stockDecision.open({ code: item.code, stock: item })
+}
 function goTop50() {
   router.push('/top50')
 }
@@ -116,7 +124,7 @@ function goNews() {
               <span><strong>{{ item.name }}</strong><small>{{ item.code }} · {{ item.industry }}</small></span>
               <b>{{ stockByCode.get(item.code) ? `#${stockByCode.get(item.code).rank}` : item.market }}</b>
             </button>
-            <button :class="['', store.watchlist.includes(item.code) ? 'active' : '']" @click="store.toggleWatch(item.code)">
+            <button :class="['', store.watchlist.includes(item.code) ? 'active' : '']" @click="toggleWatchAndOpen(item)">
               <IconStar :size="14" /> {{ store.watchlist.includes(item.code) ? '已自选' : '加入' }}
             </button>
           </div>
