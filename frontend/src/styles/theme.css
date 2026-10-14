@@ -1407,4 +1407,30 @@ a {
   }
 }
 
+/* 16) 个股决策弹窗「红绿对调」（用户诉求，2026-10-14）。
+ * 弹窗原本沿用通用配色：支持 / 看多 / 乐观 = 绿，未支持 / 反向 / 谨慎 = 红。
+ * 这与本站 A 股口径正好相反 —— 本文件 19/21 行 `--up: var(--red)` / `--down: var(--green)`
+ * 已经把「涨=红、跌=绿」定死，弹窗里"看多=绿"就成了孤例。这里把两组进度条的填充色
+ * 按 semant 对调，让「看多/支持 = 红、反向/未支持 = 绿」与全站口径一致。
+ *
+ * ⚠️ 必须带 `.stock-decision-dialog` 前缀（该 class 经 EP mergeProps 落在 .el-dialog 上）：
+ * 原色写在 legacy 层的 styles.css:1373-1374 / 1386-1387，reference-theme.css 只覆盖了
+ * power-track 一组，概率条的 b 仍走 legacy；用无层 + 更高具体度才能稳定压过。
+ * 仪表盘三色（谨慎/中性/乐观）在 Top50Page.vue 的 gaugeColors 里对调，不在 CSS 这层。 */
+.stock-decision-dialog .benchmark-power-track i {
+  background: #ec6584; /* 因子支持 → 红（原 #49caa4 绿） */
+}
+
+.stock-decision-dialog .benchmark-power-track b {
+  background: #49caa4; /* 未达支持线 → 绿（原 #ec6584 红） */
+}
+
+.stock-decision-dialog .benchmark-probabilities b {
+  background: #9e3e4b; /* 看多因子 → 红（原 #58b974 绿） */
+}
+
+.stock-decision-dialog .benchmark-probabilities>div:nth-child(2) b {
+  background: #58b974; /* 反向因子 → 绿（原 #9e3e4b 红） */
+}
+
 

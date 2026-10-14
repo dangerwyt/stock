@@ -169,7 +169,9 @@ const powerTrackRest = computed(() => {
 })
 
 // 半环仪表盘（替换原版 Recharts PieChart；三色段 谨慎/中性/乐观，纯 SVG，无额外依赖）。
-const gaugeColors = ['#f05e65', '#d8a63d', '#59bf79']
+// 红绿对调（2026-10-14）：原版是 谨慎=红 / 乐观=绿，与本站"涨红跌绿"口径相反 ——
+// 改成 谨慎=绿 / 乐观=红，即"看涨那端用红"。中性黄保持不变。
+const gaugeColors = ['#59bf79', '#d8a63d', '#f05e65']
 function polarPoint(cx, cy, r, deg) {
   const a = (deg * Math.PI) / 180
   return [cx + r * Math.cos(a), cy - r * Math.sin(a)]
