@@ -924,10 +924,7 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
               :key="stockValue(item)"
               :label="stockOptionLabel(item)"
               :value="stockValue(item)"
-            >
-              <span class="composer-option-main">{{ item.name }}</span>
-              <span class="composer-option-sub">{{ item.code }} · {{ item.industry }}</span>
-            </el-option>
+            />
             <!-- 空态沿用原来的三句文案：下拉自带 no-data 只能给一句，说不出"在加载"和"接口挂了" -->
             <template #empty>
               <p class="composer-select-empty">{{ stockEmptyText }}</p>
