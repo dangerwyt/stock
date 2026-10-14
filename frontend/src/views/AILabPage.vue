@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { http, fetchSnapshot, startAiJob, readNdjsonFrame } from '@/api/client'
 import AgentDocsPanel from '@/components/AgentDocsPanel.vue'
@@ -190,18 +190,33 @@ function stockValue(item) {
   const raw = item.code ?? item.tsCode
   return raw == null ? '' : String(raw).trim()
 }
-const stockSelectCode = computed({
-  get: () => stockValue(requestStock.value),
-  set: (code) => {
-    if (!code) {
-      clearStock()
-      return
-    }
-    const hit = labTop50Stocks.value.find((i) => stockValue(i) === code)
-      || stockResults.value.find((i) => stockValue(i) === code)
-    if (hit) pickStock(hit)
+// el-select 的 v-model 直接绑一个「裸 code 字符串」的普通 ref，而不是计算属性。
+// 原因：remote/filterable 下拉在选中后内部 options 会被重算/清空，计算属性 get 经过
+// manualStock→requestStock→stockValue 的级联，el-select 拿 modelValue 去 options 里
+// 匹配选中标签时容易对不上（表现为框空白、但 requestStock 有值、placeholder/当前标的正常）。
+// 普通 ref 让 modelValue 与 option 的 :value 是同一个裸字符串，匹配稳定。
+const selectedStockCode = ref(stockValue(requestStock.value))
+// 外部导致 requestStock 变化时（切会话 / 清空 / 会话自带 stockCode），把下拉的选中值同步过去。
+watch(
+  requestStock,
+  (s) => {
+    const v = stockValue(s)
+    if (v !== selectedStockCode.value) selectedStockCode.value = v
   },
-})
+  { immediate: true },
+)
+// 用户在下拉里选了某只：先回全量条目（命中 TOP50 才有行情/因子），再落到 manualStock。
+function onStockChange(code) {
+  if (!code) {
+    clearStock()
+    return
+  }
+  const hit =
+    labTop50Stocks.value.find((i) => stockValue(i) === code) ||
+    stockResults.value.find((i) => stockValue(i) === code)
+  if (hit) pickStock(hit)
+  else selectedStockCode.value = code // 兜底：remote 结果已空但 code 有效，保住回显
+}
 // 下拉选项 = 本次搜索结果；若当前标的还不在结果里（会话自带标的、或上次选完清空了输入），
 // 把它补到最前面，否则 el-select 只能拿裸 code 当 label 显示。
 // ⚠️ 用归一化后的 stockValue 判等，否则 tsCode / code 口径不一会判「不在列表」而漏掉当前项，
@@ -890,7 +905,8 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
                值直接双向绑到 generalRoles，落库收在 generalRolesModel 的 setter 里。 -->
         <div class="context-chips">
           <el-select
-            v-model="stockSelectCode"
+            v-model="selectedStockCode"
+            @change="onStockChange"
             class="composer-select composer-stock-select"
             popper-class="composer-select-dropdown"
             placeholder="搜索A股"
