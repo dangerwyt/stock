@@ -435,6 +435,14 @@ a {
   font-size: 12px;
 }
 
+/* 选中态标签复用 .el-select__placeholder 这个元素类（EP 单选机制），
+ * 必须显式给选中项深色字，否则会被 placeholder 的浅灰色盖掉、看起来像"没选上"。
+ * placeholder（无值时）仍走 --el-text-color-placeholder 的浅灰，两者靠 .el-select__selected-item 区分。 */
+.composer-select .el-select__selected-item {
+  color: var(--text);
+  font-weight: 500;
+}
+
 .composer-select .el-select__prefix {
   color: var(--muted);
   margin-right: 4px;

@@ -182,30 +182,41 @@ const requestStock = computed(
 // - 写：按 code 回到全量条目再走 pickStock（命中 TOP50 才有行情与因子，见 pickStock 注释）；
 //   清空（clearable 的 ×）= 放弃手动覆盖：老师会话回落到会话自带标的，通用会话变成无标的。
 //   原第二行的标的 chip 已删（下拉本身就显示当前标的，两处重复），清空职责由 clearable 接管。
+// 标的「主键」归一化：搜索结果/快照/会话兜底三处口径不一（有的给 code 六位、有的给 tsCode
+// 带后缀 .SZ/.SH），el-select 的 :value 与 v-model 必须严格相等才能渲染出选中标签。
+// 这里统一取「有值即真」的 code，否则回落 tsCode，并转成字符串，避免 number/string 不匹配。
+function stockValue(item) {
+  if (!item) return ''
+  const raw = item.code ?? item.tsCode
+  return raw == null ? '' : String(raw).trim()
+}
 const stockSelectCode = computed({
-  get: () => requestStock.value?.code || '',
+  get: () => stockValue(requestStock.value),
   set: (code) => {
     if (!code) {
       clearStock()
       return
     }
-    const hit = labTop50Stocks.value.find((i) => i.code === code)
-      || stockResults.value.find((i) => i.code === code)
+    const hit = labTop50Stocks.value.find((i) => stockValue(i) === code)
+      || stockResults.value.find((i) => stockValue(i) === code)
     if (hit) pickStock(hit)
   },
 })
 // 下拉选项 = 本次搜索结果；若当前标的还不在结果里（会话自带标的、或上次选完清空了输入），
 // 把它补到最前面，否则 el-select 只能拿裸 code 当 label 显示。
+// ⚠️ 用归一化后的 stockValue 判等，否则 tsCode / code 口径不一会判「不在列表」而漏掉当前项，
+// 导致选中标签解析不出来（select 框空白、但 composerPlaceholder 直接读 requestStock 仍有名字）。
 const stockSelectOptions = computed(() => {
   const list = stockResults.value.slice()
   const cur = requestStock.value
-  if (cur?.code && !list.some((i) => i.code === cur.code)) list.unshift(cur)
+  const curVal = stockValue(cur)
+  if (curVal && !list.some((i) => stockValue(i) === curVal)) list.unshift(cur)
   return list
 })
 // el-select 选中后显示的是 option 的 **label**（不是插槽内容），插槽只管下拉里的排版，
 // 所以选中态要的「名称 代码」得单独拼一份。
 function stockOptionLabel(item) {
-  return [String(item.name || '').trim(), String(item.code || '').trim()].filter(Boolean).join(' ')
+  return [String(item.name || '').trim(), String(item.code || item.tsCode || '').trim()].filter(Boolean).join(' ')
 }
 // 下拉空态的一句话（模板里不做条件串联，统一在这里选）。
 // loading 态 EP 自己会显示 loading-text，这里兜住"还没输入 / 没结果 / 接口挂了"三种。
@@ -894,9 +905,9 @@ onBeforeUnmount(() => clearTimeout(stockTimer))
             <template #prefix><IconSearch :size="14" /></template>
             <el-option
               v-for="item in stockSelectOptions"
-              :key="item.tsCode || item.code"
+              :key="stockValue(item)"
               :label="stockOptionLabel(item)"
-              :value="item.code"
+              :value="stockValue(item)"
             >
               <span class="composer-option-main">{{ item.name }}</span>
               <span class="composer-option-sub">{{ item.code }} · {{ item.industry }}</span>
