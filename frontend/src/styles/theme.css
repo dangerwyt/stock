@@ -1263,6 +1263,14 @@ a {
   background: #f5f9ff;
 }
 
+/* 14i-1) 资讯来源标签（原 tier 徽标改为显示接口 source 字段） */
+.news-page .news-type {
+  color: #3a5f92;
+  background: #eef4ff;
+  border: 1px solid #d9e6fb;
+  white-space: nowrap;
+}
+
 /* 14j) legacy 深色 hover / 选中态（补齐 14i 之外的悬停高亮）
  *     这些 hovr 都写死在 styles.css 的深色主题里（#12243a / #102238 / #112238 …），
  *     reference-theme.css 没覆盖 hover，所以鼠标一划过就变回深色。统一刷成浅蓝。 */

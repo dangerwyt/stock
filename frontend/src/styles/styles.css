@@ -438,7 +438,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .top50-toggle { border-radius: 4px; display: flex; align-items: center; gap: 4px; }
 .news-stream { margin: 10px; }
 .stream-state { color: var(--green) !important; font-size: 8px !important; }
-.news-row { width: 100%; min-height: 66px; display: grid; grid-template-columns: 42px 38px minmax(260px, 1fr) 68px 64px 16px; gap: 8px; align-items: center; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; color: inherit; padding: 7px 10px; text-align: left; cursor: pointer; }
+.news-row { width: 100%; min-height: 66px; display: grid; grid-template-columns: 76px 38px minmax(260px, 1fr) 68px 64px 16px; gap: 8px; align-items: center; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; color: inherit; padding: 7px 10px; text-align: left; cursor: pointer; }
 .news-row:hover, .news-row.selected { background: #12243a; }
 .news-row.selected { box-shadow: inset 2px 0 0 var(--blue); }
 .news-type { display: inline-flex; width: fit-content; align-items: center; justify-content: center; border-radius: 3px; padding: 3px 5px; font-size: 8px; font-weight: 600; }
@@ -1014,7 +1014,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
   .method-weights { grid-column: 1 / -1; border-top: 1px solid var(--line); }
   .cycle-method-strip > .method-focus { border-right: 0; }
   .cycle-method-strip > .method-weights { border-right: 0; }
-  .news-row { grid-template-columns: 40px 36px minmax(220px, 1fr) 60px 16px; }
+  .news-row { grid-template-columns: 72px 36px minmax(220px, 1fr) 60px 16px; }
   .news-impact { display: none; }
   .ai-layout { grid-template-columns: 210px minmax(420px, 1fr); }
   .research-context { display: none; }
@@ -1129,7 +1129,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
   .news-tabs button { flex: 0 0 auto; }
   .news-toolbar .top50-toggle { margin-left: auto; }
   .news-stream { margin: 6px; }
-  .news-row { grid-template-columns: 38px 34px minmax(0, 1fr) 16px; padding: 8px 7px; }
+  .news-row { grid-template-columns: 68px 34px minmax(0, 1fr) 16px; padding: 8px 7px; }
   .news-rank, .news-impact { display: none; }
   .news-main strong { white-space: normal; line-height: 1.45; }
   .overview-columns { padding: 6px; }

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useSnapshot } from '@/composables/useSnapshot'
-import { newsCategories, newsCategoryMatches, newsTierLabel, describeNewsClassification } from '@/data/teachers'
+import { describeNewsClassification } from '@/data/teachers'
 import {
   IconDatabase,
   IconSearch,
@@ -12,7 +12,6 @@ import {
 } from '@tabler/icons-vue'
 
 const { data: news, state, sourceMode } = useSnapshot('/api/news', { refreshMs: 300000 })
-const category = ref('主要')
 const query = ref('')
 const top50Only = ref(false)
 const visibleCount = ref(8)
@@ -21,10 +20,9 @@ const items = computed(() => news.value?.items || [])
 const meta = computed(() => news.value?.meta || {})
 const filtered = computed(() =>
   items.value.filter((item) => {
-    const matchesCategory = newsCategoryMatches(item, category.value)
     const matchesQuery = `${item.stock}${item.code}${item.title}${item.source}`.includes(query.value.trim())
     const matchesTop50 = !top50Only.value || Boolean(item.relatedTop50Rank)
-    return matchesCategory && matchesQuery && matchesTop50
+    return matchesQuery && matchesTop50
   }),
 )
 </script>
@@ -35,13 +33,10 @@ const filtered = computed(() =>
       <div class="news-statusbar">
         <div><span class="live-pulse" /><strong>全球影响资讯流</strong><small>北京时间交易日8轮采集；非交易日2轮</small></div>
         <div><IconDatabase :size="14" /><span>{{ meta?.collection?.label || (meta?.delayed ? '资讯更新延迟 · 最近真实缓存' : sourceMode === 'live' ? '真实API共享缓存' : '等待真实资讯') }}</span><b>{{ meta?.snapshotId || '等待真实快照' }}</b></div>
-        <div><span>最后同步</span><strong>{{ meta?.generatedAt ? new Date(meta.generatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }}</strong><small>{{ category }} {{ filtered.length }} 条 / 共 {{ meta?.itemCount || items.length }} 条</small></div>
+        <div><span>最后同步</span><strong>{{ meta?.generatedAt ? new Date(meta.generatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }}</strong><small>当前 {{ filtered.length }} 条 / 共 {{ meta?.itemCount || items.length }} 条</small></div>
       </div>
 
       <div class="news-toolbar">
-        <div class="news-tabs" role="tablist" aria-label="资讯层级切换">
-          <button v-for="c in newsCategories" :key="c" role="tab" :aria-selected="category === c" :class="{ active: category === c }" @click="category = c; visibleCount = 8">{{ c }}</button>
-        </div>
         <label class="search-field"><IconSearch :size="15" /><el-input v-model="query" class="ep-form-control" placeholder="搜索资讯 / 股票 / 代码" clearable /></label>
         <button :class="['top50-toggle', top50Only ? 'active' : '']" @click="top50Only = !top50Only"><IconStar :size="14" /> 仅TOP50</button>
       </div>
@@ -55,7 +50,7 @@ const filtered = computed(() =>
           <div v-if="state === 'loading'" class="news-empty"><IconRefresh :size="18" /> 正在读取共享资讯缓存…</div>
           <div v-else-if="filtered.length === 0" class="news-empty">没有符合当前层级与筛选条件的资讯</div>
           <a v-for="item in filtered.slice(0, visibleCount)" :key="item.id" class="news-row" :href="item.url" target="_blank" rel="noreferrer">
-            <span :class="['news-type', `type-${item.type}`]">{{ newsTierLabel(item) }}</span>
+            <span class="news-type">{{ item.source }}</span>
             <span class="news-time" :title="item.timestampBasis === 'source_updated_at' ? '来源更新时间，非原文发布时间' : '原文发布时间'">{{ item.time }}{{ item.timestampBasis === 'source_updated_at' ? ' 更新' : '' }}</span>
             <span class="news-main">
               <strong>{{ item.title }}</strong>
