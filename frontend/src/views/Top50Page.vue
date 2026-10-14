@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
+import { useAppStore } from '@/stores/snapshot'
 import { fetchSnapshot } from '@/api/client'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
@@ -59,8 +60,52 @@ const cycleData = computed(() => snapshot.value?.cycles?.[cycle.value] || null)
 const rankedStocks = computed(() =>
   (cycleData.value?.ranking || []).map(hydrateStock).sort((a, b) => a.rank - b.rank),
 )
+
+// 自选股（全局 watchlist，localStorage 持久化）作为额外行追加到榜单下方：
+// 搜索选股加入后，在 TOP50 表格展示并计入底部总数。
+const store = useAppStore()
+const wlMeta = ref({})
+watch(
+  () => store.watchlist.slice(),
+  (codes) => {
+    codes.forEach((code) => {
+      if (wlMeta.value[code]) return
+      fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(code)}`)
+        .then((d) => {
+          const hit = (d?.items || []).find((i) => i.code === code) || (d?.items || [])[0]
+          if (hit) wlMeta.value = { ...wlMeta.value, [code]: { name: hit.name, industry: hit.industry } }
+        })
+        .catch(() => {})
+    })
+  },
+  { immediate: true },
+)
+const watchlistExtras = computed(() => {
+  const rankedCodes = new Set(rankedStocks.value.map((s) => s.code))
+  return store.watchlist
+    .filter((code) => !rankedCodes.has(code))
+    .map((code) => {
+      const m = wlMeta.value[code] || {}
+      return {
+        code,
+        name: m.name || code,
+        industry: m.industry || '自选跟踪',
+        isWatchlist: true,
+        rank: null,
+        score: null,
+        agentVotes: null,
+        consensus: null,
+        status: null,
+        reason: null,
+        invalid: null,
+        marketDataDate: null,
+        predictionId: null,
+      }
+    })
+})
+const combinedStocks = computed(() => [...rankedStocks.value, ...watchlistExtras.value])
 const filtered = computed(() =>
-  rankedStocks.value.filter((stock) =>
+  combinedStocks.value.filter((stock) =>
     `${stock.name}${stock.code}${stock.industry}`.includes(query.value.trim()),
   ),
 )
@@ -296,7 +341,7 @@ function goAI(stock) {
           <thead>
             <tr>
               <th>排名</th><th>股票/代码</th><th>所属行业</th><th>综合分</th><th>因子支持</th>
-              <th>状态</th><th>为什么入选</th><th>失效条件</th><th>行情日</th><th>操作</th>
+              <th>状态</th><th>是否自选</th><th>为什么入选</th><th>失效条件</th><th>行情日</th><th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -304,23 +349,30 @@ function goAI(stock) {
               v-for="stock in pageStocks"
               :key="stock.code"
               :class="{ selected: selectedCode === stock.code }"
-              @click="openDialog(stock.code)"
+              @click="!stock.isWatchlist && openDialog(stock.code)"
             >
-              <td><span :class="`rank rank-${stock.rank}`">{{ stock.rank }}</span></td>
+              <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else :class="`rank rank-${stock.rank}`">{{ stock.rank }}</span></td>
               <td><strong>{{ stock.name }}</strong><small>{{ stock.code }}</small></td>
               <td><b>{{ stock.industry || '--' }}</b></td>
-              <td><b class="score-value">{{ stock.score }}</b></td>
-              <td><b class="agent-vote-value">{{ stock.agentVotes ?? stock.consensus ?? 0 }}<small>/{{ teacherCount }}</small></b></td>
-              <td><StatusBadge :status="stock.status" /></td>
-              <td><span class="top50-reason">{{ stock.reason || stock.trend }}</span></td>
-              <td><span class="top50-invalid">{{ stock.invalid || '待更新' }}</span></td>
-              <td><time>{{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }}</time></td>
+              <td><b v-if="stock.isWatchlist" class="muted-dash">—</b><b v-else class="score-value">{{ stock.score }}</b></td>
+              <td><b v-if="stock.isWatchlist" class="muted-dash">—</b><b v-else class="agent-vote-value">{{ stock.agentVotes ?? stock.consensus ?? 0 }}<small>/{{ teacherCount }}</small></b></td>
+              <td><StatusBadge v-if="!stock.isWatchlist" :status="stock.status" /><span v-else class="muted-dash">—</span></td>
               <td>
-                <button class="table-action evidence-trigger" :disabled="!stock.predictionId" @click="openEvidence(stock, $event)">查看证据</button>
+                <span v-if="stock.isWatchlist" class="watchlist-badge">自选</span>
+                <span v-else class="muted-dash">—</span>
+              </td>
+              <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else class="top50-reason">{{ stock.reason || stock.trend }}</span></td>
+              <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else class="top50-invalid">{{ stock.invalid || '待更新' }}</span></td>
+              <td><time v-if="stock.isWatchlist" class="muted-dash">—</time><time v-else>{{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }}</time></td>
+              <td>
+                <button v-if="stock.isWatchlist" class="table-action remove-watch" @click.stop="store.toggleWatch(stock.code)">
+                  <IconX :size="14" /> 移除自选
+                </button>
+                <button v-else class="table-action evidence-trigger" :disabled="!stock.predictionId" @click="openEvidence(stock, $event)">查看证据</button>
               </td>
             </tr>
             <tr v-if="!filtered.length">
-              <td colspan="10">
+              <td colspan="11">
                 <div class="top50-table-empty">
                   <strong>{{ query.trim() ? '没有符合当前搜索条件的标的' : displayField(snapshot?.reason, `${cycle}暂无可展示榜单`) }}</strong>
                   <small>最后成功 {{ formatShanghaiDateTime(snapshot?.meta?.generatedAt) }} · 等待下一次 07:20 冻结榜单</small>

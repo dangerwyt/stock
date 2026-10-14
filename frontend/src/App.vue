@@ -148,7 +148,8 @@ function openSearch() {
 }
 function openStock(item) {
   searchOpen.value = false
-  router.push(`/market?code=${item.code}`)
+  if (!store.has(item.code)) store.toggleWatch(item.code)
+  router.push('/top50')
 }
 
 // --- 通知中心 ---

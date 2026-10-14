@@ -154,6 +154,88 @@ http://<服务器IP>:8080
 
 若本机 Docker Desktop 跑（非局域网服务器），想只让本机访问就把 `"8080:80"` 改成 `"127.0.0.1:8080:80"`。
 
+## 远程访问（Tailscale）：给特定的人在他电脑上用
+
+适用：只想让**一个或几个特定的人**在你 Mac 在线时从别的电脑访问，不想暴露公网、不想买 VPS / 域名。
+
+**原理**：Tailscale 在你的 Mac 和对方电脑之间建一条加密私有网格（WireGuard）。对方只能路由到你的 Mac，公网 IP / 端口都不暴露。前端已绑 `8080`（`docker-compose.yml` 里 `8080:80` 绑到 `0.0.0.0`），Tailscale 流量直接打到 Mac 的 8080，**无需改 docker-compose**。
+
+### 1）Mac（服务端）安装并登录
+
+> ⚠️ 本部署机**未装 Homebrew**，且装 .pkg 需要管理员密码。优先用下面「不依赖 brew」的方式。
+
+**方式 A（推荐，无需 brew）**：Mac App Store 搜 **Tailscale** 安装，或去 `https://tailscale.com/download/macOS` 下 `.pkg` 双击装（.pkg 需管理员密码）。装完从菜单栏 **Sign in** 登录即可，等效于下面的 `sudo tailscale up`。
+
+**方式 B（有 brew 时）**：
+
+```bash
+brew install tailscale
+```
+
+登录（二选一，效果相同）：
+
+```bash
+sudo tailscale up        # 浏览器跳出，用 Google / GitHub / Microsoft 登录 Tailscale 账号
+```
+
+> 用 GUI（方式 A）登录过的可跳过这行命令。登录后 `tailscale` CLI 已在 PATH，后面查地址用得到。
+
+### 2）确认本机可达
+
+```bash
+tailscale ip -4          # 你的 tailnet IP，例如 100.x.y.z
+tailscale status         # 看机器名（MagicDNS，如 mac-mini）
+```
+
+浏览器开 `http://<机器名>.ts.net:8080` 或 `http://100.x.y.z:8080`，应出现你的前端。
+
+> 打不开先查：`docker compose ps` 两容器 healthy；Mac 防火墙没拦 8080 入站（系统设置 → 网络 → 防火墙）。Tailscale 接口默认放行。
+
+### 3）把对方加进来
+
+1. 对方在自己电脑（Win / Mac / Linux 都行）装 Tailscale（tailscale.com/download），登录**他自己的** Tailscale 账号。
+2. 你在 Tailscale 后台（login.tailscale.com → Machines → 你的 Mac → ⋯ → **Share**）把这台 Mac 共享给对方账号（免费版支持设备共享，最多 100 设备）。
+3. 对方打开 `http://<你的机器名>.ts.net:8080` 即可用 —— **只有被你共享的人能到，其他人完全访问不到**。
+
+### 注意事项
+
+- Mac 必须同时满足：开机 + Docker 在跑（`docker compose up -d`）+ Tailscale 在跑（装好默认登录自启）。合盖睡眠会让对方断连，需要时在系统设置关「合盖睡眠」或跑 `caffeinate`。
+- 前端没登录鉴权也没关系：非 tailnet 设备根本路由不到 8080，等于天然网关。`.env` 里的密钥只在本地，不经 Tailscale 泄露。
+- 撤权：Tailscale 后台取消那台 Mac 的共享，或 `tailscale down` 立刻全断。
+- **若对方不想装 App、只想点个普通网址**：改用 **花生壳**（见下节）—— 对方零安装，直接点网址。
+
+## 远程访问（花生壳）：给对方一个免装 App 的公网网址
+
+适用：想让对方**不用装任何客户端**、直接点个网址就能开。花生壳是国产商业内网穿透 SaaS，Mac 上装客户端、加一条映射即可，对方零安装。
+
+> 与 Tailscale 的区别：Tailscale 是私有网格（对方要装 App + 你共享节点），花生壳是公网转发（对方只点网址）。**两者可共存**，不冲突——你可以自己用 Tailscale、给对方发花生壳网址。
+
+### 限制（免费版，先知道）
+- 送 1 个壳域名（有效期 1 年），可建约 1–2 条映射（本项目只用 1 条）。
+- 带宽 1Mbps、月流量约 1G —— 看盘 / 偶尔用够，高频大流量不够。
+- **HTTP 映射免费；HTTPS（浏览器小绿锁）是付费功能** → 免费方案公网那一段是 `http` 明文，介意就付费或用 Tailscale。
+- 外网端口由系统随机分配 5 位（如 `xxx.ticp.net:52489`）；固定端口付费。
+- 可能需**实名认证**才能领免费壳域名。
+
+### 步骤
+1. 注册贝锐账号：oray.com（按需实名认证，领免费壳域名）。
+2. Mac 装客户端：oray.com/download 选 macOS（或 App Store 搜「花生壳」），装完登录（账号或微信扫码）。**需管理员密码**（本机已有）。
+3. 添加映射（客户端 → 内网穿透 → 添加映射）：
+   - 应用名称：`stock-sip`（随意）
+   - 应用类型：**HTTP**
+   - 内网主机：`127.0.0.1`（花生壳跑在 Mac 本机，直连 localhost；前端已绑 `0.0.0.0:8080`，localhost 可达）
+   - 内网端口：`8080`
+   - 外网域名：选账号下的免费壳域名
+   - 外网端口：动态端口（免费随机）
+   - 访问限制：若套餐支持，开「访问密码」给链接加一层 basic auth（前端无登录时的补丁）
+   - 保存 → 生成外网地址，形如 `http://xxxx.vicp.cc:5xxxx`
+4. 把该地址发给对方，对方浏览器打开即用，**无需装 App**。
+
+### 注意
+- Mac 要开机 + Docker 跑（`docker compose up -d`）+ 花生壳客户端跑（默认登录自启）。
+- **安全**：前端无登录，花生壳公网址谁拿到链接谁能用。能开访问密码就开；否则只把链接发给那个人。免费 HTTP 公网跳是明文，敏感数据别走公网，或升级 HTTPS / 改用 Tailscale。
+- 花生壳账号别在多台设备同时登录，会互踢导致映射失效。
+
 ## 八、日常运维
 
 ```bash

@@ -230,7 +230,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .industry-heatmap, .home-top50-summary, .home-watchlist-summary, .integrated-news,
 .industry-heatmap footer, .integrated-panel footer { color: var(--text); background: #fff; }
 .industry-heatmap footer, .integrated-panel footer { border-top-color: #dce9f7 !important; }
+/* TOP50 冻结选股证据：内部深色卡片改浅色（对齐 accuracy-evidence-dialog 处理，见 styles.css:4537 原始深色定义） */
+.top50-evidence-dialog { border-color: #dce8f7; box-shadow: 0 28px 90px rgba(20, 57, 100, .18); }
+.top50-evidence-dialog > header { border-bottom-color: #e3edf8; }
+.top50-evidence-dialog > header span { color: #376194; }
+.top50-evidence-dialog > header h2 { color: #11386b; }
+.top50-evidence-dialog > header p { color: #7390b3; }
+.top50-evidence-dialog > header button { border-color: #d2e2f5; color: #5f7fa8; }
+.top50-evidence-state { color: #6785ab; }
+.top50-evidence-state strong { color: #183f78; }
+.top50-evidence-section h3 { color: #153f7c; }
+.top50-evidence-meta > div,
+.top50-evidence-rule-grid article,
+.top50-evidence-factor-list article,
+.top50-evidence-agent-columns > div { background: #f5f9ff; border-color: #dce8f7; }
+.top50-evidence-meta span,
+.top50-evidence-rule-grid span { color: #6c88aa; }
+.top50-evidence-meta strong,
+.top50-evidence-rule-grid strong { color: #1d477e; }
+.top50-evidence-factor-list strong { color: #1e477e; }
+.top50-evidence-factor-list span,
+.top50-evidence-factor-list p,
+.top50-evidence-agent-columns p,
+.top50-evidence-rule-grid p { color: #6c88aa; }
+.top50-evidence-agent-columns > div > span { color: #2c7fda; }
+.top50-evidence-agent-columns li strong,
+.top50-evidence-timeline strong { color: #1e477e; }
+.top50-evidence-agent-columns li span,
+.top50-evidence-timeline time,
+.top50-evidence-timeline p,
+.top50-evidence-empty { color: #7390b3; }
+.top50-evidence-agent-columns li,
+.top50-evidence-timeline li { border-top-color: #e3edf8; }
 .industry-heatmap footer span, .integrated-panel footer span { color: #708db3 !important; }
+/* TOP50 自选行：是否自选徽标 + 移除按钮（浅色主题，对齐决策表） */
+.watchlist-badge { display: inline-block; padding: 2px 9px; border-radius: 10px; background: #eaf3ff; color: #1d75eb; border: 1px solid #cfe1fb; font-size: 11px; }
+.muted-dash { color: #9fb2cc; }
+td .remove-watch { display: inline-flex; align-items: center; gap: 4px; color: #c0564f; border-color: #f0cfca; background: #fff5f4; }
+td .remove-watch:hover { background: #ffe9e6; }
 .industry-heatmap footer button, .integrated-panel footer button { color: #347bd9 !important; background: transparent !important; }
 .mobile-primary-nav { background: rgba(255,255,255,.98) !important; border-top-color: #d7e5f5 !important; color: #6684ac !important; }
 .mobile-primary-nav button { color: #6c88ad !important; background: transparent !important; }
