@@ -125,6 +125,7 @@ async def _job_teacher_distillation() -> dict:
 # ----------------------------------------------------------------- 落盘辅助
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _MARKET_SNAPSHOT = _DATA_DIR / "market_snapshot.json"
+_MARKET_SOURCE_STATE = _DATA_DIR / "market_source_state.json"
 
 
 def _load_fixture_safe(name: str) -> dict:
@@ -149,6 +150,18 @@ def _persist_market_snapshot(snapshot: dict) -> None:
     tmp = _MARKET_SNAPSHOT.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(_MARKET_SNAPSHOT)
+
+
+def _persist_market_source_state(state: dict) -> None:
+    """原子写「最近一次行情抓取状态记录」（market-source:latest 的等价物）。
+
+    ``snapshots.marketSnapshotState``（market_state.build_market_health）据此派生
+    health.market：源异常/部分成功会在徽标上如实体反映，而不是永远冻结成「延迟」。
+    """
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = _MARKET_SOURCE_STATE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(_MARKET_SOURCE_STATE)
 
 
 async def _job_us_etf_map() -> dict:
@@ -270,19 +283,33 @@ async def _job_post_close() -> dict:
             "provider": "Tushare daily",
         })
     now = datetime.now(timezone.utc).isoformat()
+    # 标的数不足 50 视为部分成功（与 job 返回口径一致），让 health 正确显示 partial 而非 ready。
+    snap_status = "partial" if len(quotes) < 50 else "completed"
+    for quote in quotes:
+        quote["observedAt"] = now  # 供 market_state 计算陈旧度（ageMinutes）
     snapshot = {
         "meta": {
             "generatedAt": now,
             "tradeDate": trade_date,
             "sourceMode": "live",
             "provider": "Tushare daily",
-            "status": "completed",
+            "status": snap_status,
+            "session": "daily_close",
             "rowCount": len(quotes),
             "note": "由 post-close 调度任务从真实全市场行情落盘；/api/market 新鲜时优先服务，否则回落 fixtures。",
         },
         "quotes": quotes,
     }
     _persist_market_snapshot(snapshot)
+    # 落盘「最近一次行情抓取状态记录」，供 health.market 派生（源异常/部分成功如实反映）。
+    _persist_market_source_state({
+        "status": snap_status,
+        "provider": "Tushare daily",
+        "succeededAt": now,
+        "failedAt": None,
+        "quoteCount": len(quotes),
+        "staleCount": 0,
+    })
     return {
         "status": "completed" if len(quotes) >= 50 else "partial",
         "sourceMode": "live",

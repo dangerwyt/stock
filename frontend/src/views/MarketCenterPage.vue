@@ -65,15 +65,30 @@ const downCount = computed(() => marketRows.value.filter((i) => i.changeFromOpen
 const marketDegraded = computed(() =>
   ['degraded', 'partial'].includes(status.value?.health?.market?.status),
 )
+// 演示态：后端回落 fixture 时显式标 sourceMode='fixtures'（对齐 /api/top50 口径），
+// 不再把种子数据误标成 live；这里据此显示「演示快照」而非误导性的「已连接 / 延迟」。
+const marketDemo = computed(() =>
+  market.value?.meta?.sourceMode === 'fixtures' || status.value?.health?.market?.status === 'fixtures',
+)
 const minuteMode = computed(() => Boolean(status.value?.health?.market?.isIntraday))
-const realtimeDailyMode = computed(() => /rt_k/i.test(String(market.value?.meta?.provider || '')))
-const marketPanelTitle = computed(() => (minuteMode.value ? '盘中分钟行情' : realtimeDailyMode.value ? '当日行情' : '行情快照'))
+const realtimeDailyMode = computed(() => !marketDemo.value && /rt_k/i.test(String(market.value?.meta?.provider || '')))
+const marketPanelTitle = computed(() =>
+  marketDemo.value
+    ? '行情快照（演示）'
+    : minuteMode.value
+      ? '盘中分钟行情'
+      : realtimeDailyMode.value
+        ? '当日行情'
+        : '行情快照',
+)
 const marketPanelDescription = computed(() =>
-  minuteMode.value
-    ? '真实分钟快照 · 价格方向按当前价相对开盘价计算'
-    : realtimeDailyMode.value
-      ? '盘中日线 / 收盘快照 · 按8轮计划采集，非逐笔实时'
-      : '最近有效快照 · 价格方向按当前价相对开盘价计算',
+  marketDemo.value
+    ? '演示快照 · 行情中心未接入实时数据，当前展示种子样例；请核对报价时间'
+    : minuteMode.value
+      ? '真实分钟快照 · 价格方向按当前价相对开盘价计算'
+      : realtimeDailyMode.value
+        ? '盘中日线 / 收盘快照 · 按8轮计划采集，非逐笔实时'
+        : '最近有效快照 · 价格方向按当前价相对开盘价计算',
 )
 const generatedAt = computed(() =>
   market.value?.meta?.generatedAt
@@ -136,12 +151,12 @@ function goNews() {
     <div class="market-kpis">
       <section>
         <span>行情状态</span>
-        <strong :class="marketDegraded ? 'neutral' : marketState === 'ready' ? 'positive' : 'neutral'">{{ marketDegraded ? '延迟' : marketState === 'ready' ? '已连接' : '读取中' }}</strong>
+        <strong :class="marketDegraded ? 'neutral' : marketDemo ? 'neutral' : marketState === 'ready' ? 'positive' : 'neutral'">{{ marketDegraded ? '延迟' : marketDemo ? '演示快照' : marketState === 'ready' ? '已连接' : '读取中' }}</strong>
         <small>{{ status?.health?.market?.label || market?.meta?.provider || '等待真实行情' }}</small>
       </section>
       <section>
         <span>快照时间</span>
-        <strong>{{ generatedAt }}</strong>
+        <strong>{{ generatedAt }}<template v-if="marketDemo"> · 演示</template></strong>
         <small>上海时间 · 自动刷新60秒</small>
       </section>
       <section>
@@ -160,7 +175,7 @@ function goNews() {
       <section class="panel market-live-panel">
         <div class="panel-head">
           <div><h2>{{ marketPanelTitle }}</h2><span>{{ marketPanelDescription }}</span></div>
-          <span :class="['stream-state', marketState !== 'ready' || marketDegraded ? 'warn' : '']"><i /> {{ marketDegraded ? '行情延迟' : marketState === 'ready' ? '行情已读取' : '沿用最近快照' }}</span>
+          <span :class="['stream-state', marketState !== 'ready' || marketDegraded || marketDemo ? 'warn' : '']"><i /> {{ marketDegraded ? '行情延迟' : marketDemo ? '演示快照 · 待接入' : marketState === 'ready' ? '行情已读取' : '沿用最近快照' }}</span>
         </div>
         <div class="market-live-table">
           <div class="market-live-head">

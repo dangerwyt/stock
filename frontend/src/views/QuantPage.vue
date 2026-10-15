@@ -43,7 +43,9 @@ const quantToolTabs = [
   { id: 'simulation', label: '模拟', icon: IconBriefcase2 },
 ]
 
-const tool = ref(route.query.tool || 'market')
+// tab 初始值来自 ?tool=（决策弹窗「模拟交易」直达模拟 tab）；非法值回落行情。
+const validTools = quantToolTabs.map((t) => t.id)
+const tool = ref(validTools.includes(route.query.tool) ? route.query.tool : 'market')
 const cycle = ref('波段')
 const stockCode = ref('')
 const feedback = ref('')
@@ -110,7 +112,34 @@ function switchTool(id) {
   tool.value = id
   feedback.value = ''
   toolResult.value = null
+  // URL 与 tab 保持同步：否则「先手点别的 tab、再从弹窗跳同一 tab」时 query 未变化、
+  // 路由不去重导航，下面的 watch 不会再触发，tab 会切不过去。
+  router.replace({ query: { ...route.query, tool: id } })
 }
+
+// 决策弹窗是全局实例（App.vue 挂载），在 /tools 页本身也能打开 —— 所以 ?tool= 变化
+// 不能只靠 setup 时读一次，这里同步监听（弹窗「模拟交易」跳转的正式入口）。
+watch(
+  () => route.query.tool,
+  (v) => {
+    if (v && v !== tool.value && validTools.includes(v)) switchTool(v)
+  },
+)
+
+// ?code= 预选标的：弹窗带过来的股票要等冻结榜单（stockChoices）就绪后才能命中，
+// 命不中（不在所选周期榜单里）就保持默认第一只，不硬塞进 el-select。
+const pendingCode = ref(route.query.code ? String(route.query.code) : '')
+watch(
+  [stockChoices, () => route.query.code],
+  ([choices, c]) => {
+    if (c) pendingCode.value = String(c)
+    if (pendingCode.value && choices.some((o) => o.value === pendingCode.value)) {
+      stockCode.value = pendingCode.value
+      pendingCode.value = ''
+    }
+  },
+  { immediate: true },
+)
 function pctText(v) {
   return `${v >= 0 ? '+' : ''}${v}%`
 }

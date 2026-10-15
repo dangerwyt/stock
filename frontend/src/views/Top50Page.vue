@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { useAppStore } from '@/stores/snapshot'
 import { fetchSnapshot } from '@/api/client'
@@ -30,6 +30,8 @@ import {
 } from '@tabler/icons-vue'
 
 const router = useRouter()
+// 首页四周期 TOP50 表格按 ?cycle= 直达对应周期 tab（非法值回落超短）。
+const route = useRoute()
 const { data: snapshot, state, sourceMode } = useSnapshot('/api/top50', { refreshMs: 300000 })
 
 // 票数分母 = 用户自己创建的老师总数（引擎 meta.teacherCount）。原版 12 位老师现已作为
@@ -40,8 +42,16 @@ const teacherCount = computed(() => Number(snapshot.value?.meta?.teacherCount) |
 const CYCLES = ['超短', '短线', '波段', '中长线']
 const query = ref('')
 const page = ref(1)
-const cycle = ref('超短')
+const cycle = ref(CYCLES.includes(route.query.cycle) ? route.query.cycle : '超短')
 const showFilters = ref(false)
+
+// 已在 /top50 页时再点带不同 ?cycle= 的入口（如首页切周期后再点行）也要生效。
+watch(
+  () => route.query.cycle,
+  (v) => {
+    if (v && CYCLES.includes(v) && v !== cycle.value) cycle.value = v
+  },
+)
 
 const cycleData = computed(() => snapshot.value?.cycles?.[cycle.value] || null)
 const rankedStocks = computed(() =>

@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app import fixtures
 from app import market_clock
+from app import market_state
 from app import tushare_client
 from app import news_aggregate
 from app import top50_engine
@@ -54,11 +55,55 @@ def _live_session() -> dict:
 
 # --- 平台状态 / 行情 / TOP50 / 新闻 / 验证 / 运行 ---------------------------
 
+
+def _live_market_snapshot() -> dict | None:
+    """命中当前数据窗口的新鲜真实行情快照（post-close / 8 轮 tick 落盘的 market_snapshot.json）。
+
+    只有它的 ``tradeDate`` 与 Tushare 当前窗口交易日一致时才视为有效；否则回落静态样例，
+    避免用旧值冒充实时。
+    """
+    snapshot = _load_market_snapshot()
+    if not snapshot:
+        return None
+    latest = tushare_client._LATEST_CACHE.get("trade_date")
+    if snapshot.get("meta", {}).get("tradeDate") != latest:
+        return None
+    return snapshot
+
+
+def _derive_market_health() -> dict:
+    """行情健康度：忠实移植 reference-react ``marketSnapshotState`` 状态机派生，不再冻结 fixture。
+
+    输入是当前数据窗口命中的真实快照（post-close 落盘的 ``market_snapshot.json``）+ 最近一次
+    抓取状态记录（``market_source_state.json``）+ 当前上海会话（由 ``market_clock`` 统一口径）。
+
+    - 命中真实快照 → 交给 ``market_state.build_market_health`` 按原版状态机如实算
+      ``status/label/isIntraday``（daily_close → 过期 → 盘中延迟 → rt_k → 兜底 等分支级联）。
+    - 否则（本机未跑 tick / 无 market_snapshot.json）→ 明确标 ``fixtures``，
+      不再把"没实时数据"伪装成"部分行情已更新"的永久延迟。
+    """
+    snap = _live_market_snapshot()
+    if snap:
+        return market_state.build_market_health(
+            snap,
+            source_state=market_state.load_market_source_state(),
+        )
+    return {
+        "status": "fixtures",
+        "label": "演示快照 · 待接入真实行情（行情中心未产出实时快照）",
+        "isIntraday": False,
+        "sourceState": None,
+    }
+
+
 @router.get("/api/status")
 def status():
     # fixtures.load 是 lru_cache 的共享对象，**不能原地改**；这里重建外层 dict。
     payload = fixtures.load("status")
-    return {**payload, "session": _live_session()}
+    # ⚠️ health.market 改为由真实快照派生（见 _derive_market_health），不再读死 fixture 的 partial。
+    health = dict(payload.get("health") or {})
+    health["market"] = _derive_market_health()
+    return {**payload, "health": health, "session": _live_session()}
 
 
 @router.get("/api/market")
@@ -67,13 +112,17 @@ def market(refresh: int = 0):
 
     ⚠️ 只在本进程已拉过当天行情（``_LATEST_CACHE.trade_date`` 指向当前窗口交易日）且
     快照的 ``tradeDate`` 与之相符时才用真实数据；其余情况一律回落 fixtures，决不用旧值冒充。
+
+    ⚠️ 回落时显式打 ``meta.sourceMode='fixtures'`` + ``meta.status='fixtures'``（对齐
+    /api/top50 的口径），让前端能区分"真实快照"与"种子样例"，不再把 2026-10-08 的种子
+    数据误标成 ``live``。
     """
-    snapshot = _load_market_snapshot()
-    if snapshot:
-        latest = tushare_client._LATEST_CACHE.get("trade_date")
-        if snapshot.get("meta", {}).get("tradeDate") == latest:
-            return snapshot
-    return fixtures.load("market")
+    snap = _live_market_snapshot()
+    if snap:
+        return snap
+    base = fixtures.load("market")
+    meta = {**(base.get("meta") or {}), "sourceMode": "fixtures", "status": "fixtures"}
+    return {**base, "meta": meta}
 
 
 @router.get("/api/top50")

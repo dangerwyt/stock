@@ -37,6 +37,10 @@ function go(id) {
 function goTop50(mapping) {
   router.push('/top50')
 }
+// 四周期表格行 / 查看详情：带上当前预览周期，直达 TOP50 页对应 tab。
+function goTop50Cycle(cycle) {
+  router.push({ path: '/top50', query: { cycle } })
+}
 
 // --- HomeMetrics ---
 const metrics = computed(() => {
@@ -210,7 +214,7 @@ onUnmounted(() => {
               :key="`${activeCycle}:${item.code}`"
               class="home-top50-preview-row"
               role="row"
-              @click="go('top50')"
+              @click="goTop50Cycle(activeCycle)"
             >
               <b>#{{ item.rank || i + 1 }}</b>
               <span><strong>{{ item.name }}</strong><small>{{ item.code }}</small></span>
@@ -225,7 +229,7 @@ onUnmounted(() => {
               <small>等待下一次 07:20 冻结榜单</small>
             </div>
           </div>
-          <button class="home-summary-detail" @click="go('top50')">查看详情 <IconChevronRight :size="15" /></button>
+          <button class="home-summary-detail" @click="goTop50Cycle(activeCycle)">查看详情 <IconChevronRight :size="15" /></button>
         </section>
 
         <!-- 我的自选 -->

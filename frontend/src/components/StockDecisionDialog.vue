@@ -237,8 +237,10 @@ const trustLabel = computed(() => {
 const trustFresh = computed(() => sourceMode.value === 'live' && snapState.value === 'ready')
 const snapshotMeta = computed(() => snapshot.value?.meta || null)
 
-function goPortfolio() {
-  router.push('/portfolio')
+function goSimulation(stock) {
+  // 「模拟交易 / 模拟买入」→ 量化工具的模拟 tab，并带上当前标的（?tool=simulation&code=）。
+  router.push({ path: '/tools', query: { tool: 'simulation', code: stock?.code || '' } })
+  close() // 跳转后关闭决策弹窗，避免覆盖在模拟页上方
 }
 function goAI(stock) {
   router.push('/ai')
@@ -377,7 +379,7 @@ const evidenceTimeline = computed(
           <article class="benchmark-stock-card" :aria-label="`${selected.name}单股票决策卡`">
             <header class="benchmark-stock-head">
               <div>
-                <h3>{{ selected.name }}<button @click="goPortfolio"><IconBriefcase2 :size="13" /> 模拟买入</button></h3>
+                <h3>{{ selected.name }}<button @click="goSimulation(selected)"><IconBriefcase2 :size="13" /> 模拟买入</button></h3>
                 <span>{{ selected.code }}</span>
                 <small>数据来自TOP50冻结行情与{{ teacherCount }}套可审计因子画像；未接入字段显示“--”</small>
               </div>
@@ -469,8 +471,7 @@ const evidenceTimeline = computed(
 
             <footer class="benchmark-stock-actions">
               <button @click="goAI(selected)"><IconBrain :size="14" /> 问AI复核</button>
-              <button @click="openFullAnalysis(selected)"><IconFileAnalytics :size="14" /> 完整分析</button>
-              <button class="primary-button" @click="goPortfolio"><IconBriefcase2 :size="14" /> 模拟交易</button>
+              <button class="primary-button" @click="goSimulation(selected)"><IconBriefcase2 :size="14" /> 模拟交易</button>
             </footer>
           </article>
 
