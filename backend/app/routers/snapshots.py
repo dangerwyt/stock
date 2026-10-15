@@ -233,3 +233,22 @@ async def stocks_search(q: str = Query(default="")):
 @router.get("/api/stocks/{code}/metrics")
 def stock_metrics(code: str):
     return {"status": "empty", "code": code, "metrics": None}
+
+
+@router.get("/api/stocks/{code}/quote")
+async def stock_quote(code: str):
+    """按 6 位代码取实时行情快照（价/涨跌幅/量比/换手/PE/振幅/成交额），不含 TOP50 因子。
+
+    用于「自选股 / 搜索加入但不在 TOP50 榜单」的标的，补全单股决策弹窗的行情块
+    （这类标的走 ``/api/stocks/search`` 只能拿到 code/name/industry，没有行情价）。
+    复用 ``research._build_live_stock`` 同一条 Tushare 路径（5 分钟窗口内进程内缓存），
+    Tushare 不可用时返回 503，不编造价格（与 ``/api/stocks/search`` 同策略）。
+    """
+    try:
+        snap = await tushare_client.get_stock_snapshot(code)
+    except tushare_client.TushareError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "error": str(exc)},
+        )
+    return {"status": "ready", "quote": snap}

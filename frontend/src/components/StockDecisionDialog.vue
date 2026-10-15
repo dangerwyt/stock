@@ -67,10 +67,14 @@ const allRanked = computed(() => {
 // 不在 TOP50 里的标的（纯自选/搜索加进来的）走 /api/stocks/search 补足基础信息，
 // 卡片对缺失的 TOP50 专属字段显示「--」，与卡片既有的「未接入字段显示--」口径一致。
 const resolved = ref(null)
+// 非 TOP50 标的（纯自选/搜索加入）的实时行情：补全价/涨跌幅/量比/换手/PE/振幅/成交额，
+// 让单股决策弹窗的行情块不再空着 "--"。TOP50 标的已带完整数据，不额外调 Tushare。
+const quote = ref(null)
 watch(
   code,
   async (c) => {
     resolved.value = null
+    quote.value = null
     if (!c) return
     if (allRanked.value.some((s) => s.code === c)) return
     try {
@@ -97,6 +101,12 @@ watch(
     } catch {
       resolved.value = null
     }
+    try {
+      const q = await fetchSnapshot(`/api/stocks/${encodeURIComponent(c)}/quote`)
+      if (q?.quote) quote.value = q.quote
+    } catch {
+      quote.value = null
+    }
   },
   { immediate: true },
 )
@@ -105,8 +115,10 @@ const selected = computed(() => {
   if (!code.value) return null
   const top = allRanked.value.find((s) => s.code === code.value)
   if (top) return top
-  if (state.stock && state.stock.code === code.value) return hydrateStock(state.stock)
-  return resolved.value
+  // 非 TOP50：基础信息来自 search/调用方，行情优先用实时 quote 补全（因子分永远没有，保持 --）。
+  const base = state.stock && state.stock.code === code.value ? hydrateStock(state.stock) : resolved.value
+  if (!base && !quote.value) return null
+  return hydrateStock({ ...(base || {}), ...(quote.value || {}) })
 })
 
 // 是否 TOP50 榜单标的：决定 score/consensus/price 等专属字段能否展示，
@@ -473,16 +485,16 @@ const evidenceTimeline = computed(
             <section>
               <h3>核心证据</h3>
               <ol>
-                <li><IconCircleCheck :size="14" /><span><strong>产业与基本面</strong>{{ selected.reason }}</span></li>
+                <li><IconCircleCheck :size="14" /><span><strong>产业与基本面</strong>{{ displayField(selected.reason, '待补充') }}</span></li>
                 <li><IconCircleCheck :size="14" /><span><strong>量价与流动性</strong>{{ monitorMetrics?.signal }}，成交额 {{ monitorMetrics?.amount }}</span></li>
-                <li><IconCircleCheck :size="14" /><span><strong>估值与赔率</strong>{{ selected.valuation }}，综合分 {{ scoreValue }}</span></li>
+                <li><IconCircleCheck :size="14" /><span><strong>估值与赔率</strong>{{ displayField(selected.valuation, '待补充') }}，综合分 {{ scoreValue }}</span></li>
               </ol>
             </section>
             <section class="single-risk-discipline">
               <h3>风险纪律</h3>
               <p><span>允许动作</span><strong>{{ selected.status === '可试仓' ? '回踩试仓 · 单笔≤5%' : '等待确认 · 不追价' }}</strong></p>
-              <p><span>触发条件</span><strong>{{ selected.trigger }}</strong></p>
-              <p><span>失效条件</span><strong class="price-down">{{ selected.invalid }}</strong></p>
+              <p><span>触发条件</span><strong>{{ displayField(selected.trigger, '待补充') }}</strong></p>
+              <p><span>失效条件</span><strong class="price-down">{{ displayField(selected.invalid, '待补充') }}</strong></p>
             </section>
           </aside>
         </div>

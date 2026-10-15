@@ -321,6 +321,8 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         industry = b0.get("industry")
 
     # 所有数值字段先置 None，避免 KeyError；拉不到时 _stock_block 会自然跳过。
+    # amount（成交额，单位千元，供前端 formatDailyAmount 换算成亿）、amplitude（振幅）
+    # 也在这里占位 —— 前者 daily 直接有，后者用 high/low/preClose 现算，省一次接口。
     snap: dict[str, Any] = {
         "code": (code or "").strip(),
         "tsCode": ts_code,
@@ -329,6 +331,7 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         "close": None, "pct": None, "open": None, "high": None,
         "low": None, "preClose": None, "turnoverRate": None,
         "volumeRatio": None, "peTtm": None, "pb": None,
+        "amount": None, "amplitude": None,
     }
 
     if not isinstance(daily, Exception) and daily:
@@ -339,6 +342,7 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         snap["high"] = _num(last.get("high"))
         snap["low"] = _num(last.get("low"))
         snap["preClose"] = _num(last.get("pre_close"))
+        snap["amount"] = _num(last.get("amount"))
 
     if not isinstance(daily_basic, Exception) and daily_basic:
         last = sorted(daily_basic, key=lambda x: str(x.get("trade_date") or ""), reverse=True)[0]
@@ -346,6 +350,10 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         snap["volumeRatio"] = _num(last.get("volume_ratio"))
         snap["peTtm"] = _num(last.get("pe_ttm"))
         snap["pb"] = _num(last.get("pb"))
+
+    # 振幅 = (最高 - 最低) / 昨收，与 top50_engine 同一公式；这里用当日实时值现算。
+    if snap["high"] is not None and snap["low"] is not None and snap["preClose"]:
+        snap["amplitude"] = round((snap["high"] - snap["low"]) / snap["preClose"] * 100, 2)
 
     if snap["close"] is None and not name:
         raise TushareError(f"Tushare 未返回该股票的有效数据：{code}（{ts_code}）")
