@@ -403,6 +403,12 @@ a {
   background: #eef5ff;
 }
 
+/* TOP50 榜单行整行可点击（榜单标的与自选行都打开单股决策浮层）→ 给出可点击光标提示。
+ * 只落 .stock-row（空状态行不加），避免把不可点的行也显示成手型。 */
+.top50-page .decision-table tbody tr.stock-row {
+  cursor: pointer;
+}
+
 /* 6d) composer 里的 el-select（AILabPage，试点 ③ 第二轮，2026-10-10）。
  * 这两个入口（搜索A股 / 选择角色）最初做成 el-dialog 弹窗，实拍后太重 ——
  * "加个上下文"是高频轻量动作，弹窗要走「点开 → 选 → 关」三步。改回内联下拉：

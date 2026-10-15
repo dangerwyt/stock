@@ -189,7 +189,8 @@ function factorGroupsLabel(item) {
             <tr
               v-for="stock in pageStocks"
               :key="stock.code"
-              @click="!stock.isWatchlist && openStockDecision(stock)"
+              class="stock-row"
+              @click="openStockDecision(stock)"
             >
               <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else :class="`rank rank-${stock.rank}`">{{ stock.rank }}</span></td>
               <td><strong>{{ stock.name }}</strong><small>{{ stock.code }}</small></td>
