@@ -283,16 +283,22 @@ async def freeze_predictions(as_of: str | None = None, snapshot: dict | None = N
     existing_ids = {p.get("id") for p in existing_preds}
     new_records: list[dict] = []
 
+    # 🔴 到期日只取决于「冻结日 + 期限偏移」这 4 个 offset，与标的无关 ——
+    #   必须在进循环**之前**算一次。原先写在最内层循环里，4周期×50只×4期限=800 条
+    #   各自发一次 trade_cal（主源限流时还要回落 B 套），freeze 直接超时。
+    maturities: dict[str, str] = {}
+    for horizon_key, _label, offset in HORIZONS:
+        maturities[horizon_key] = await _add_trading_days(trade_date, offset)
+
     for cycle in CYCLES:
         cycle_block = cycles.get(cycle) or {}
         cycle_snapshot_id = cycle_block.get("cycleSnapshotId") or f"TOP50-{_compact(trade_date)}-{cycle}"
         ranking = cycle_block.get("ranking") or []
         for item in ranking[:50]:
             for horizon_key, horizon_label, offset in HORIZONS:
-                maturity = await _add_trading_days(trade_date, offset)
                 rec = _build_prediction_record(
                     item, cycle, cycle_snapshot_id, horizon_key, horizon_label,
-                    trade_date, maturity, frozen_at,
+                    trade_date, maturities[horizon_key], frozen_at,
                 )
                 if rec["id"] in existing_ids:
                     continue  # 同日重复冻结按 id 去重，不覆盖已有（可能已评估）。
