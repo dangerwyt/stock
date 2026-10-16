@@ -18,6 +18,7 @@ from app import market_state
 from app import tushare_client
 from app import news_aggregate
 from app import top50_engine
+from app import quant_tools
 from app import agents
 from app import accuracy as accuracy_module
 
@@ -276,9 +277,21 @@ def accuracy_evidence(predictionId: str = Query(default="")):
 
 
 @router.post("/api/quant/{tool}")
-def quant(tool: str, payload: dict | None = None):
-    return {"status": "empty", "tool": tool, "result": None,
-            "message": "量化工具结果占位，接入真实因子引擎后填充。"}
+async def quant(tool: str, payload: dict | None = None):
+    """内置量化工具（行情/分析/回测/信号/选股/预判/评估），照原版 ``runBuiltInQuant``。
+
+    数据源是**真实**的冻结 TOP50 快照（回测额外拉 Tushare 真实历史行情）。
+    快照未就绪 / 历史不足 / 行情不可用时返回明确 ``reason``，**绝不返回占位假结果** ——
+    页面会把这个 reason 显示成「量化计算未运行」，不会拿静态样例冒充运行结果。
+    """
+    try:
+        result = await quant_tools.run_tool(tool, payload or {})
+    except quant_tools.QuantError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "tool": tool, "result": None, "reason": str(exc)},
+        )
+    return {"status": "ready", "tool": tool, "result": result}
 
 
 # --- 个股目录 / 指标 --------------------------------------------------------
