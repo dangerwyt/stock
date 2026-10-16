@@ -318,31 +318,49 @@ async def freeze_predictions(as_of: str | None = None, snapshot: dict | None = N
 # --------------------------------------------------------------------------- #
 # P2：到期评估（evaluate）
 # --------------------------------------------------------------------------- #
-async def _fetch_close(ts_code: str, trade_date: str, close_cache: dict[str, float | None]) -> float | None:
+async def _daily_rows(tushare_client, ts_code: str, trade_date: str, is_index: bool) -> list[dict]:
+    """取单标的单日收盘行。个股走 ``daily``，指数走 ``index_daily``（⚠️ 指数不在 daily 表里）。"""
+    if is_index:
+        return await tushare_client._call(
+            "index_daily",
+            {"ts_code": ts_code, "start_date": _compact(trade_date), "end_date": _compact(trade_date)},
+            "ts_code,trade_date,close",
+        ) or []
+    return await tushare_client._call(
+        "daily", {"ts_code": ts_code, "trade_date": _compact(trade_date)},
+        "ts_code,trade_date,close",
+    ) or []
+
+
+async def _fetch_close(
+    ts_code: str, trade_date: str, close_cache: dict[str, float | None], is_index: bool = False
+) -> float | None:
     """取某只某交易日收盘；取不到则顺着交易日历往后找最多 5 个交易日（自修正 maturity 漂移）。
 
-    ``_CLOSE_OVERRIDE`` 非空时直接交给它（用于单测，避免依赖真实 Tushare）。
+    ``is_index=True`` 走 ``index_daily``（上证等基准指数）。``_CLOSE_OVERRIDE`` 非空时直接交给它
+    （用于单测，避免依赖真实 Tushare）。
     """
     if _CLOSE_OVERRIDE is not None:
         return await _CLOSE_OVERRIDE(ts_code, trade_date, close_cache)
 
     from app import tushare_client
 
-    key = f"{ts_code}:{trade_date}"
+    key = ("idx:" if is_index else "") + f"{ts_code}:{trade_date}"
     if key in close_cache:
         return close_cache[key]
+
+    def _rows_on(d: str) -> list[dict]:
+        return _daily_rows(tushare_client, ts_code, d, is_index)
+
     try:
-        rows = await tushare_client._call(
-            "daily", {"ts_code": ts_code, "trade_date": _compact(trade_date)},
-            "ts_code,trade_date,close",
-        )
+        rows = await _rows_on(trade_date)
         if rows:
             close_cache[key] = float(rows[0]["close"])
             return close_cache[key]
     except tushare_client.TushareError:
         pass
     except Exception as exc:  # noqa: BLE001
-        logger.warning("daily 查询异常 %s@%s：%s", ts_code, trade_date, exc)
+        logger.warning("%s 查询异常 %s@%s：%s", "index_daily" if is_index else "daily", ts_code, trade_date, exc)
 
     # 顺延到之后的交易日再试一次（修正节假日导致的 maturity 偏移）。
     try:
@@ -358,13 +376,11 @@ async def _fetch_close(ts_code: str, trade_date: str, close_cache: dict[str, flo
         )
         opens = [o if "-" in o else f"{o[:4]}-{o[4:6]}-{o[6:8]}" for o in opens][:5]
         for d in opens:
-            k2 = f"{ts_code}:{d}"
+            k2 = ("idx:" if is_index else "") + f"{ts_code}:{d}"
             if k2 in close_cache:
                 return close_cache[k2]
             try:
-                rows = await tushare_client._call(
-                    "daily", {"ts_code": ts_code, "trade_date": _compact(d)}, "ts_code,trade_date,close"
-                )
+                rows = await _rows_on(d)
             except tushare_client.TushareError:
                 continue
             if rows:
@@ -422,9 +438,9 @@ async def evaluate_due_predictions(as_of: str | None = None) -> dict:
         actual_return = (close - ref_price) / ref_price
         actual_direction = "up" if close >= ref_price else "down"
 
-        # 基准（上证指数）同期收益：tradeDate → 评估日。
-        bench_start = await _fetch_close(_BENCHMARK_TS_CODE, p["tradeDate"], close_cache)
-        bench_end = await _fetch_close(_BENCHMARK_TS_CODE, maturity, close_cache)
+        # 基准（上证指数）同期收益：tradeDate → 评估日。⚠️ 指数走 index_daily，不是 daily。
+        bench_start = await _fetch_close(_BENCHMARK_TS_CODE, p["tradeDate"], close_cache, is_index=True)
+        bench_end = await _fetch_close(_BENCHMARK_TS_CODE, maturity, close_cache, is_index=True)
         benchmark_return = None
         excess_return = None
         if bench_start and bench_end:
