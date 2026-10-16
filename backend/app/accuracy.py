@@ -234,10 +234,14 @@ def build_acceptance_pipeline(preds: list[dict]) -> dict:
             "minimumSample": MINIMUM_SAMPLE,
         }
     trade_dates = [p.get("tradeDate") for p in preds if p.get("tradeDate")]
-    maturities = [p.get("maturityTradeDate") for p in preds if p.get("maturityTradeDate")]
     max_td = max(trade_dates)
+    # 🔴 口径对齐：pipeline 描述的是「最近一期」快照（tradeDate == max_td 的那一批），
+    #   所以 frozenCount / firstMaturityTradeDate 必须与 tradeDate / snapshotId 同源，
+    #   否则会出现「最近一期冻结 10-14 / 320 条 / 最早到期 06-04」这种撕裂（320 与 06-04 是全量口径）。
+    latest = [p for p in preds if p.get("tradeDate") == max_td]
+    latest_maturities = [p["maturityTradeDate"] for p in latest if p.get("maturityTradeDate")]
     frozen_at = next(
-        (p["frozenAt"] for p in preds if p.get("tradeDate") == max_td and p.get("frozenAt")),
+        (p["frozenAt"] for p in latest if p.get("frozenAt")),
         f"{max_td}T01:09:48.235Z",
     )
     return {
@@ -245,8 +249,8 @@ def build_acceptance_pipeline(preds: list[dict]) -> dict:
         "frozenAt": frozen_at,
         "tradeDate": max_td,
         "snapshotId": f"TOP50-{max_td.replace('-', '')}-3d3f47ac-9dc3-4107-b3f8-0dbd29774327",
-        "frozenCount": len(preds),
-        "firstMaturityTradeDate": min(maturities),
+        "frozenCount": len(latest),
+        "firstMaturityTradeDate": min(latest_maturities) if latest_maturities else None,
         "minimumSample": MINIMUM_SAMPLE,
     }
 

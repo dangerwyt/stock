@@ -122,12 +122,12 @@ def _pick_trade_date(hbd: int) -> date:
     return random.choice(pool)
 
 
-def make_record(idx: int) -> dict:
+def make_record(idx: int, forced_date: date | None = None, forced_horizon: str | None = None) -> dict:
     code, name, industry = random.choice(STOCKS)
     cycle = weighted_choice(CYCLE_WEIGHTS)
-    hid = weighted_choice(HORIZON_WEIGHTS)
+    hid = forced_horizon or weighted_choice(HORIZON_WEIGHTS)
     hlabel, hbd = {"1d": ("1日", 1), "5d": ("5日", 5), "20d": ("20日", 20), "60d": ("60日", 60)}[hid]
-    trade_date = _pick_trade_date(hbd)
+    trade_date = forced_date or _pick_trade_date(hbd)
     predicted = "up" if random.random() < 0.55 else "down"
     # 约 62% 方向命中
     if predicted == "up":
@@ -242,7 +242,19 @@ def make_record(idx: int) -> dict:
 
 def main() -> None:
     N = 320
-    records = [make_record(i) for i in range(N)]
+    LATEST_BATCH = 50
+    max_td = add_business_days(AS_OF, -1)  # 最近一期 = AS_OF 前一个交易日（2026-10-14）
+    records: list[dict] = []
+    # 历史散落样本：排除「最近一期」当天，避免与下方批量重叠（否则 frozenCount 会重复计入）
+    while len(records) < N - LATEST_BATCH:
+        rec = make_record(len(records))
+        if rec["tradeDate"] == max_td.isoformat():
+            continue
+        records.append(rec)
+    # 最近一期批量：同一天冻结、1d 期限（maturity == AS_OF，真实可到期），贴近原版一期规模，
+    # 让 acceptance 页「N 条预测 · 最早到期」与「最近一期冻结」自洽。
+    for j in range(LATEST_BATCH):
+        records.append(make_record(100000 + j, forced_date=max_td, forced_horizon="1d"))
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(records, ensure_ascii=False, indent=0), encoding="utf-8")
@@ -264,14 +276,17 @@ def main() -> None:
     print(f"FUTURE maturities : {len(future)}  (必须为 0)")
     print(f"-> wrote {OUT}")
 
-    # 供 acceptance.json 同步使用
-    print("\nACCEPTANCE_PIPELINE_JSON:")
+    # 仅供对账：运行时 /api/acceptance 的 pipeline 已由 build_acceptance_pipeline 现算（同批口径），
+    # 此处打印「最近一期」快照元信息，对应前端页头展示。
+    recent = [r for r in records if r["tradeDate"] == max(dates).isoformat()]
+    recent_mat = [date.fromisoformat(r["maturityTradeDate"]) for r in recent if r.get("maturityTradeDate")]
+    print("\nACCEPTANCE_PIPELINE_JSON (recent batch only):")
     print(json.dumps({
         "generatedAt": f"{max(dates).isoformat()}T01:09:19.498Z",
         "frozenAt": f"{max(dates).isoformat()}T01:09:48.235Z",
         "tradeDate": max(dates).isoformat(),
-        "frozenCount": len(records),
-        "firstMaturityTradeDate": min(maturities).isoformat(),
+        "frozenCount": len(recent),
+        "firstMaturityTradeDate": min(recent_mat).isoformat() if recent_mat else None,
     }, ensure_ascii=False))
 
 
