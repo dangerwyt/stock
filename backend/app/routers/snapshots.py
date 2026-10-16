@@ -19,6 +19,7 @@ from app import tushare_client
 from app import news_aggregate
 from app import top50_engine
 from app import agents
+from app import accuracy as accuracy_module
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +188,12 @@ async def news():
 
 @router.get("/api/accuracy")
 def accuracy():
-    return fixtures.load("accuracy")
+    """预测验证：由已评估冻结预测记录真实派生（不再读死 accuracy.json 假数据）。
+
+    走 ``app.accuracy.calculate_accuracy`` —— 只统计 ``evaluated`` + 证据完整的记录，
+    按 7 维聚合，满 30 条才披露命中率等指标，与原版 ``calculateAccuracy`` 口径一致。
+    """
+    return accuracy_module.calculate_accuracy(accuracy_module.load_predictions())
 
 
 @router.get("/api/operations")
@@ -254,7 +260,11 @@ def get_preferences():
 # 而且读代码的人会以为这个端点还是占位。
 @router.get("/api/accuracy/evidence")
 def accuracy_evidence(predictionId: str = Query(default="")):
-    return {"status": "empty", "predictionId": predictionId, "evidence": None}
+    """按 predictionId 返回冻结预测的证据块；未命中返回 ``evidence: null``。"""
+    evidence = accuracy_module.get_prediction_evidence(predictionId)
+    if not evidence:
+        return {"status": "empty", "predictionId": predictionId, "evidence": None}
+    return {"status": "ready", "predictionId": predictionId, "evidence": evidence}
 
 
 @router.post("/api/quant/{tool}")
