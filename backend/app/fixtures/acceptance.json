@@ -6,12 +6,12 @@
     "schedulerAt": "2026-10-08T06:12:22.111Z",
     "jobs": [],
     "pipeline": {
-        "generatedAt": "2026-09-24T01:09:19.498Z",
-        "frozenAt": "2026-09-24T01:09:48.235Z",
-        "tradeDate": "2026-09-24",
-        "snapshotId": "TOP50-20260924-3d3f47ac-9dc3-4107-b3f8-0dbd29774327",
-        "frozenCount": 260,
-        "firstMaturityTradeDate": "2026-07-02",
+        "generatedAt": "2026-10-14T01:09:19.498Z",
+        "frozenAt": "2026-10-14T01:09:48.235Z",
+        "tradeDate": "2026-10-14",
+        "snapshotId": "TOP50-20261014-3d3f47ac-9dc3-4107-b3f8-0dbd29774327",
+        "frozenCount": 320,
+        "firstMaturityTradeDate": "2026-06-04",
         "minimumSample": 30
     },
     "matureSampleCount": 200,

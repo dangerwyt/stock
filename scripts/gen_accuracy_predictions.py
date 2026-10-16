@@ -71,8 +71,14 @@ STOCKS = [
 ]
 
 REGIME_WEIGHTS = [("bull", 0.5), ("range", 0.35), ("risk_off", 0.15)]
-CYCLE_WEIGHTS = [("超短", 0.3), ("短线", 0.35), ("波段", 0.25), ("中长线", 0.10)]
-HORIZON_WEIGHTS = [("1d", 0.4), ("5d", 0.3), ("20d", 0.2), ("60d", 0.10)]
+CYCLE_WEIGHTS = [("超短", 0.28), ("短线", 0.32), ("波段", 0.26), ("中长线", 0.14)]
+HORIZON_WEIGHTS = [("1d", 0.34), ("5d", 0.30), ("20d", 0.22), ("60d", 0.14)]
+
+# 🔴 数据截止日 = 最后一个已收盘交易日。**所有预测的到期日必须 ≤ AS_OF**，
+# 否则会出现「到期日在未来却已被评估」的时间穿越（曾把 60d 预测的到期日算到 2026-12-17）。
+AS_OF = date(2026, 10, 15)
+START = date(2026, 6, 1)
+HORIZON_BD = {"1d": 1, "5d": 5, "20d": 20, "60d": 60}
 
 
 def business_days(start: date, end: date) -> list[date]:
@@ -106,11 +112,22 @@ def weighted_choice(pairs):
     return pairs[-1][0]
 
 
-def make_record(idx: int, trade_date: date) -> dict:
+_ALL_BD = business_days(START, AS_OF)
+
+
+def _pick_trade_date(hbd: int) -> date:
+    """挑一个冻结日，保证 trade_date + hbd 个交易日 ≤ AS_OF（到期日不落在未来）。"""
+    max_td = add_business_days(AS_OF, -hbd)
+    pool = [d for d in _ALL_BD if d <= max_td]
+    return random.choice(pool)
+
+
+def make_record(idx: int) -> dict:
     code, name, industry = random.choice(STOCKS)
     cycle = weighted_choice(CYCLE_WEIGHTS)
     hid = weighted_choice(HORIZON_WEIGHTS)
     hlabel, hbd = {"1d": ("1日", 1), "5d": ("5日", 5), "20d": ("20日", 20), "60d": ("60日", 60)}[hid]
+    trade_date = _pick_trade_date(hbd)
     predicted = "up" if random.random() < 0.55 else "down"
     # 约 62% 方向命中
     if predicted == "up":
@@ -224,9 +241,8 @@ def make_record(idx: int, trade_date: date) -> dict:
 
 
 def main() -> None:
-    trade_dates = business_days(date(2026, 7, 1), date(2026, 9, 24))
-    N = 260
-    records = [make_record(i, random.choice(trade_dates)) for i in range(N)]
+    N = 320
+    records = [make_record(i) for i in range(N)]
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(records, ensure_ascii=False, indent=0), encoding="utf-8")
@@ -236,13 +252,16 @@ def main() -> None:
     maturities = [date.fromisoformat(r["maturityTradeDate"]) for r in records]
     evals = [r["evaluatedAt"] for r in records]
     hits = sum(1 for r in records if r["hit"])
+    future = [m for m in maturities if m > AS_OF]
     print(f"records           : {len(records)}")
+    print(f"AS_OF             : {AS_OF}")
     print(f"freeze range      : {min(dates)} .. {max(dates)}")
     print(f"maturity range    : {min(maturities)} .. {max(maturities)}")
     print(f"last evaluatedAt  : {max(evals)}")
     print(f"first maturity    : {min(maturities)}")
     print(f"distinct tradeDays: {len(set(dates))}")
     print(f"hit rate (raw)    : {hits/len(records)*100:.1f}%")
+    print(f"FUTURE maturities : {len(future)}  (必须为 0)")
     print(f"-> wrote {OUT}")
 
     # 供 acceptance.json 同步使用
