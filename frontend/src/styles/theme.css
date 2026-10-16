@@ -1158,6 +1158,21 @@ a {
   background: var(--blue);
 }
 
+/* active tab 的文字与图标强制纯白：父级 color 会被按钮内 span/图标的
+   自身颜色覆盖（继承失效），所以显式点名子元素加 !important 兜底。
+   hover 规则也要压住 —— active 态悬停时不能变蓝字。 */
+.quant-tool-tabs button.active,
+.quant-tool-tabs button.active span,
+.quant-tool-tabs button.active svg {
+  color: #fff !important;
+}
+
+.quant-tool-tabs button.active:hover {
+  color: #fff;
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
 /* 14f) 行情搜索框与下拉结果（legacy #0d1825 / #0d1b2b） */
 .market-toolbar-actions label {
   background: #fff;

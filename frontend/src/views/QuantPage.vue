@@ -59,8 +59,23 @@ const tool = ref(
 );
 const cycle = ref("波段");
 const stockCode = ref("");
-const feedback = ref("");
-const toolResult = ref(null);
+// 结果按 tab 分别缓存：切换 tab 时不清空，切回来还能看到上次的真实结果。
+// （原实现每次 switchTool 都把 toolResult 置 null，导致来回切就重跑、丢数据。）
+const resultsByTool = ref({});
+const toolResult = computed({
+  get: () => resultsByTool.value[tool.value] ?? null,
+  set: (val) => {
+    resultsByTool.value = { ...resultsByTool.value, [tool.value]: val };
+  },
+});
+// 反馈文案同样按 tab 存，切回来时显示它自己的那条。
+const feedbacksByTool = ref({});
+const currentFeedback = computed(
+  () => feedbacksByTool.value[tool.value] || "",
+);
+function setFeedback(text, target = tool.value) {
+  feedbacksByTool.value = { ...feedbacksByTool.value, [target]: text };
+}
 const quantity = ref(100);
 const emotion = ref("逻辑驱动");
 const accountTab = ref("持仓");
@@ -117,8 +132,9 @@ const marketSourceStatusLabel = computed(
 );
 
 async function run(message, requestedTool = tool.value, extra = {}) {
-  feedback.value = "正在读取冻结因子榜与真实数据源…";
-  toolResult.value = null;
+  setFeedback("正在读取冻结因子榜与真实数据源…", requestedTool);
+  // 只清「本次要跑的那个 tab」的旧结果，其它 tab 的缓存不受影响。
+  resultsByTool.value = { ...resultsByTool.value, [requestedTool]: null };
   try {
     const { data } = await http.post(`/api/quant/${requestedTool}`, {
       stockCode: stock.value.code,
@@ -127,14 +143,23 @@ async function run(message, requestedTool = tool.value, extra = {}) {
       action: message,
       ...extra,
     });
-    toolResult.value = data?.result ?? data;
-    feedback.value = `${message} · 因子画像计算已完成 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+    resultsByTool.value = {
+      ...resultsByTool.value,
+      [requestedTool]: data?.result ?? data,
+    };
+    setFeedback(
+      `${message} · 因子画像计算已完成 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
+      requestedTool,
+    );
   } catch (error) {
-    feedback.value = `量化计算未运行：${error?.response?.data?.reason || error.message}。系统不会用静态结果冒充运行结果。`;
+    setFeedback(
+      `量化计算未运行：${error?.response?.data?.reason || error.message}。系统不会用静态结果冒充运行结果。`,
+      requestedTool,
+    );
   }
 }
 function localFeedback(message) {
-  feedback.value = `${message} · 仅保存在本机模拟账户`;
+  setFeedback(`${message} · 仅保存在本机模拟账户`);
 }
 function trade(side) {
   const amount = Math.round(quantity.value * stock.value.price);
@@ -174,8 +199,8 @@ function trade(side) {
 }
 function switchTool(id) {
   tool.value = id;
-  feedback.value = "";
-  toolResult.value = null;
+  // 🔴 不再清 toolResult / feedback —— 结果与反馈都存在 resultsByTool / feedbacksByTool
+  //   里按 tab 取用，来回切换 tab 不丢结果、不重复请求（keep-alive 语义）。
   // URL 与 tab 保持同步：否则「先手点别的 tab、再从弹窗跳同一 tab」时 query 未变化、
   // 路由不去重导航，下面的 watch 不会再触发，tab 会切不过去。
   router.replace({ query: { ...route.query, tool: id } });
@@ -289,9 +314,12 @@ const equityCurvePoints = computed(
       </button>
     </div>
 
-    <div v-if="feedback" class="tool-feedback">
-      <IconCircleCheck :size="15" /><span>{{ feedback }}</span>
-      <button aria-label="关闭操作反馈" @click="feedback = ''">
+    <div v-if="currentFeedback" class="tool-feedback">
+      <IconCircleCheck :size="15" /><span>{{ currentFeedback }}</span>
+      <button
+        aria-label="关闭操作反馈"
+        @click="setFeedback('', tool)"
+      >
         <IconX :size="14" />
       </button>
     </div>
