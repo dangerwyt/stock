@@ -28,14 +28,14 @@ GRACE_WINDOW_MINUTES = 5
 
 # 交易日轮次表（v1 原样）。
 TRADING_ROUNDS: list[tuple[str, list[str]]] = [
-    ("07:20", ["us-etf-map", "global-news", "market-close", "top50"]),
+    ("07:20", ["us-etf-map", "global-news", "market-close", "top50", "prediction-freeze"]),
     ("09:26", ["opening-auction", "global-news"]),
     ("10:30", ["market-pulse", "intraday-news"]),
     ("11:35", ["market-pulse", "intraday-news", "midday-review"]),
     ("13:05", ["market-pulse", "intraday-news"]),
     ("14:00", ["market-pulse", "intraday-news"]),
-    ("17:40", ["market-close", "post-close", "accuracy", "global-news"]),
-    ("22:00", ["global-news", "market-close", "post-close", "accuracy"]),
+    ("17:40", ["market-close", "post-close", "accuracy", "prediction-evaluate", "global-news"]),
+    ("22:00", ["global-news", "market-close", "post-close", "accuracy", "prediction-evaluate"]),
 ]
 # 非交易日只有两轮，且只跑资讯。
 CLOSED_ROUNDS: list[tuple[str, list[str]]] = [

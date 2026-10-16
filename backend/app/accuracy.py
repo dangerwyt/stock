@@ -1,24 +1,25 @@
 """准确率聚合引擎 —— 忠实镜像 reference-react ``worker/index.js`` 的 ``calculateAccuracy``。
 
-原版准确率来自一条「冻结预测 → 到期验证 → 聚合」的管道，端点返回预计算的
-``accuracy:latest`` 快照。我们后端暂无真实预测管道，这里用
-``fixtures/predictions.json``（确定性脚本生成的已评估记录，见
-``scripts/gen_accuracy_predictions.py``）作为数据源，按原版口径现算：
+准确率来自一条「冻结预测 → 到期验证 → 聚合」的**活管道**（见 ``app/prediction_pipeline.py``）：
+盘前冻结出 pending 预测、到期用 Tushare 真实收盘回填 ``evaluated``、这里只统计
+``status=="evaluated" && evidenceCompleteness=="complete"`` 的记录现算。数据源是运行态
+``data/predictions.json``（累积库，首次从 fixtures 播种 320 条历史基线），不再是写死假数据。
 
-- 只统计 ``status=="evaluated" && evidenceCompleteness=="complete"`` 的记录；
+聚合口径：
 - 按 7 个维度累加（horizons / cycles / directions / industries / marketRegimes /
   byAgent / byStock）+ overall；
 - ``count < 30``（ACCURACY_MINIMUM_SAMPLE）时 ``hitRate`` 等一律 ``null`` +
   ``sampleStatus:"insufficient"``，不披露（与前端「满30条才披露」一致）；
 - 配对基准指标（benchmarkAverageReturn / averageExcessReturn）另需 ``pairedCount >= 30``。
 
-这样 /api/accuracy 返回的是**由记录真实派生**的快照，不再是写死假数据。
+``build_acceptance_pipeline`` 同样由这份真实记录派生，保证 /api/accuracy 与 /api/acceptance
+的「最近一期冻结 / 条数 / 最早到期」始终同源、自洽（修掉了此前 2026-06-04 的口径撕裂）。
 """
 from __future__ import annotations
 
 from typing import Any
 
-from app import fixtures
+from app import prediction_pipeline
 
 MINIMUM_SAMPLE = 30
 HORIZONS = [("1d", "1日"), ("5d", "5日"), ("20d", "20日"), ("60d", "60日")]
@@ -32,8 +33,8 @@ METHODOLOGY = "仅统计证据完整且已到期验证的冻结预测；各分�
 
 
 def load_predictions() -> list[dict]:
-    """已评估冻结预测记录（lru_cache 共享，本模块只读不修改）。"""
-    return fixtures.load("predictions")
+    """已评估冻结预测记录（运行态累积库，首次从 fixtures 播种基线）。"""
+    return prediction_pipeline.load_predictions()
 
 
 def _empty_aggregate() -> dict:
@@ -257,9 +258,4 @@ def build_acceptance_pipeline(preds: list[dict]) -> dict:
 
 def get_prediction_evidence(prediction_id: str | None) -> dict | None:
     """按 predictionId 返回冻结预测的证据块；未命中返回 None（前端显示「证据暂不可用」）。"""
-    if not prediction_id:
-        return None
-    for it in load_predictions():
-        if it.get("id") == prediction_id:
-            return it.get("evidence")
-    return None
+    return prediction_pipeline.get_prediction_evidence(prediction_id)

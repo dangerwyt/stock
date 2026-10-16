@@ -32,7 +32,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app import fixtures, news_aggregate, tushare_client, top50_engine
+from app import fixtures, news_aggregate, tushare_client, top50_engine, prediction_pipeline, accuracy
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ PORTED = (
     "opening-auction",
     "market-pulse",
     "midday-review",
+    "prediction-freeze",
+    "prediction-evaluate",
 )
 
 # job 名 → 运行记录里的 component（对齐 v1 runJob 的归类，便于运维侧按板块聚合）。
@@ -61,6 +63,8 @@ COMPONENT = {
     "market-close": "market",
     "post-close": "market",
     "midday-review": "market",
+    "prediction-freeze": "market",
+    "prediction-evaluate": "market",
     "intraday-news": "news",
     "global-news": "news",
     "teacher-distillation": "ai",
@@ -212,28 +216,34 @@ async def _job_us_etf_map() -> dict:
 
 
 async def _job_accuracy() -> dict:
-    """准确率统计：审计缓存快照，给出真实样本量与命中率（不伪造实时验证）。
+    """准确率统计：由运行态累积库现算真实样本量与命中率（活管道，不再读死 fixture）。
 
-    真实命中率需基于「已到期且证据完整的冻结预测」（predictionId 有 evidence），
-    v2 当前 fixtures 无 evidence，所以这里只审计入库的准确率快照并诚实标注
-    ``sourceMode: cached``。
+    数据源是 ``data/predictions.json``（prediction_pipeline 维护的累积库），只统计
+    ``evaluated`` + 证据完整的记录，与 /api/accuracy 同源。行情/网络不可用时也能给出
+    当前真实样本量（不伪造命中率）。
     """
-    payload = _load_fixture_safe("accuracy")
-    if not payload:
-        return {"status": "unavailable", "sourceMode": "none",
-                "reason": "accuracy 缓存快照缺失"}
-    overall = payload.get("overall") or {}
-    minimum = payload.get("minimumSample") or 30
+    from app import accuracy as accuracy_module
+
+    preds = prediction_pipeline.load_predictions()
+    evaluated = [
+        p for p in preds
+        if p.get("status") == "evaluated" and p.get("evidenceCompleteness") == "complete"
+    ]
+    snapshot = accuracy_module.calculate_accuracy(preds)
+    overall = snapshot.get("overall") or {}
+    minimum = snapshot.get("minimumSample") or 30
     sample_count = int(overall.get("sampleCount") or 0)
     hit_rate = overall.get("hitRate")
+    pending = sum(1 for p in preds if p.get("status") == "pending")
     mature = sample_count >= minimum
     return {
-        "status": "completed" if sample_count > 0 else "unavailable",
-        "sourceMode": "cached",
+        "status": "completed" if sample_count > 0 else "collecting",
+        "sourceMode": "live",
         "sampleCount": sample_count,
         "hitRate": hit_rate,
         "minimumSample": minimum,
         "mature": mature,
+        "pendingRemaining": pending,
         "reason": None if mature else "样本量未达披露阈值，不公开命中率（与前端口径一致）",
     }
 
@@ -447,6 +457,18 @@ def _daily_market_stats(rows: list[dict]) -> dict:
     }
 
 
+async def _job_prediction_freeze() -> dict:
+    """盘前冻结：由 TOP50 快照派生 pending 预测，写累积库。"""
+    result = await prediction_pipeline.freeze_predictions()
+    return result
+
+
+async def _job_prediction_evaluate() -> dict:
+    """到期评估：把已到期的 pending 预测用真实收盘回填为 evaluated。"""
+    result = await prediction_pipeline.evaluate_due_predictions()
+    return result
+
+
 async def _job_stub(name: str) -> dict:
     return {"status": "stubbed", "reason": f"job「{name}」尚未移植，本轮仅登记"}
 
@@ -475,6 +497,10 @@ async def run_job(name: str) -> dict:
         result = await _job_market_pulse()
     elif name == "midday-review":
         result = await _job_midday_review()
+    elif name == "prediction-freeze":
+        result = await _job_prediction_freeze()
+    elif name == "prediction-evaluate":
+        result = await _job_prediction_evaluate()
     else:
         result = await _job_stub(name)
     result = {**result, "durationMs": int((time.time() - started) * 1000)}
