@@ -595,7 +595,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .account-tabs button { min-width: 70px; height: 30px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); font-size: 8px; cursor: pointer; }
 .account-tabs button.active { border-color: var(--blue); background: var(--blue); color: #fff; }
 .account-content { min-height: 130px; }
-.holding-row { min-height: 70px; display: grid; grid-template-columns: minmax(130px,1fr) 80px 110px 80px 86px; gap: 10px; align-items: center; padding: 10px 13px; }
+.holding-row { min-height: 70px; display: grid; grid-template-columns: minmax(130px,1fr) 1fr 1fr 1fr 130px; gap: 10px; align-items: center; padding: 10px 13px; }
 .holding-row span strong, .holding-row span small { display: block; }
 .holding-row span small { margin-top: 3px; color: var(--muted); font-size: 8px; }
 .holding-row > span { font-size: 9px; }

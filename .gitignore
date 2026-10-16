@@ -32,6 +32,11 @@ backend/app/agent_docs/
 backend/app/data/job_runs.json
 backend/app/data/top50_snapshot.json
 backend/app/data/market_snapshot.json
+backend/app/data/market_source_state.json
+# prediction-pipeline 累积库（冻结预测 + 到期回填，逐日增长可达数 MB）：
+# 首次访问会自动从 fixtures/predictions.json 播种 320 条历史基线，所以删了可重建；
+# 它是本机运行态数据，不该进版本库（提交后每次跑都会产生巨大 diff）。
+backend/app/data/predictions.json
 # 每日定时任务汇总 MD（scheduler-summary --out-dir 默认产物）：运行态产物，不入库
 backend/app/data/summaries/
 
