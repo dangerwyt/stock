@@ -188,7 +188,7 @@ async def news():
 
 @router.get("/api/accuracy")
 def accuracy():
-    """预测验证：由已评估冻结预测记录真实派生（不再读死 accuracy.json 假数据）。
+    """预测验证：由已评估冻结预测记录真实派生（不再读死假 fixture）。
 
     走 ``app.accuracy.calculate_accuracy`` —— 只统计 ``evaluated`` + 证据完整的记录，
     按 7 维聚合，满 30 条才披露命中率等指标，与原版 ``calculateAccuracy`` 口径一致。
@@ -244,7 +244,15 @@ def source_quality():
 
 @router.get("/api/acceptance")
 def acceptance():
-    return fixtures.load("acceptance")
+    """冻结管线状态：``pipeline`` 块由已评估预测真实派生（不再手写 mock 元数据）。
+
+    其余顶层字段（status / observedAt / schedulerAt / jobs 等）仍来自
+    ``fixtures/acceptance.json`` 的静态元信息；只有 pipeline 这份「每期冻结概况」
+    改为从 ``predictions.json`` 现算，保证与 /api/accuracy 同源自洽。
+    """
+    base = fixtures.load("acceptance")
+    pipeline = accuracy_module.build_acceptance_pipeline(accuracy_module.load_predictions())
+    return {**base, "pipeline": pipeline}
 
 
 @router.get("/api/preferences")

@@ -216,6 +216,41 @@ def calculate_accuracy(forecasts: list[dict]) -> dict:
     }
 
 
+def build_acceptance_pipeline(preds: list[dict]) -> dict:
+    """派生 ``/api/acceptance`` 的 pipeline 块。
+
+    原版 acceptance 是从冻结管线状态算出来的；这里改成由同一份已评估预测记录
+    （predictions.json）真实派生，不再手写 mock 元数据。前端页头「最近一期冻结 /
+    X 条预测 / 最早到期」因此始终与 /api/accuracy 的数据同源、自洽。
+    """
+    if not preds:
+        return {
+            "generatedAt": None,
+            "frozenAt": None,
+            "tradeDate": None,
+            "snapshotId": None,
+            "frozenCount": 0,
+            "firstMaturityTradeDate": None,
+            "minimumSample": MINIMUM_SAMPLE,
+        }
+    trade_dates = [p.get("tradeDate") for p in preds if p.get("tradeDate")]
+    maturities = [p.get("maturityTradeDate") for p in preds if p.get("maturityTradeDate")]
+    max_td = max(trade_dates)
+    frozen_at = next(
+        (p["frozenAt"] for p in preds if p.get("tradeDate") == max_td and p.get("frozenAt")),
+        f"{max_td}T01:09:48.235Z",
+    )
+    return {
+        "generatedAt": f"{max_td}T01:09:19.498Z",
+        "frozenAt": frozen_at,
+        "tradeDate": max_td,
+        "snapshotId": f"TOP50-{max_td.replace('-', '')}-3d3f47ac-9dc3-4107-b3f8-0dbd29774327",
+        "frozenCount": len(preds),
+        "firstMaturityTradeDate": min(maturities),
+        "minimumSample": MINIMUM_SAMPLE,
+    }
+
+
 def get_prediction_evidence(prediction_id: str | None) -> dict | None:
     """按 predictionId 返回冻结预测的证据块；未命中返回 None（前端显示「证据暂不可用」）。"""
     if not prediction_id:
