@@ -332,3 +332,27 @@ async def stock_quote(code: str):
             content={"status": "unavailable", "error": str(exc)},
         )
     return {"status": "ready", "quote": snap}
+
+
+@router.post("/api/stocks/enrich")
+async def stocks_enrich(payload: dict):
+    """给任意股票代码（通常是自选股里不在 TOP50 榜单的标的）补上与 TOP50 完全同口径的
+    四周期因子字段：综合分 / 因子支持 / 状态 / 为什么入选 / 失效条件 / 行情日。
+
+    数据来自当前窗口已算好的全量 universe（``top50_engine.enrich_watchlist`` 复用引擎内部
+    ``_CACHE["universe"]``，不重新拉行情、不重新归一化，因此分数与 TOP50 完全一致）。
+    冷启动时 universe 尚未在内存（只从落盘快照恢复了前 50），``enrich_watchlist`` 会强制
+    重算一次补全再打分。行情（Tushare）不可用时按与 ``/api/stocks/search`` 同策略回落 503，
+    **不编造分数**。
+    """
+    codes = payload.get("codes") or []
+    try:
+        # 确保全量 universe 已算好：命中当前窗口缓存则秒回，否则阻塞计算一次。
+        await top50_engine.get_top50_snapshot()
+        result = await top50_engine.enrich_watchlist(codes)
+        return {"status": "ready", "result": result}
+    except tushare_client.TushareError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "error": str(exc)},
+        )

@@ -77,25 +77,113 @@ watch(
   },
   { immediate: true },
 )
+
+// 榜单外自选股的因子补全：调 /api/stocks/enrich 拿与 TOP50 完全同口径的四周期打分
+// （综合分 / 因子支持 / 状态 / 为什么入选 / 失效条件 / 行情日）。这里存完整四周期，
+// 展示时按当前 tab 取对应周期 —— 与榜单内股票的周期口径严格一致。
+const enrichDetails = ref({})
+
+let enrichToken = 0
+let enrichRetried = false
+// 失败自动重试一次（5s）：后端重启 / 冷启动重算期间会短暂失败，一次失败就永久空着会让
+// 用户看到「自选行全是 —」却不知原因，自动重试能自愈。
+function scheduleEnrichRetry() {
+  if (enrichRetried) return
+  enrichRetried = true
+  setTimeout(() => {
+    enrichRetried = false
+    runEnrich()
+  }, 5000)
+}
+async function runEnrich() {
+  const ranked = new Set(rankedStocks.value.map((s) => s.code))
+  const codes = store.watchlist.filter((c) => !ranked.has(c) && !enrichDetails.value[c])
+  if (!codes.length) return
+  const token = ++enrichToken
+  try {
+    const resp = await fetch('/api/stocks/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes }),
+    })
+    if (token !== enrichToken) return
+    if (!resp.ok) {
+      scheduleEnrichRetry()
+      return
+    }
+    const data = await resp.json()
+    if (token !== enrichToken) return
+    if (data.status !== 'ready' || !data.result) {
+      scheduleEnrichRetry()
+      return
+    }
+    const next = { ...enrichDetails.value }
+    for (const code of codes) {
+      const entry = data.result[code]
+      if (entry?.available && entry.cycles) {
+        next[code] = { name: entry.name, marketDataDate: entry.marketDataDate, cycles: entry.cycles }
+      } else {
+        // 明确不可用（不在可交易池/无行情，如北交所代码）：记原因标记，避免反复请求，
+        // 并让界面上那格「—」能通过 title 提示原因。
+        next[code] = { unavailable: true, reason: entry?.reason || '不在可交易池或无行情数据' }
+      }
+    }
+    enrichDetails.value = next
+    enrichRetried = false
+  } catch {
+    /* 行情不可用：自选行保持「—」，不打断榜单展示 */
+    if (token === enrichToken) scheduleEnrichRetry()
+  }
+}
+watch(
+  () => `${store.watchlist.join(',')}|${cycle.value}|${snapshot.value?.meta?.status || ''}`,
+  () => {
+    runEnrich()
+  },
+  { immediate: true },
+)
+
 const watchlistExtras = computed(() => {
   const rankedCodes = new Set(rankedStocks.value.map((s) => s.code))
   return store.watchlist
     .filter((code) => !rankedCodes.has(code))
     .map((code) => {
       const m = wlMeta.value[code] || {}
+      const e = enrichDetails.value[code]
+      const cycles = e?.cycles || null
+      // 按当前周期 tab 取同口径打分；该周期无数据时回落任一可用周期。
+      const primary = cycles ? cycles[cycle.value] || Object.values(cycles)[0] : null
+      const h = primary ? hydrateStock(primary) : null
       return {
         code,
-        name: m.name || code,
-        industry: m.industry || '自选跟踪',
+        name: m.name || h?.name || e?.name || code,
+        industry: m.industry || h?.industry || '自选跟踪',
         isWatchlist: true,
+        // 已补上因子数据（agentScores 齐全）→ 数据列展示真实值；否则维持「—」。
+        factorReady: Boolean(h?.agentScores),
+        // 没有分数的原因（hover 提示）：明确不可用时带引擎给的 reason，其余是评估中/行情未接入。
+        enrichNote: e?.unavailable
+          ? e.reason || '不在可交易池或无行情数据'
+          : e?.cycles
+            ? null
+            : '因子评估中或行情暂不可用，稍后自动重试',
         rank: null,
-        score: null,
-        agentVotes: null,
-        consensus: null,
-        status: null,
-        reason: null,
-        invalid: null,
-        marketDataDate: null,
+        score: h?.score ?? null,
+        agentVotes: h?.agentVotes ?? null,
+        consensus: h?.consensus ?? null,
+        status: h?.status ?? null,
+        risk: h?.risk ?? null,
+        reason: h?.reason ?? null,
+        trend: h?.trend ?? null,
+        trigger: h?.trigger ?? null,
+        invalid: h?.invalid ?? null,
+        confidence: h?.confidence ?? null,
+        probabilityUp: h?.probabilityUp ?? null,
+        topAgents: h?.topAgents ?? null,
+        agentScores: h?.agentScores ?? null,
+        close: h?.close ?? null,
+        pct: h?.pct ?? null,
+        marketDataDate: e?.marketDataDate ?? null,
         predictionId: null,
       }
     })
@@ -205,16 +293,16 @@ function factorGroupsLabel(item) {
               <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else :class="`rank rank-${stock.rank}`">{{ stock.rank }}</span></td>
               <td><strong>{{ stock.name }}</strong><small>{{ stock.code }}</small></td>
               <td><b>{{ stock.industry || '--' }}</b></td>
-              <td><b v-if="stock.isWatchlist" class="muted-dash">—</b><b v-else class="score-value">{{ stock.score }}</b></td>
-              <td><b v-if="stock.isWatchlist" class="muted-dash">—</b><b v-else class="agent-vote-value">{{ stock.agentVotes ?? stock.consensus ?? 0 }}<small>/{{ teacherCount }}</small></b></td>
-              <td><StatusBadge v-if="!stock.isWatchlist" :status="stock.status" /><span v-else class="muted-dash">—</span></td>
+              <td><b v-if="stock.isWatchlist && !stock.factorReady" class="muted-dash" :title="stock.enrichNote">—</b><b v-else class="score-value">{{ stock.score }}</b></td>
+              <td><b v-if="stock.isWatchlist && !stock.factorReady" class="muted-dash">—</b><b v-else class="agent-vote-value">{{ stock.agentVotes ?? stock.consensus ?? 0 }}<small>/{{ teacherCount }}</small></b></td>
+              <td><StatusBadge v-if="!stock.isWatchlist || stock.factorReady" :status="stock.status" /><span v-else class="muted-dash">—</span></td>
               <td>
                 <span v-if="stock.isWatchlist" class="watchlist-badge">自选</span>
                 <span v-else class="muted-dash">—</span>
               </td>
-              <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else class="top50-reason">{{ stock.reason || stock.trend }}</span></td>
-              <td><span v-if="stock.isWatchlist" class="muted-dash">—</span><span v-else class="top50-invalid">{{ stock.invalid || '待更新' }}</span></td>
-              <td><time v-if="stock.isWatchlist" class="muted-dash">—</time><time v-else>{{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }}</time></td>
+              <td><span v-if="stock.isWatchlist && !stock.factorReady" class="muted-dash">—</span><span v-else class="top50-reason">{{ stock.reason || stock.trend }}</span></td>
+              <td><span v-if="stock.isWatchlist && !stock.factorReady" class="muted-dash">—</span><span v-else class="top50-invalid">{{ stock.invalid || '待更新' }}</span></td>
+              <td><time v-if="stock.isWatchlist && !stock.factorReady" class="muted-dash">—</time><time v-else>{{ stock.marketDataDate || snapshot?.meta?.marketDataDate || '--' }}</time></td>
               <td>
                 <template v-if="stock.isWatchlist">
                   <button class="table-action evidence-trigger" @click.stop="stockDecision.openEvidence(stock)">查看证据</button>
@@ -261,7 +349,7 @@ function factorGroupsLabel(item) {
           @click="openStockDecision(stock)"
         >
           <div class="top50-mobile-head">
-            <strong>#{{ stock.rank }} {{ stock.name }}</strong>
+            <strong>{{ stock.rank ? `#${stock.rank}` : (stock.isWatchlist ? '自选' : '--') }} {{ stock.name }}</strong>
             <StatusBadge :status="stock.status" />
           </div>
           <p>{{ stock.code }} · {{ stock.industry }}</p>

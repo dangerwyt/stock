@@ -73,12 +73,53 @@ export function hydrateStock(item) {
 export function resolveWatchlistStocks(codes, liveStocks = [], details = {}) {
   return codes.map((code) => {
     const live = liveStocks.find((item) => item.code === code)
-    if (live) return { ...hydrateStock(live), watchlistDataAvailable: true, decisionAvailable: Boolean(live.agentScores) }
-    const saved = details[code]
+    const extra = details[code]
+    if (live) {
+      const base = hydrateStock(live)
+      // 自选股里不在 TOP50 的标的，用 /api/stocks/enrich 同口径因子字段补全
+      // （综合分 / 因子支持 / 状态 / 为什么入选 / 失效条件 / 行情日）。
+      // 价/幅/名/行业仍以 live（实时行情，通常更新）为准，只补决策字段，不覆盖行情。
+      if (!live.agentScores && extra?.agentScores) {
+        const enriched = hydrateStock(extra)
+        return {
+          ...base,
+          score: enriched.score,
+          consensus: enriched.consensus,
+          agentVotes: enriched.agentVotes,
+          status: enriched.status,
+          risk: enriched.risk,
+          reason: enriched.reason,
+          trigger: enriched.trigger,
+          invalid: enriched.invalid,
+          valuation: enriched.valuation,
+          trend: enriched.trend,
+          confidence: enriched.confidence,
+          probabilityUp: enriched.probabilityUp,
+          agentScores: enriched.agentScores,
+          topAgents: enriched.topAgents,
+          agentAverage: enriched.agentAverage,
+          marketDataDate: extra.marketDataDate || base.marketDataDate,
+          cycles: extra.cycles,
+          watchlistDataAvailable: true,
+          decisionAvailable: true,
+        }
+      }
+      return { ...base, watchlistDataAvailable: true, decisionAvailable: Boolean(live.agentScores) }
+    }
+    if (extra?.agentScores) {
+      const enriched = hydrateStock(extra)
+      return {
+        ...enriched,
+        marketDataDate: extra.marketDataDate || enriched.marketDataDate,
+        cycles: extra.cycles,
+        watchlistDataAvailable: Boolean(enriched.close != null),
+        decisionAvailable: true,
+      }
+    }
     return {
       code,
-      name: saved?.name || code,
-      industry: saved?.industry || '行情待刷新',
+      name: extra?.name || code,
+      industry: extra?.industry || '行情待刷新',
       watchlistDataAvailable: false,
       decisionAvailable: false,
     }

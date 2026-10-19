@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { useAppStore } from '@/stores/snapshot'
@@ -22,7 +22,86 @@ const { data: market } = useSnapshot('/api/market', { refreshMs: 60000 })
 const teacherCount = computed(() => Number(top50.value?.meta?.teacherCount) || 1)
 
 const liveUniverse = computed(() => buildLiveUniverse(top50.value, market.value))
-const watchItems = computed(() => resolveWatchlistStocks(store.watchlist, liveUniverse.value, {}))
+
+// 自选股不在 TOP50 时，用引擎同口径补四周期因子字段（综合分 / 因子支持 / 状态 / 为什么入选 /
+// 失效条件 / 行情日）。取与 buildLiveUniverse 一致的「末位周期」中长线作主展示周期，
+// 保证 TOP50 与非 TOP50 自选行口径统一。
+const WATCHLIST_PRIMARY_CYCLE = '中长线'
+const enrichDetails = ref({})
+const enrichState = ref('idle') // idle | loading | ready | unavailable
+
+// 需要补因子的自选：在 TOP50 榜单（带 agentScores）之外的标的。
+const needsEnrich = computed(() => {
+  const inTop = new Set(liveUniverse.value.filter((s) => s.agentScores).map((s) => s.code))
+  return store.watchlist.filter((c) => !inTop.has(c))
+})
+
+let enrichToken = 0
+let enrichRetryTimer = null
+async function runEnrich({ retry = true } = {}) {
+  const codes = needsEnrich.value
+  if (enrichRetryTimer) {
+    clearTimeout(enrichRetryTimer)
+    enrichRetryTimer = null
+  }
+  if (!codes.length) {
+    enrichState.value = 'idle'
+    return
+  }
+  const token = ++enrichToken
+  enrichState.value = 'loading'
+  try {
+    const resp = await fetch('/api/stocks/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes }),
+    })
+    if (token !== enrichToken) return
+    if (!resp.ok) {
+      failEnrich(retry)
+      return
+    }
+    const data = await resp.json()
+    if (token !== enrichToken) return
+    if (data.status !== 'ready' || !data.result) {
+      failEnrich(retry)
+      return
+    }
+    const next = { ...enrichDetails.value }
+    for (const code of codes) {
+      const entry = data.result[code]
+      if (entry && entry.available && entry.cycles) {
+        const primary = entry.cycles[WATCHLIST_PRIMARY_CYCLE] || Object.values(entry.cycles)[0]
+        if (primary) {
+          next[code] = {
+            ...primary,
+            name: entry.name || primary.name,
+            marketDataDate: entry.marketDataDate,
+            cycles: entry.cycles,
+          }
+        }
+      }
+    }
+    enrichDetails.value = next
+    enrichState.value = 'ready'
+  } catch {
+    if (token === enrichToken) failEnrich(retry)
+  }
+}
+
+// 失败处理：置 unavailable 并**自动重试一次**（间隔 5s）。
+// 后端重启 / 冷启动重算（首次约需 20-70s）期间会短暂失败，若只失败一次就永久空着，
+// 用户看到的就是「几列全是 --」而不知道原因。自动重试能自愈，手动重试按钮兜底。
+function failEnrich(allowRetry) {
+  enrichState.value = 'unavailable'
+  if (!allowRetry) return
+  enrichRetryTimer = setTimeout(() => {
+    enrichRetryTimer = null
+    runEnrich({ retry: false })
+  }, 5000)
+}
+
+const watchItems = computed(() => resolveWatchlistStocks(store.watchlist, liveUniverse.value, enrichDetails.value))
 const availableCount = computed(() => watchItems.value.filter((i) => i.watchlistDataAvailable).length)
 const top50Count = computed(() => watchItems.value.filter((i) => i.decisionAvailable && i.rank > 0).length)
 const actionableCount = computed(() => watchItems.value.filter((i) => i.decisionAvailable && i.status === '可试仓').length)
@@ -49,6 +128,18 @@ function openStock(item) {
 function addStock() {
   router.push('/market')
 }
+
+// 自选股因子补全：自选列表或 TOP50 快照就绪时，自动为不在榜单内的标的拉同口径四周期因子。
+// token 防竞态：仅采用最后一次请求结果。
+watch(
+  () => `${store.watchlist.join(',')}|${top50.value?.meta?.status || ''}|${market.value?.meta?.status || ''}`,
+  () => {
+    runEnrich()
+  },
+)
+onMounted(() => {
+  runEnrich()
+})
 </script>
 
 <template>
@@ -75,6 +166,14 @@ function addStock() {
       <section><span>当前TOP50</span><strong>{{ top50Count }}</strong><small>基于当前四周期合并榜单</small></section>
       <section><span>可执行 / 高风险</span><strong>{{ actionableCount }} / {{ highRiskCount }}</strong><small>以最新冻结因子结果为准</small></section>
     </div>
+
+    <p v-if="enrichState === 'unavailable'" role="status" class="portfolio-enrich-note">
+      因子评估暂不可用（行情服务未就绪或正在计算），不在 TOP50 的自选股先显示「待评估」。
+      <button class="table-action" @click="runEnrich({ retry: false })">重新评估</button>
+    </p>
+    <p v-else-if="enrichState === 'loading'" role="status" class="portfolio-enrich-note">
+      正在为榜单外的自选股计算因子评分（首次需拉取全市场行情，约 20-70 秒）…
+    </p>
 
     <section class="panel portfolio-table">
       <div class="panel-head">

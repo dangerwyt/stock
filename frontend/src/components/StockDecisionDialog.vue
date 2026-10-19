@@ -124,6 +124,13 @@ const selected = computed(() => {
 // 是否 TOP50 榜单标的：决定 score/consensus/price 等专属字段能否展示，
 // 否则按「未接入字段显示--」口径回落，避免出现误导性的 0分 / 0%。
 const isTop50 = computed(() => Boolean(code.value && allRanked.value.some((s) => s.code === code.value)))
+// 是否带因子评分数据：TOP50 标的，或经 /api/stocks/enrich 补全因子的自选股。
+// 决定综合分 / 因子支持能否展示，否则回落「--」。
+const hasFactorData = computed(() => {
+  const s = selected.value
+  if (!s) return false
+  return Number.isFinite(Number(s.score)) || Number.isFinite(Number(s.agentVotes ?? s.consensus))
+})
 // 行情报价：搜索/纯自选加进来的标的没有实时价，显示「--」而非 0.00。
 const hasQuote = computed(() => Boolean(selected.value && Number.isFinite(Number(selected.value.price)) && Number(selected.value.price) > 0))
 const quotePrice = computed(() => (hasQuote.value ? Number(selected.value.price).toFixed(2) : '--'))
@@ -172,9 +179,9 @@ const monitorMetrics = computed(() => buildMonitorMetrics(selected.value))
 const displayConsensus = computed(() =>
   Math.min(teacherCount.value, Number(selected.value?.agentVotes ?? selected.value?.consensus ?? 0)),
 )
-const scoreText = computed(() => (isTop50.value ? `${selected.value?.score ?? '--'}分` : '--'))
-const scoreValue = computed(() => (isTop50.value ? (selected.value?.score ?? '--') : '--'))
-const consensusText = computed(() => (isTop50.value ? displayConsensus.value : '--'))
+const scoreText = computed(() => (hasFactorData.value ? `${selected.value?.score ?? '--'}分` : '--'))
+const scoreValue = computed(() => (hasFactorData.value ? (selected.value?.score ?? '--') : '--'))
+const consensusText = computed(() => (hasFactorData.value ? displayConsensus.value : '--'))
 const trendLabel = computed(() => {
   const up = monitorMetrics.value?.upProb
   if (up == null) return '待计算'

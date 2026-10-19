@@ -129,7 +129,16 @@ _MAX_EVIDENCE_ENTRIES = 4000
 # 为什么不是 TTL：同一窗口（同一交易日的同一份行情）+ 同一份画像指纹 → 榜单结果**必然
 # 相同**，按时间反复重算是纯浪费 —— 每次重算都是一轮全市场 ``daily`` + ``daily_basic``。
 # 画像变了有 ``specSig`` 指纹兜底，行情变了会切窗口，两者都不需要靠 TTL 发现。
-_CACHE: dict[str, Any] = {"snapshot": None, "evidence": {}, "window": None, "specSig": ""}
+# universe = 全量打分结果（几千只 eligible 股）。落盘快照只存每周期前 50，但 enrich 自选股
+# 需要全量数据，所以把它留在内存（单进程可接受）；窗口/画像变更后随 get_top50_snapshot 重算刷新。
+_CACHE: dict[str, Any] = {
+    "snapshot": None,
+    "evidence": {},
+    "window": None,
+    "specSig": "",
+    "universe": None,
+    "reference_date": None,
+}
 
 # 落盘：uvicorn 重启后同窗口内直接恢复，不再全量重算 —— 省额度最直接的一条。
 # 失败只记 warning，绝不影响本轮结果（缓存本来就是可选项）。
@@ -528,6 +537,135 @@ def _weight_entries(
     return entries
 
 
+def _cycle_context(
+    cycle: str,
+    config: dict,
+    custom_names: list[str],
+    profiles: dict,
+    specs: list[dict],
+) -> dict:
+    """算一个周期里 _enrich_row 需要的全部上下文。抽出来让 build_top50 与 enrich_watchlist
+    共用同一套口径（周期因子先验 + 与自建画像混合、票数阈值随参与数缩放等），杜绝两份实现漂移。"""
+    cycle_weights = _cycle_weights(config, custom_names)
+    participants = list(cycle_weights)
+    participant_count = len(participants)
+    priors = _cycle_factor_prior(cycle)
+    per_cycle_ai = {
+        spec["name"]: _apply_cycle_tilt(spec.get("quantWeights") or {}, priors)
+        for spec in specs
+    }
+    vote_low = max(1, math.ceil(participant_count * 7 / 12))
+    vote_mid = max(1, math.ceil(participant_count * 6 / 12))
+    consensus_ready = participant_count >= MIN_CONSENSUS_PARTICIPANTS
+    return {
+        "cycle_weights": cycle_weights,
+        "participants": participants,
+        "per_cycle_ai": per_cycle_ai,
+        "vote_low": vote_low,
+        "vote_mid": vote_mid,
+        "consensus_ready": consensus_ready,
+    }
+
+
+def _enrich_row(
+    row: dict,
+    cycle: str,
+    config: dict,
+    cycle_weights: dict[str, float],
+    participants: list[str],
+    per_cycle_ai: dict[str, dict[str, float]],
+    vote_low: int,
+    vote_mid: int,
+    consensus_ready: bool,
+    reference_date: str,
+    profiles: dict[str, dict[str, str]] | None = None,
+) -> dict:
+    """对单只股票在单个周期上跑一遍与 TOP50 完全一致的逐股打分（综合分 / 因子支持 / 状态 /
+    为什么入选 / 失效条件 / 行情日）。原样移植自 build_top50 的逐股循环，供 build_top50 与
+    enrich_watchlist 共用 —— 这是"自选股与 TOP50 同口径"的保证。"""
+    row_factors = row.get("_factors") or {}
+    agent_scores: dict[str, float] = {}
+    for name in participants:
+        tilted = per_cycle_ai.get(name)
+        if tilted:
+            agent_scores[name] = _clamp(
+                sum(row_factors.get(key, 0.0) * weight for key, weight in tilted.items())
+            )
+        else:
+            agent_scores[name] = row["agents"].get(name, 0.0)
+    weighted = sum(
+        agent_scores[name] * weight / 100 for name, weight in cycle_weights.items()
+    )
+    top_agents = [
+        name
+        for name, _ in sorted(agent_scores.items(), key=lambda kv: kv[1], reverse=True)[:3]
+    ]
+    probability_up = _clamp(0.5 + (weighted - 50) / 125, 0.34, 0.84)
+    agent_votes = sum(1 for s in agent_scores.values() if s >= 60)
+    score = round(weighted)
+    risk = (
+        "低"
+        if (consensus_ready and score >= 70 and agent_votes >= vote_low)
+        else "中"
+        if (score >= 60 and agent_votes >= vote_mid)
+        else "高"
+    )
+    status = "可试仓" if risk == "低" else "等待确认" if risk == "中" else "仅观察"
+    pre_close = _num(row.get("pre_close"))
+    high, low = _num(row.get("high")), _num(row.get("low"))
+    amplitude = (
+        round((high - low) / pre_close * 100, 2)
+        if high is not None and low is not None and pre_close and pre_close > 0
+        else None
+    )
+    pct = _num(row.get("pct_chg")) or 0.0
+    pe = _num(row.get("pe_ttm"))
+    item = {
+        "code": str(row.get("ts_code") or "").split(".")[0],
+        "tsCode": row.get("ts_code"),
+        "name": row.get("name") or row.get("ts_code"),
+        "close": row.get("close"),
+        "pct": pct,
+        "industry": row.get("industry") or "未分类",
+        "score": score,
+        "confidence": round(probability_up * 100),
+        "probabilityUp": round(probability_up, 4),
+        "agentVotes": agent_votes,
+        "agentAverage": round(sum(agent_scores.values()) / len(participants)) if participants else 0,
+        "topAgents": top_agents,
+        "agentScores": {k: round(v, 1) for k, v in agent_scores.items()},
+        "open": _num(row.get("open")),
+        "high": high,
+        "low": low,
+        "preClose": pre_close,
+        "amount": _num(row.get("amount")),
+        "turnoverRate": _num(row.get("turnover_rate")),
+        "volumeRatio": _num(row.get("volume_ratio")),
+        "peTtm": pe,
+        "pb": _num(row.get("pb")),
+        "amplitude": amplitude,
+        "listDate": _iso_date(row.get("list_date")),
+        "status": status,
+        "risk": risk,
+        "reason": (
+            f"{'、'.join(top_agents)}因子得分领先；支持{agent_votes}/{len(participants)}"
+            if consensus_ready
+            else f"{'、'.join(top_agents)}因子得分领先；支持{agent_votes}/{len(participants)}"
+            f"（参与画像不足{MIN_CONSENSUS_PARTICIPANTS}位，不评共识）"
+        ),
+        "trend": "当日量价偏强" if pct >= 0 else "当日价格回撤",
+        "valuation": f"PE(TTM) {pe:.1f}" if pe and pe > 0 else "PE暂无有效值",
+        "triggerPrice": high,
+        "invalidPrice": low,
+        "marketDataDate": _iso_date(reference_date),
+        "predictionId": None,
+    }
+    item["selectionEvidence"] = build_selection_evidence(
+        item, cycle, {**config, "weights": cycle_weights}, reference_date, profiles
+    )
+    return item
+
+
 def build_top50(
     scored_rows: list[dict],
     reference_date: str,
@@ -588,95 +726,19 @@ def build_top50(
         consensus_ready = participant_count >= MIN_CONSENSUS_PARTICIPANTS
         ranking: list[dict] = []
         for row in scored_rows:
-            # 只统计**本周期参与打分的画像**：share = 1.0 时就是纯自建老师，内置 12 位
-            # 既不参与加权，也不再出现在票数 / 均分 / 领先因子 / agentScores 里 ——
-            # 否则界面上会冒出「菠萝、陈江挺」这些已经不存在于产品中的老师名。
-            #
-            # 自建老师要按**本周期重配后**的因子权重现算一遍：内置老师的公式与周期
-            # 无关（周期差异体现在"这个周期启用哪几位"），所以直接用 score_universe
-            # 算好的值；自建老师只有一位时启用哪几位也变不了，差异必须落在因子配比上。
-            row_factors = row.get("_factors") or {}
-            agent_scores: dict[str, float] = {}
-            for name in participants:
-                tilted = per_cycle_ai.get(name)
-                if tilted:
-                    agent_scores[name] = _clamp(
-                        sum(
-                            row_factors.get(key, 0.0) * weight
-                            for key, weight in tilted.items()
-                        )
-                    )
-                else:
-                    agent_scores[name] = row["agents"].get(name, 0.0)
-            weighted = sum(
-                agent_scores[name] * weight / 100 for name, weight in cycle_weights.items()
-            )
-            top_agents = [
-                name for name, _ in sorted(agent_scores.items(), key=lambda kv: kv[1], reverse=True)[:3]
-            ]
-            probability_up = _clamp(0.5 + (weighted - 50) / 125, 0.34, 0.84)
-            agent_votes = sum(1 for s in agent_scores.values() if s >= 60)
-            score = round(weighted)
-            risk = (
-                "低"
-                if (consensus_ready and score >= 70 and agent_votes >= vote_low)
-                else "中"
-                if (score >= 60 and agent_votes >= vote_mid)
-                else "高"
-            )
-            status = "可试仓" if risk == "低" else "等待确认" if risk == "中" else "仅观察"
-            pre_close = _num(row.get("pre_close"))
-            high, low = _num(row.get("high")), _num(row.get("low"))
-            amplitude = (
-                round((high - low) / pre_close * 100, 2)
-                if high is not None and low is not None and pre_close and pre_close > 0
-                else None
-            )
-            pct = _num(row.get("pct_chg")) or 0.0
-            pe = _num(row.get("pe_ttm"))
-            item = {
-                "code": str(row.get("ts_code") or "").split(".")[0],
-                "tsCode": row.get("ts_code"),
-                "name": row.get("name") or row.get("ts_code"),
-                "close": row.get("close"),
-                "pct": pct,
-                "industry": row.get("industry") or "未分类",
-                "score": score,
-                "confidence": round(probability_up * 100),
-                "probabilityUp": round(probability_up, 4),
-                "agentVotes": agent_votes,
-                "agentAverage": round(sum(agent_scores.values()) / participant_count) if participant_count else 0,
-                "topAgents": top_agents,
-                "agentScores": {k: round(v, 1) for k, v in agent_scores.items()},
-                "open": _num(row.get("open")),
-                "high": high,
-                "low": low,
-                "preClose": pre_close,
-                "amount": _num(row.get("amount")),
-                "turnoverRate": _num(row.get("turnover_rate")),
-                "volumeRatio": _num(row.get("volume_ratio")),
-                "peTtm": pe,
-                "pb": _num(row.get("pb")),
-                "amplitude": amplitude,
-                "listDate": _iso_date(row.get("list_date")),
-                "status": status,
-                "risk": risk,
-                "reason": (
-                    f"{'、'.join(top_agents)}因子得分领先；支持{agent_votes}/{participant_count}"
-                    if consensus_ready
-                    # 参与画像不够时把原因写在脸上，否则用户会以为"票数明明过半却不给低风险"是 bug。
-                    else f"{'、'.join(top_agents)}因子得分领先；支持{agent_votes}/{participant_count}"
-                    f"（参与画像不足{MIN_CONSENSUS_PARTICIPANTS}位，不评共识）"
-                ),
-                "trend": "当日量价偏强" if pct >= 0 else "当日价格回撤",
-                "valuation": f"PE(TTM) {pe:.1f}" if pe and pe > 0 else "PE暂无有效值",
-                "triggerPrice": high,
-                "invalidPrice": low,
-                "marketDataDate": _iso_date(reference_date),
-                "predictionId": None,
-            }
-            item["selectionEvidence"] = build_selection_evidence(
-                item, cycle, {**config, "weights": cycle_weights}, reference_date, profiles
+            # 逐股打分抽成 _enrich_row，与 enrich_watchlist 共用同一份口径（见该函数的说明）。
+            item = _enrich_row(
+                row,
+                cycle,
+                config,
+                cycle_weights,
+                participants,
+                per_cycle_ai,
+                vote_low,
+                vote_mid,
+                consensus_ready,
+                reference_date,
+                profiles,
             )
             ranking.append(item)
 
@@ -955,6 +1017,10 @@ async def get_top50_snapshot(force: bool = False) -> dict:
         raise tushare_client.TushareError(f"初筛后候选不足 50 只（{len(eligible)}）")
 
     scored = score_universe(eligible, specs)
+    # 保留全量打分结果（几千只 eligible 股）供 enrich_watchlist 给自选股补因子字段用；
+    # 落盘快照只存每周期前 50，但自选股里不在 TOP50 的也要同口径综合分，必须留全量在内存。
+    _CACHE["universe"] = scored
+    _CACHE["reference_date"] = reference_date
     generated_at = datetime.now(SHANGHAI).isoformat()
     snapshot, evidence_store = build_top50(scored, reference_date, generated_at, specs)
     snapshot["meta"]["marketUniverse"] = total
@@ -997,3 +1063,60 @@ async def get_top50_snapshot(force: bool = False) -> dict:
 def get_evidence(prediction_id: str) -> dict | None:
     """按 predictionId 取冻结选股证据（须先调用过 get_top50_snapshot）。"""
     return (_CACHE.get("evidence") or {}).get(prediction_id)
+
+
+async def enrich_watchlist(codes: list[str]) -> dict[str, Any]:
+    """给任意股票代码补上与 TOP50 完全同口径的四周期因子字段（综合分 / 因子支持 / 状态 /
+    为什么入选 / 失效条件 / 行情日）。
+
+    数据来自当前窗口已算好的全量 universe（``_CACHE["universe"]``），**不重新拉行情、
+    不重新归一化**，因此分数与 TOP50 完全一致。冷启动后若全量 universe 尚未在内存
+    （只从落盘快照恢复了前 50），会强制重算一次补全，再为自选股打分。
+    """
+    if _CACHE.get("universe") is None:
+        await get_top50_snapshot(force=True)
+    universe = _CACHE.get("universe")
+    if not universe:
+        raise tushare_client.TushareError("TOP50 全量 universe 计算失败，无法为自选股打分")
+
+    specs = agent_factor_score.custom_teacher_specs()
+    custom_names = [spec["name"] for spec in specs]
+    profiles = {**TEACHER_PROFILES, **agent_factor_score.profile_meta(specs)}
+    reference_date = _CACHE.get("reference_date")
+    universe_by_code = {
+        str(r.get("ts_code") or "").split(".")[0]: r for r in universe
+    }
+
+    result: dict[str, Any] = {}
+    for code in codes:
+        c = str(code).strip()
+        if not c:
+            continue
+        row = universe_by_code.get(c)
+        if row is None:
+            result[c] = {"code": c, "available": False, "reason": "不在可交易池或无行情数据"}
+            continue
+        cycles_out: dict[str, dict] = {}
+        for cycle, config in CYCLES.items():
+            ctx = _cycle_context(cycle, config, custom_names, profiles, specs)
+            cycles_out[cycle] = _enrich_row(
+                row,
+                cycle,
+                config,
+                ctx["cycle_weights"],
+                ctx["participants"],
+                ctx["per_cycle_ai"],
+                ctx["vote_low"],
+                ctx["vote_mid"],
+                ctx["consensus_ready"],
+                reference_date,
+                profiles,
+            )
+        result[c] = {
+            "code": c,
+            "name": row.get("name") or c,
+            "available": True,
+            "marketDataDate": _iso_date(reference_date),
+            "cycles": cycles_out,
+        }
+    return result

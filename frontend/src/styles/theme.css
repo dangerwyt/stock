@@ -1652,3 +1652,20 @@ a {
 }
 
 
+
+/* 自选组合：因子评估状态提示（loading / unavailable） */
+.portfolio-enrich-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f4f8ff;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.portfolio-enrich-note .table-action { flex-shrink: 0; }
