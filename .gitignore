@@ -24,6 +24,7 @@ pnpm-debug.log*
 
 # ---------- 本地调试页（读取真实样式表做移动端布局校对，仅本机用）----------
 frontend/public/_mobile-check.html
+frontend/public/_mobile-check-frame.html
 
 # ---------- 后端运行态数据（本地可变状态，不入库）----------
 # agents.py / threads.py / agent_docs.py 三个 JSON 存储，缺失时会自动重建
