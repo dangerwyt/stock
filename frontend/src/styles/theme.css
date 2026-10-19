@@ -1684,14 +1684,22 @@ a {
   .home-top50-preview-row {
     height: 68px;
     min-height: 68px;
-    /* 分数/票数固定 54px 右对齐；徽章列 auto（贴合徽章宽度、右缘对齐），
-     * 并用 justify-self:end 压过 legacy 的 justify-self:start —— 否则徽章左侧
-     * 对齐、固定列宽下右侧留一截空白，看起来像没对齐。徽章只放第一行，
-     * 与综合分同一行高上，不再跨两行悬在中间。 */
-    grid-template-columns: 34px minmax(0, 1fr) 54px auto;
+    /* 列宽策略（手机 390px 实测：排名 34 + 名称 96 + 分数 54 + 徽章 ~46 = 230，
+     * 行内净宽 342，剩 112px 必须有个去处）：
+     *   · 名称列改**固定 96px**：上一版是 1fr，被撑到 170px，名称和分数之间空一大块，
+     *     分数/徽章被顶到最右侧 —— 这就是「名字列太宽、分数往后挪」。
+     *     不能改 max-content：每一行是**独立 grid**，max-content 按本行名称算，
+     *     行与行之间列位置会错开，列表看起来右边参差不齐。
+     *   · 余量交给 justify-content: space-between 摊进三条列间距，
+     *     两端仍贴边 → 等距表格，而不是「一个洞 + 全挤在右边」。
+     *   · 徽章列也固定 56px（4 字徽章 36 + 左右 padding 10 = 46，留 10 余量）：
+     *     auto 会按本行徽章文字定宽（3 字 37 / 4 字 46），每行独立 grid →
+     *     列位置跟着抖，右边会参差。固定后四列全是死数，每行严格对齐。 */
+    grid-template-columns: 34px 96px 54px 56px;
     grid-template-areas:
       "rank stock score status"
       "rank industry support .";
+    justify-content: space-between;
     align-content: center;
     gap: 4px 12px;
     padding: 0 12px;
