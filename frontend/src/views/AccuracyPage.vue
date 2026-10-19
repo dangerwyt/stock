@@ -81,6 +81,11 @@ function metricLabel(metric) {
     ? `样本积累中（${metric.sampleCount || 0}/${snapshot.value?.minimumSample || 30}）`
     : percent(metric?.hitRate)
 }
+// KPI 大字用短标签：「样本积累中（20/30）」在 28px 大字 + 四分之一卡宽下必然折行，
+// 且样本数已由「历史成熟样本」卡展示，这里只需说明状态。
+function metricShort(metric) {
+  return metric?.sampleStatus === 'insufficient' ? '积累中' : percent(metric?.hitRate)
+}
 function displayValue(value) {
   return value || '数据缺失（未记录）'
 }
@@ -167,7 +172,7 @@ const EVENT_REASON = { maturity_market_data_available: '已取得目标交易日
 
     <div class="accuracy-kpis">
       <section><span>历史成熟样本</span><strong>{{ overall.sampleCount || 0 }}</strong><small>当前所选版本 · 非本期完成率</small></section>
-      <section><span>方向命中率</span><strong>{{ metricLabel(overall) }}</strong><small>不代表未来收益</small></section>
+      <section><span>方向命中率</span><strong>{{ metricShort(overall) }}</strong><small>不代表未来收益</small></section>
       <section><span>统计状态</span><strong>{{ overall.sampleCount >= 30 ? '可查看' : '积累中' }}</strong><small>30条只是披露门槛，不代表可靠性证明</small></section>
       <section><span>样本平均收益</span><strong>{{ hasNumber(overall.averageReturn) ? percent(Number(overall.averageReturn) * 100, 2) : '--' }}</strong><small>仅为历史样本统计</small></section>
     </div>

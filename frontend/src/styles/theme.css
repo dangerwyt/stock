@@ -1669,3 +1669,64 @@ a {
   line-height: 1.5;
 }
 .portfolio-enrich-note .table-action { flex-shrink: 0; }
+
+/* ============================================================================
+ * 移动端布局接管（theme.css 无层 → 优先级高于 reference-theme.css 与 legacy）
+ *
+ * reference-theme.css 里写死了两处，legacy 层（styles.css）改不动它们：
+ *   · .home-top50-preview-row { height: 32px; min-height: 32px }（:121）
+ *     + 6 列网格（:119）—— 手机端双行布局只用到前 4 列，右侧空出约 131px，
+ *     且 32px 死高度把「名称/代码 + 行业/票数」两行内容压扁。
+ *   · .news-row { grid-template-columns: 44px minmax(0,1fr) }（:302）
+ *     —— 左栏 44px 装不下 nowrap 的来源标签（约 58px），标签溢出压到标题上。
+ * ============================================================================ */
+@media (max-width: 820px) {
+  .home-top50-preview-row {
+    height: 68px;
+    min-height: 68px;
+    /* 分数/票数固定 54px 右对齐；徽章列 auto（贴合徽章宽度、右缘对齐），
+     * 并用 justify-self:end 压过 legacy 的 justify-self:start —— 否则徽章左侧
+     * 对齐、固定列宽下右侧留一截空白，看起来像没对齐。徽章只放第一行，
+     * 与综合分同一行高上，不再跨两行悬在中间。 */
+    grid-template-columns: 34px minmax(0, 1fr) 54px auto;
+    grid-template-areas:
+      "rank stock score status"
+      "rank industry support .";
+    align-content: center;
+    gap: 4px 12px;
+    padding: 0 12px;
+  }
+  .home-top50-preview-row > b:nth-of-type(2),
+  .home-top50-preview-row > span:nth-of-type(3) { text-align: right; }
+  .home-top50-preview-row .status-badge {
+    justify-self: end;
+    align-self: center;
+    white-space: nowrap;   /* auto 列按 max-content 定宽，防止「等待确认」被折成两行撑高行 */
+  }
+}
+
+/* 资讯行：reference-theme.css:302（@media max-width:760px）把左栏写死 44px。
+ * .news-type 是 width:fit-content 的 inline-flex（styles.css:444），收不进 44px
+ * 就向右溢出，直接压到标题上 —— 手机上「左右挤在一起」就是这一个原因。
+ * 断点必须跟它一样是 760px（写 540 只覆盖手机竖屏，平板仍是坏的）。
+ * 这里把左栏改成 auto：宽度由「来源标签 / 时间」里更宽的那个决定，标签不再溢出。
+ * 同一块里它已经把 .news-impact / .news-rank / .news-row > svg 设成 display:none，
+ * 所以栅格里只剩 type / time / main 三个元素，不需要再藏箭头。 */
+@media (max-width: 760px) {
+  .news-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "type main"
+      "time main";
+    align-items: start;
+    gap: 6px 12px;
+  }
+  .news-type { grid-area: type; align-self: start; }
+  .news-time { grid-area: time; white-space: nowrap; }
+  .news-main { grid-area: main; }
+}
+
+@media (max-width: 540px) {
+  .news-page .news-row .news-type,
+  .news-page .news-row .news-time { font-size: 10px; }
+}
