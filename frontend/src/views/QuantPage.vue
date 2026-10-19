@@ -2,7 +2,8 @@
 import { ref, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useSnapshot } from "@/composables/useSnapshot";
-import { http } from "@/api/client";
+import { http, fetchSnapshot } from "@/api/client";
+import { useAppStore } from "@/stores/snapshot";
 import StatusBadge from "@/components/StatusBadge.vue";
 import EChart from "@/components/EChart.vue";
 import { hydrateStock } from "@/utils/format";
@@ -30,6 +31,8 @@ const { data: accuracy } = useSnapshot("/api/accuracy", { refreshMs: 60000 });
 const { data: top50Snapshot } = useSnapshot("/api/top50", {
   refreshMs: 300000,
 });
+// 全局自选股（localStorage 持久化，与侧边栏/自选组合/单股决策弹窗同源）。
+const store = useAppStore();
 
 // 票数分母 = 用户自己创建的老师总数（引擎 meta.teacherCount）。原来写死 12，
 // 但内置 12 位是原版 mock 人设，已从产品里去掉；没有自建老师时兜 1，避免除零。
@@ -89,14 +92,111 @@ const backtestEnd = ref(
   ),
 );
 
-const stockOptions = computed(() =>
-  (top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map(hydrateStock),
+// 自选股解析：在 TOP50 榜单里的直接复用榜单信息；不在榜单里的异步拉
+// /api/stocks/search 补名字，选中后按需拉 /api/stocks/{code}/quote 补实时价
+// （与单股决策弹窗同源 —— 榜单外标的没有因子分，只有基础信息+实时行情）。
+const watchlistDetails = ref({});
+async function resolveWatchlistNames() {
+  for (const code of store.watchlist) {
+    if (watchlistDetails.value[code]?.name) continue;
+    try {
+      const d = await fetchSnapshot(
+        `/api/stocks/search?q=${encodeURIComponent(code)}`,
+      );
+      const hit = (d?.items || []).find((i) => i.code === code);
+      if (hit) {
+        watchlistDetails.value = {
+          ...watchlistDetails.value,
+          [code]: { ...(watchlistDetails.value[code] || { code }), ...hit },
+        };
+      }
+    } catch {
+      // Tushare 不可用时名字先留空，下拉用代码兜底，不阻塞模拟交易。
+    }
+  }
+}
+// 选中「榜单外自选股」时补实时价，让模拟买入/卖出按真实快照价成交。
+watch(
+  stockCode,
+  async (code) => {
+    if (!code) return;
+    const rankedCodes = new Set(
+      (top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map(
+        (s) => s.code,
+      ),
+    );
+    if (rankedCodes.has(code)) return;
+    if (watchlistDetails.value[code]?.price != null) return;
+    try {
+      const q = await fetchSnapshot(
+        `/api/stocks/${encodeURIComponent(code)}/quote`,
+      );
+      if (q?.quote) {
+        watchlistDetails.value = {
+          ...watchlistDetails.value,
+          [code]: {
+            ...(watchlistDetails.value[code] || { code }),
+            ...q.quote,
+          },
+        };
+      }
+    } catch {
+      // 行情不可用则价格回落 0，模拟仅作本机记录，不编造价格。
+    }
+  },
+  { immediate: true },
 );
+watch(() => store.watchlist.slice(), resolveWatchlistNames, { immediate: true });
+
+// 模拟 tab 的标的池 = 当前周期 TOP50 + 自选股（按代码去重）。
+// 其它 tab（分析/回测/信号/预判/评估）只能跑 TOP50，见 rankedStockChoices。
+const watchlistExtras = computed(() => {
+  const rankedCodes = new Set(
+    (top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map(
+      (s) => s.code,
+    ),
+  );
+  const out = [];
+  for (const code of store.watchlist) {
+    if (rankedCodes.has(code)) continue;
+    const d = watchlistDetails.value[code];
+    out.push(
+      hydrateStock({
+        code,
+        name: d?.name || code,
+        industry: d?.industry || "自选跟踪",
+        close: d?.close ?? d?.price,
+        pct: d?.pct ?? d?.pct_chg,
+        isWatchlist: true,
+        rank: null,
+        score: null,
+        status: null,
+      }),
+    );
+  }
+  return out;
+});
+// stockOptions 是「当前可解析标的」全集：模拟 tab 的持仓/交易显示、trade 取价都从它查。
+const stockOptions = computed(() => [
+  ...(top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map(
+    hydrateStock,
+  ),
+  ...watchlistExtras.value,
+]);
 // el-select 要显式的 label/value 对（原生 <option> 的插值写法在 EP 里不成立）。
 // 周期选项固定 4 个；标的选项跟着冻结榜单走，所以是 computed。
 const cycleOptions = ["超短", "短线", "波段", "中长线"];
+// 模拟 tab 下拉：TOP50 + 自选股全量。
 const stockChoices = computed(() =>
   stockOptions.value.map((item) => ({
+    label: `${item.name} ${item.code}`,
+    value: item.code,
+  })),
+);
+// 其它 tab（分析/回测/信号/预判/评估）只能跑 TOP50 标的，单独一份，
+// 避免把榜单外自选股送进量化引擎（引擎按冻结快照查标的，榜单外会 503）。
+const rankedStockChoices = computed(() =>
+  (top50Snapshot.value?.cycles?.[cycle.value]?.ranking || []).map((item) => ({
     label: `${item.name} ${item.code}`,
     value: item.code,
   })),
@@ -199,6 +299,14 @@ function trade(side) {
 }
 function switchTool(id) {
   tool.value = id;
+  // 离开模拟 tab 时，如果当前选中的是榜单外自选股（其它 tab 的引擎只认 TOP50），
+  // 回落到第一只 TOP50，避免把榜单外标的送进量化引擎导致 503。
+  if (id !== "simulation") {
+    const ranked = rankedStockChoices.value;
+    if (!ranked.some((o) => o.value === stockCode.value) && ranked[0]) {
+      stockCode.value = ranked[0].value;
+    }
+  }
   // 🔴 不再清 toolResult / feedback —— 结果与反馈都存在 resultsByTool / feedbacksByTool
   //   里按 tab 取用，来回切换 tab 不丢结果、不重复请求（keep-alive 语义）。
   // URL 与 tab 保持同步：否则「先手点别的 tab、再从弹窗跳同一 tab」时 query 未变化、
@@ -390,7 +498,7 @@ const equityCurvePoints = computed(
           placeholder="选择标的"
           aria-label="选择标的"
           ><el-option
-            v-for="s in stockChoices"
+            v-for="s in rankedStockChoices"
             :key="s.value"
             :label="s.label"
             :value="s.value"
@@ -451,7 +559,7 @@ const equityCurvePoints = computed(
           placeholder="选择标的"
           aria-label="选择标的"
           ><el-option
-            v-for="s in stockChoices"
+            v-for="s in rankedStockChoices"
             :key="s.value"
             :label="s.label"
             :value="s.value"
@@ -553,7 +661,7 @@ const equityCurvePoints = computed(
           placeholder="选择标的"
           aria-label="选择标的"
           ><el-option
-            v-for="s in stockChoices"
+            v-for="s in rankedStockChoices"
             :key="s.value"
             :label="s.label"
             :value="s.value"
@@ -669,7 +777,7 @@ const equityCurvePoints = computed(
           placeholder="选择标的"
           aria-label="选择标的"
           ><el-option
-            v-for="s in stockChoices"
+            v-for="s in rankedStockChoices"
             :key="s.value"
             :label="s.label"
             :value="s.value"
@@ -775,7 +883,7 @@ const equityCurvePoints = computed(
           placeholder="选择标的"
           aria-label="选择标的"
           ><el-option
-            v-for="s in stockChoices"
+            v-for="s in rankedStockChoices"
             :key="s.value"
             :label="s.label"
             :value="s.value"
