@@ -263,9 +263,9 @@ onUnmounted(() => {
           <header class="integrated-panel-head">
             <div>
               <h2>定时资讯</h2>
-              <span :class="news?.meta?.sourceMode === 'live' ? 'live' : 'warn'">
+              <!-- <span :class="news?.meta?.sourceMode === 'live' ? 'live' : 'warn'">
                 <i /> {{ news?.meta?.collection?.label || (news?.meta?.delayed ? '资讯更新延迟' : news?.meta?.sourceMode === 'live' ? '真实资讯源' : '最近真实缓存') }}
-              </span>
+              </span> -->
             </div>
             <button @click="go('news')">资讯中心 <IconChevronRight :size="14" /></button>
           </header>
