@@ -58,6 +58,12 @@ SHANGHAI = ZoneInfo("Asia/Shanghai")
 # 低于它时票数不构成共识，``risk`` 最多给到「中」—— 详见 ``build_top50`` 里的说明。
 MIN_CONSENSUS_PARTICIPANTS = max(1, int(settings.min_consensus_participants))
 
+# 证据链「支持 / 反对」的分界线：与 ``agentVotes`` 的投票阈值同源，改这里要一起改。
+_SUPPORT_SCORE_LINE = 60.0
+# 全员都过 60 分时，用作「相对保留」兜底的最小分差（分）。低于它判为全体一致，
+# 不硬凑 3 个人出来 —— 见 ``build_selection_evidence`` 的口径说明。
+_RELATIVE_OPPOSING_MIN_SPREAD = 5.0
+
 # 4 个持有周期 + 各自的老师权重（reference-react CYCLES）。
 CYCLES: dict[str, dict[str, Any]] = {
     "超短": {
@@ -357,6 +363,27 @@ def build_selection_evidence(
         )
     factor_breakdown.sort(key=lambda x: x["contribution"], reverse=True)
 
+    # ---- 支持 / 反对两列的口径 ----
+    # 支持阈值固定 60（与 ``agentVotes`` 的投票阈值同源，别单独调）。
+    #
+    # 反对**与支持互补**：凡未达 60 即没投支持票，一律进反对列。
+    #   原版（reference-react ``buildRankingSelectionEvidence``）用的是绝对 ``<45``，
+    #   那是因为原型 12 套公式稀疏互斥、分数分布很宽（实测 33% 落在 45 分以下）。
+    #   本项目老师改成画像权重后，经 ``resolve_quant_weights`` + ``_apply_cycle_tilt``
+    #   (λ=0.5) 分布被压平（中位 60.2、p05 48.7、<45 仅 0.2%），沿用 ``<45`` 会恒定
+    #   显示「暂无反对」；更糟的是 45~60 这段既不进支持也不进反对、直接从证据里消失。
+    #
+    # 兜底（全员 ≥60 的强势票）：取最低分 3 位标「相对保留」，只表达相对分歧，
+    #   不谎称这些老师反对；若最高最低分差小于 ``_RELATIVE_OPPOSING_MIN_SPREAD``，
+    #   说明确实全体一致，直接判 ``unanimous``、不硬凑名单。
+    scored_agents = [
+        (agent, _num(score))
+        for agent, score in agent_scores.items()
+        if _num(score) is not None
+    ]
+    values = [score for _, score in scored_agents]
+    spread = (max(values) - min(values)) if values else 0.0
+
     supporting = [
         {
             "agent": agent,
@@ -364,10 +391,24 @@ def build_selection_evidence(
             "style": lookup.get(agent, {}).get("style"),
             "rationale": lookup.get(agent, {}).get("selection"),
         }
-        for agent, score in agent_scores.items()
-        if _num(score) is not None and _num(score) >= 60
+        for agent, score in scored_agents
+        if score >= _SUPPORT_SCORE_LINE
     ]
     supporting.sort(key=lambda x: x["score"], reverse=True)
+
+    below_support = sorted(
+        ((agent, score) for agent, score in scored_agents if score < _SUPPORT_SCORE_LINE),
+        key=lambda entry: (entry[1], entry[0]),
+    )
+    if below_support:
+        opposing_mode = "explicit"
+        picked = below_support[:4]
+    elif len(values) >= 2 and spread >= _RELATIVE_OPPOSING_MIN_SPREAD:
+        opposing_mode = "relative"
+        picked = sorted(scored_agents, key=lambda entry: (entry[1], entry[0]))[:3]
+    else:
+        opposing_mode = "unanimous"
+        picked = []
 
     opposing = [
         {
@@ -375,12 +416,10 @@ def build_selection_evidence(
             "score": _round(score, 1),
             "style": lookup.get(agent, {}).get("style"),
             "concern": lookup.get(agent, {}).get("risk"),
+            "relative": opposing_mode == "relative",
         }
-        for agent, score in agent_scores.items()
-        if _num(score) is not None and _num(score) < 45
+        for agent, score in picked
     ]
-    opposing.sort(key=lambda x: x["score"])
-    opposing = opposing[:4]
 
     high, low = _num(item.get("high")), _num(item.get("low"))
     return {
@@ -394,6 +433,14 @@ def build_selection_evidence(
         "factorBreakdown": factor_breakdown,
         "supportingAgents": supporting,
         "opposingAgents": opposing,
+        # explicit=真有未达支持阈值的老师 / relative=全员达标、取最低 3 位相对保留 /
+        # unanimous=分差过小、确实全体一致。前端据此换文案，不再靠「列表空不空」猜。
+        "opposingMode": opposing_mode,
+        "scoreRange": (
+            {"min": _round(min(values), 1), "max": _round(max(values), 1)}
+            if values
+            else None
+        ),
         "trigger": {
             "type": "price_breakout",
             "rule": f"突破当日高点 {high:.2f}" if high else "待更新",

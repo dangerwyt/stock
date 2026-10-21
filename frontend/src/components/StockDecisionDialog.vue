@@ -323,6 +323,17 @@ function openEvidence(stock) {
   state.evidenceStock = stock
 }
 const selectionEvidence = computed(() => evidence.value?.evidence?.selectionEvidence || null)
+// 反对列的三态（后端 build_selection_evidence 给出）：explicit=真有未达 60 分的老师 /
+// relative=全员达标、只列最低 3 位当「相对保留」/ unanimous=分差过小、确实全体一致。
+const opposingMode = computed(() => selectionEvidence.value?.opposingMode || '')
+const opposingIsRelative = computed(() => opposingMode.value === 'relative')
+const opposingIsUnanimous = computed(() => opposingMode.value === 'unanimous')
+const opposingColumnLabel = computed(() => (opposingIsRelative.value ? '相对保留' : '反对 Agent'))
+const evidenceScoreRange = computed(() => {
+  const range = selectionEvidence.value?.scoreRange
+  if (!range || range.min == null || range.max == null) return ''
+  return `${range.min}~${range.max} 分`
+})
 const evidencePrediction = computed(() => evidence.value?.evidence?.prediction || null)
 const evidenceTimeline = computed(
   () => selectionEvidence.value?.timeline || evidence.value?.evidence?.events || [],
@@ -565,13 +576,19 @@ const evidenceTimeline = computed(
               <p v-else>暂无达到支持阈值的 Agent 记录。</p>
             </div>
             <div>
-              <span>反对 Agent</span>
+              <span>{{ opposingColumnLabel }}</span>
               <ul v-if="selectionEvidence.opposingAgents?.length">
                 <li v-for="item in selectionEvidence.opposingAgents" :key="`${item.agent}-${item.score}`">
                   <strong>{{ item.agent }}</strong><span>{{ item.score ?? '--' }}分 · {{ item.concern || item.style || '未记录' }}</span>
                 </li>
               </ul>
+              <p v-else-if="opposingIsUnanimous">
+                全体 Agent 评分高度一致{{ evidenceScoreRange ? `（${evidenceScoreRange}）` : '' }}，无明显反对意见。
+              </p>
               <p v-else>暂无明确反对意见。</p>
+              <p v-if="opposingIsRelative" class="opposing-hint">
+                全员均已达到支持阈值（≥60 分），以上为评分最低的 3 位，仅代表相对保留；这几位同样计入支持票。
+              </p>
             </div>
           </div>
         </section>
