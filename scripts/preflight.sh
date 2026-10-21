@@ -146,18 +146,34 @@ mask() { # 前 6 字符 + 长度
   if [ "$n" -eq 0 ]; then printf '(空)'; elif [ "$n" -le 8 ]; then printf '%s…(%d字符)' "$(printf '%s' "$v" | cut -c1-2)" "$n"; else printf '%s…(%d字符)' "$(printf '%s' "$v" | cut -c1-6)" "$n"; fi
 }
 
-# 必需：没有它行情/TOP50 全挂
-for k in TUSHARE_TOKEN TUSHARE_API_URL; do
-  v="$(getval "$k")"
-  if [ -n "$v" ]; then ok "$k" "$(mask "$v")"; else bad "$k" '未填 —— 行情与 TOP50 榜会用不了'; fi
-done
+# 行情数据源：A 主源(TUSHARE_TOKEN + TUSHARE_API_URL) 与 B 套备用(TUSHARE_FALLBACK_*) 二选一。
+# 与运行时 tushare_client._call 回落一致：主源空但有 fallback 就走 B，不会 503
+# （Mac 网络对主源 A 域名做 SNI 拦截时就是这用法：清空 TUSHARE_TOKEN 跳 A 走 B）。
+v="$(getval TUSHARE_TOKEN)"
+fb_url="$(getval TUSHARE_FALLBACK_URL)"
+fb_key="$(getval TUSHARE_FALLBACK_API_KEY)"
+if [ -n "$v" ]; then
+  ok 'TUSHARE_TOKEN' "$(mask "$v")"
+  au="$(getval TUSHARE_API_URL)"
+  if [ -n "$au" ]; then ok 'TUSHARE_API_URL' "$(mask "$au")"; else bad 'TUSHARE_API_URL' '未填 —— 主源中继需要端点（B 套备用不需要它）'; fi
+elif [ -n "$fb_url" ] && [ -n "$fb_key" ]; then
+  ok 'TUSHARE_TOKEN' '(空) —— 走 B 套备用'
+  ok 'TUSHARE_FALLBACK_API_KEY' "$(mask "$fb_key")（B 套备用）"
+  au="$(getval TUSHARE_API_URL)"
+  if [ -n "$au" ]; then ok 'TUSHARE_API_URL' "$(mask "$au")"; else skip 'TUSHARE_API_URL' '未填（B 套备用不需要它）'; fi
+else
+  bad 'TUSHARE_TOKEN' '未填 —— 行情与 TOP50 榜会用不了'
+  if [ -z "$fb_url" ] || [ -z "$fb_key" ]; then
+    bad 'TUSHARE_FALLBACK_API_KEY' '也未配 —— 至少填主源 tk_live_… 到 TUSHARE_TOKEN，或填 B 套 tsr_… 的 URL+Key 二选一'
+  fi
+fi
 
 # 次必需：没有它 AI 会诊不可用
 v="$(getval MINIMAX_API_KEY)"
 if [ -n "$v" ]; then ok 'MINIMAX_API_KEY' "$(mask "$v")"; else warn 'MINIMAX_API_KEY' '未填 —— AI 研究室会诊不可用'; fi
 
 # 可选：缺了只是少一路数据，不阻断
-for k in TUSHARE_FALLBACK_URL TUSHARE_FALLBACK_API_KEY QINGHONG_BASE_URL QINGHONG_API_KEY ADMIN_API_TOKEN NEWSAPI_KEY; do
+for k in QINGHONG_BASE_URL QINGHONG_API_KEY ADMIN_API_TOKEN NEWSAPI_KEY; do
   v="$(getval "$k")"
   if [ -n "$v" ]; then ok "$k" "$(mask "$v")"; else skip "$k" '未填（可选）'; fi
 done
