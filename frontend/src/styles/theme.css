@@ -1741,5 +1741,5 @@ a {
 
 /* 移动端左侧抽屉阴影减轻（覆盖 styles.css:1042 的 20px 0 50px /.45） */
 @media (max-width: 980px) {
-  .sidebar { box-shadow: 8px 0 22px rgba(0,0,0,.22); }
+  .sidebar { box-shadow: 4px 0 14px rgba(0,0,0,.14); }
 }
