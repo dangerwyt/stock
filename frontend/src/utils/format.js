@@ -136,15 +136,29 @@ export function buildLiveUniverse(top50Snapshot, marketSnapshot) {
     }
   }
   for (const quote of marketSnapshot?.quotes || []) {
-    if (quote?.code && !seen.has(quote.code)) {
-      seen.set(quote.code, {
-        code: quote.code,
-        name: quote.name,
-        industry: quote.industry || quote.sector,
-        close: quote.price ?? quote.close,
-        pct: quote.changePct ?? quote.pct,
-      })
-    }
+    if (!quote?.code || seen.has(quote.code)) continue
+    const price = Number(quote.price ?? quote.close)
+    const open = Number(quote.open)
+    const preClose = Number(quote.preClose ?? quote.pre_close)
+    // 涨跌幅口径对齐 reference-react ``watchlistLiveUniverse``：/api/market 的 quote
+    // 只带 price/open/high/low，**没有 pct 字段**；直接用 changePct ?? pct 会得到
+    // undefined，模板渲染成「%」前面空着。这里优先用接口自带涨跌幅，其次按
+    // preClose（更准）→ open 现算，都没有才回 0。
+    const rawPct = quote.changePct ?? quote.pct
+    const hasRawPct =
+      rawPct !== null && rawPct !== undefined && rawPct !== '' && Number.isFinite(Number(rawPct))
+    let pct
+    if (hasRawPct) pct = Number(rawPct)
+    else if (preClose > 0 && Number.isFinite(price)) pct = Number(((price / preClose - 1) * 100).toFixed(2))
+    else if (open > 0 && Number.isFinite(price)) pct = Number(((price / open - 1) * 100).toFixed(2))
+    else pct = 0
+    seen.set(quote.code, {
+      code: quote.code,
+      name: quote.name || quote.code,
+      industry: quote.industry || quote.sector || '自选跟踪',
+      close: Number.isFinite(price) ? price : quote.close,
+      pct,
+    })
   }
   return [...seen.values()]
 }

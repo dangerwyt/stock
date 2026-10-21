@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
 import { useAppStore } from '@/stores/snapshot'
@@ -101,7 +101,68 @@ const top50EmptyReason = computed(
 
 // --- HomeWatchlistSummary ---
 const liveUniverse = computed(() => buildLiveUniverse(top50.value, market.value))
-const watchItems = computed(() => resolveWatchlistStocks(store.watchlist, liveUniverse.value, {}).slice(0, 6))
+
+// 自选里既不在 TOP50、也不在 /api/market 行情样本内的代码：按代码实时取一次行情，
+// 否则首页只能退化成「待刷新」。对齐 reference-react 的 watchlistLiveUniverse——
+// 原型的行情快照覆盖自选；本项目 /api/market 是固定样本，故用 /api/stocks/{code}/quote 补齐。
+const extraQuotes = ref({})
+let quoteToken = 0
+function normalizeQuote(code, q) {
+  const price = Number(q?.close ?? q?.price)
+  if (!Number.isFinite(price)) return null
+  const preClose = Number(q?.preClose ?? q?.pre_close)
+  const open = Number(q?.open)
+  let pct = q?.pct != null && Number.isFinite(Number(q.pct)) ? Number(q.pct) : null
+  if (pct == null) {
+    if (preClose > 0) pct = Number(((price / preClose - 1) * 100).toFixed(2))
+    else if (open > 0) pct = Number(((price / open - 1) * 100).toFixed(2))
+    else pct = 0
+  }
+  return {
+    code,
+    name: q?.name || code,
+    industry: q?.industry || '自选跟踪',
+    close: price,
+    pct,
+  }
+}
+async function loadMissingQuotes() {
+  const have = new Set(liveUniverse.value.map((item) => item.code))
+  const missing = store.watchlist.filter((code) => !have.has(code) && !extraQuotes.value[code])
+  if (!missing.length) return
+  const token = ++quoteToken
+  const entries = await Promise.all(
+    missing.slice(0, 12).map(async (code) => {
+      try {
+        const resp = await fetch(`/api/stocks/${code}/quote`)
+        if (!resp.ok) return null
+        const data = await resp.json()
+        if (data?.status !== 'ready' || !data.quote) return null
+        return normalizeQuote(code, data.quote)
+      } catch {
+        return null
+      }
+    }),
+  )
+  if (token !== quoteToken) return
+  const next = { ...extraQuotes.value }
+  for (const entry of entries) if (entry) next[entry.code] = entry
+  extraQuotes.value = next
+}
+const watchUniverse = computed(() => {
+  const base = liveUniverse.value
+  const have = new Set(base.map((item) => item.code))
+  const extra = Object.values(extraQuotes.value).filter((q) => q && !have.has(q.code))
+  return extra.length ? [...base, ...extra] : base
+})
+watch(
+  [() => top50.value, () => market.value, () => store.watchlist.join(',')],
+  () => {
+    loadMissingQuotes()
+  },
+  { immediate: true },
+)
+const watchItems = computed(() => resolveWatchlistStocks(store.watchlist, watchUniverse.value, {}).slice(0, 6))
 
 // --- IntegratedNewsFeed ---
 const newsTab = ref('市场资讯')
