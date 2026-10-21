@@ -5,7 +5,7 @@
 #
 # 它会按顺序做：
 #   1. 检查 .env（不存在就从 .env.example 生成，然后停下让你填凭据）
-#   2. 检查关键凭据非空（TUSHARE_TOKEN 必填、MINIMAX_API_KEY 强烈建议）
+#   2. 检查关键凭据非空（TUSHARE_TOKEN 与 B 套备用二选一、MINIMAX_API_KEY 强烈建议）
 #   3. 调 scripts/preflight.sh 做环境预检（Docker / 端口 / 网络 / 磁盘）
 #   4. docker compose up -d --build
 #   5. 等两个容器 healthy
@@ -48,9 +48,10 @@ if [ ! -f .env ]; then
   fi
   cp .env.example .env
   printf '\n%s已从 .env.example 生成 .env，但现在还不能部署。%s\n' "$C_Y" "$C_0"
-  printf '请先填入你的凭据（至少这两个）：\n\n'
-  printf '    TUSHARE_TOKEN=...        # 行情与 TOP50 榜必需，不填整个榜都用不了\n'
-  printf '    MINIMAX_API_KEY=...      # AI 研究室与画像提炼必需\n\n'
+  printf '请先填入行情凭据（二选一即可）：\n\n'
+  printf '    TUSHARE_TOKEN=...                              # 主源中继（POST）\n'
+  printf '    # 或：TUSHARE_FALLBACK_URL + TUSHARE_FALLBACK_API_KEY  # B 套备用（GET，主源空时自动回落）\n'
+  printf '    MINIMAX_API_KEY=...                            # AI 研究室与画像提炼必需\n\n'
   printf '编辑命令：\n\n'
   printf '    vim .env        （或 nano .env / open -e .env）\n\n'
   printf '填完再跑一次：bash scripts/deploy.sh\n'
@@ -76,17 +77,29 @@ mask() {
 }
 
 MISSING=0
+# 行情数据源：主源(TUSHARE_TOKEN) 与 B 套备用(TUSHARE_FALLBACK_*) 二选一即可，
+# 与运行时 tushare_client._call 的回落逻辑一致（主源空时只要有 fallback 就走 B，不会 503）。
 v="$(getval TUSHARE_TOKEN)"
 if [ -n "$v" ]; then
   printf '  %s✓%s TUSHARE_TOKEN        %s\n' "$C_G" "$C_0" "$(mask "$v")"
-else
-  printf '  %s✗%s TUSHARE_TOKEN        未填 —— 行情/TOP50 会直接 503，必须填\n' "$C_R" "$C_0"
-  MISSING=1
+fi
+fb_url="$(getval TUSHARE_FALLBACK_URL)"
+fb_key="$(getval TUSHARE_FALLBACK_API_KEY)"
+if [ -n "$fb_url" ] && [ -n "$fb_key" ]; then
+  printf '  %s✓%s TUSHARE_FALLBACK_API_KEY  %s（B 套备用）\n' "$C_G" "$C_0" "$(mask "$fb_key")"
+fi
+if [ -z "$v" ]; then
+  if [ -z "$fb_url" ] || [ -z "$fb_key" ]; then
+    printf '  %s✗%s 行情数据源未配置%s\n' "$C_R" "$C_0"
+    printf '      TUSHARE_TOKEN 未填，且 B 套备用（TUSHARE_FALLBACK_URL + TUSHARE_FALLBACK_API_KEY）也缺 —— 行情/TOP50 会 503。\n'
+    printf '      填主源 tk_live_… 到 TUSHARE_TOKEN，或填 B 套 tsr_… 的 URL+Key 二选一即可。\n'
+    MISSING=1
+  fi
 fi
 
 v="$(getval TUSHARE_API_URL)"
 if [ -n "$v" ]; then printf '  %s✓%s TUSHARE_API_URL      %s\n' "$C_G" "$C_0" "$(mask "$v")"
-else printf '  %s✗%s TUSHARE_API_URL      未填\n' "$C_R" "$C_0"; MISSING=1; fi
+else printf '  %s!%s TUSHARE_API_URL      未填（主源为空时不影响，B 套备用不需要它）\n' "$C_Y" "$C_0"; fi
 
 v="$(getval MINIMAX_API_KEY)"
 if [ -n "$v" ]; then
@@ -96,7 +109,7 @@ else
 fi
 
 if [ "$MISSING" -eq 1 ]; then
-  printf '\n%s有必需的凭据没填，先补上再跑。编辑：vim .env%s\n' "$C_R" "$C_0"
+  printf '\n%s行情数据源没配齐，先补上再跑。编辑：vim .env%s\n' "$C_R" "$C_0"
   exit 1
 fi
 
