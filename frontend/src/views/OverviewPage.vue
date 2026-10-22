@@ -313,7 +313,7 @@ onUnmounted(() => {
             <button @click="go('portfolio')">{{ store.watchlist.length ? '管理自选' : '添加股票' }} <IconChevronRight :size="14" /></button>
           </header>
           <div class="home-watchlist-list">
-            <button v-for="item in watchItems" :key="item.code" :disabled="!item.decisionAvailable" @click="openStock(item)">
+            <button v-for="item in watchItems" :key="item.code" @click="openStock(item)">
               <span><strong>{{ item.name }}</strong><small>{{ item.code }} · {{ item.industry }}</small></span>
               <b v-if="item.watchlistDataAvailable" :class="item.pct >= 0 ? 'price-up' : 'price-down'">
                 {{ item.pct >= 0 ? '+' : '' }}{{ item.pct }}%<small>{{ item.price.toFixed(2) }}</small>
