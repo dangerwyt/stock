@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
+import { useStockDecision } from '@/composables/useStockDecision'
 import { useAppStore } from '@/stores/snapshot'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
@@ -40,6 +41,15 @@ function goTop50(mapping) {
 // 四周期表格行 / 查看详情：带上当前预览周期，直达 TOP50 页对应 tab。
 function goTop50Cycle(cycle) {
   router.push({ path: '/top50', query: { cycle } })
+}
+
+// 首页表格行 / 自选行点击 = 打开单股决策弹窗（与 TOP50 点股票名同一实例）。
+// 对齐 reference-react：HomeTop50Summary 行 onClick=onOpenStock(item)、
+// HomeWatchlistSummary 行 onClick=onOpenStock(item)；只有「查看详情 / 管理自选」才跳页。
+const stockDecision = useStockDecision()
+function openStock(stock) {
+  if (!stock?.code) return
+  stockDecision.open({ code: stock.code, stock, ranked: cycleRanking.value })
 }
 
 // --- HomeMetrics ---
@@ -275,7 +285,7 @@ onUnmounted(() => {
               :key="`${activeCycle}:${item.code}`"
               class="home-top50-preview-row"
               role="row"
-              @click="goTop50Cycle(activeCycle)"
+              @click="openStock(item)"
             >
               <b>#{{ item.rank || i + 1 }}</b>
               <span><strong>{{ item.name }}</strong><small>{{ item.code }}</small></span>
@@ -303,7 +313,7 @@ onUnmounted(() => {
             <button @click="go('portfolio')">{{ store.watchlist.length ? '管理自选' : '添加股票' }} <IconChevronRight :size="14" /></button>
           </header>
           <div class="home-watchlist-list">
-            <button v-for="item in watchItems" :key="item.code" :disabled="!item.decisionAvailable" @click="go('portfolio')">
+            <button v-for="item in watchItems" :key="item.code" :disabled="!item.decisionAvailable" @click="openStock(item)">
               <span><strong>{{ item.name }}</strong><small>{{ item.code }} · {{ item.industry }}</small></span>
               <b v-if="item.watchlistDataAvailable" :class="item.pct >= 0 ? 'price-up' : 'price-down'">
                 {{ item.pct >= 0 ? '+' : '' }}{{ item.pct }}%<small>{{ item.price.toFixed(2) }}</small>
