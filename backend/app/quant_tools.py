@@ -214,7 +214,7 @@ async def run_tool(tool: str, body: dict | None = None) -> dict:
             **common,
             "dimensions": stock.get("agentScores") or {},
             "dispersion": round(max(scores) - min(scores), 2) if scores else None,
-            "allowedAction": "满足触发条件后小仓试错" if stock.get("score", 0) >= 60 else "等待确认",
+            "allowedAction": "满足触发条件后小仓试错" if stock.get("score", 0) >= 60 else "待信号",
             "prohibitedAction": "未触发前追价、跌破失效位补仓",
         }
 

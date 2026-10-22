@@ -189,7 +189,7 @@ const trendLabel = computed(() => {
 })
 const recommendation = computed(() => {
   const status = selected.value?.status
-  return status === '可试仓' ? '满足触发后可小仓试错' : status === '等待确认' ? '等待右侧确认' : '仅观察'
+  return status === '可试仓' ? '满足触发后可小仓试错' : status === '待信号' ? '等待右侧确认' : '仅观察'
 })
 
 const powerTrackWidth = computed(() => {
@@ -511,7 +511,7 @@ const evidenceTimeline = computed(
             </section>
             <section class="single-risk-discipline">
               <h3>风险纪律</h3>
-              <p><span>允许动作</span><strong>{{ selected.status === '可试仓' ? '回踩试仓 · 单笔≤5%' : '等待确认 · 不追价' }}</strong></p>
+              <p><span>允许动作</span><strong>{{ selected.status === '可试仓' ? '回踩试仓 · 单笔≤5%' : '待信号 · 不追价' }}</strong></p>
               <p><span>触发条件</span><strong>{{ displayField(selected.trigger, '待补充') }}</strong></p>
               <p><span>失效条件</span><strong class="price-down">{{ displayField(selected.invalid, '待补充') }}</strong></p>
             </section>

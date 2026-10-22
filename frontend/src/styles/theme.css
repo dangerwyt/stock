@@ -1709,7 +1709,7 @@ a {
   .home-top50-preview-row .status-badge {
     justify-self: end;
     align-self: center;
-    white-space: nowrap;   /* auto 列按 max-content 定宽，防止「等待确认」被折成两行撑高行 */
+    white-space: nowrap;   /* auto 列按 max-content 定宽，防止「待信号」被折成两行撑高行 */
   }
 }
 

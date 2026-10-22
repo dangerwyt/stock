@@ -57,7 +57,7 @@ export function hydrateStock(item) {
     score: Number(item?.score ?? base.score ?? 0),
     confidence: Number(item?.confidence ?? base.confidence ?? 0),
     consensus: Number(item?.agentVotes ?? base.consensus ?? 0),
-    status: item?.status || base.status || (Number(item?.score) >= 75 ? '可试仓' : '等待确认'),
+    status: item?.status || base.status || (Number(item?.score) >= 75 ? '可试仓' : '待信号'),
     valuation: item?.valuation || (liveRankedItem ? (Number(item?.peTtm) > 0 ? `PE(TTM) ${Number(item.peTtm).toFixed(1)}` : 'PE暂无有效值') : base.valuation || '按实时因子'),
     trend: item?.trend || (liveRankedItem ? (pct >= 0 ? '当日价格上涨' : '当日价格回撤') : base.trend || '等待数据'),
     risk: item?.risk || (liveRankedItem ? '高' : base.risk || '高'),

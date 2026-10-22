@@ -352,7 +352,7 @@ const divergence = computed(() => {
                 : currentScore >= 75
                   ? "可试仓"
                   : currentScore >= 55
-                    ? "等待确认"
+                    ? "待信号"
                     : "仅观察"
             }}</span
           >

@@ -657,7 +657,7 @@ def _enrich_row(
         if (score >= 60 and agent_votes >= vote_mid)
         else "高"
     )
-    status = "可试仓" if risk == "低" else "等待确认" if risk == "中" else "仅观察"
+    status = "可试仓" if risk == "低" else "待信号" if risk == "中" else "仅观察"
     pre_close = _num(row.get("pre_close"))
     high, low = _num(row.get("high")), _num(row.get("low"))
     amplitude = (
