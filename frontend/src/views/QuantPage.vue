@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useSnapshot } from "@/composables/useSnapshot";
 import { http, fetchSnapshot } from "@/api/client";
@@ -80,11 +80,25 @@ function setFeedback(text, target = tool.value) {
   feedbacksByTool.value = { ...feedbacksByTool.value, [target]: text };
 }
 const quantity = ref(100);
+// 手动成交价（可选）：留空 / 0 时按当前行情价成交，填了就按该价成交。
+// 纯输入态，不影响既有按现价成交的逻辑，也不参与持久化。
+const fillPrice = ref(null);
 const emotion = ref("逻辑驱动");
 const accountTab = ref("持仓");
+// 模拟账户：单账户（与后端 simulation.json 的 account 分桶对齐，便于以后扩展多账户）。
+const accountId = ref("default");
+// 初始本金 = 累计盈亏的基准（总资产 - 本金 = 累计盈亏）。
+const INITIAL_CAPITAL = 1000000;
+// 余额 / 多持仓 / 交易流水 —— 这些原本只在组件内存里，刷新即丢。
 const cash = ref(1000000);
-const positionQuantity = ref(0);
+// 多持仓：{ [code]: { code, name, quantity, cost } }
+const positions = ref({});
+// 已实现盈亏：每笔卖出按（卖出价 - 卖出前均价）× 股数 累加。
+const realizedPnl = ref(0);
 const trades = ref([]);
+// 持仓标的的实时报价（code -> quote）：不在 TOP50/自选里时也能拿到真实现价，
+// 否则现价会回落成成本价、浮动盈亏恒为 0。
+const heldQuotes = ref({});
 const backtestStart = ref("2025-01-01");
 const backtestEnd = ref(
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(
@@ -147,6 +161,23 @@ watch(
   { immediate: true },
 );
 watch(() => store.watchlist.slice(), resolveWatchlistNames, { immediate: true });
+
+// 进入页面时从后端读回持久化的模拟账户状态，再给持仓标的拉真实报价；
+// 之后每 30s 刷新一次报价，让浮动盈亏跟着行情走。
+let quoteTimer = null;
+onMounted(async () => {
+  await loadSimulation();
+  await resolveHeldQuotes();
+  quoteTimer = setInterval(() => resolveHeldQuotes(true), 30000);
+});
+onUnmounted(() => {
+  if (quoteTimer) clearInterval(quoteTimer);
+});
+// 持仓标的集合变化（新买入/清仓）时，补拉新增标的的报价。
+watch(
+  () => Object.keys(positions.value).join(","),
+  () => resolveHeldQuotes(),
+);
 
 // 模拟 tab 的标的池 = 当前周期 TOP50 + 自选股（按代码去重）。
 // 其它 tab（分析/回测/信号/预判/评估）只能跑 TOP50，见 rankedStockChoices。
@@ -214,10 +245,55 @@ const stock = computed(
     stockOptions.value[0] ||
     hydrateStock({}),
 );
-const positionValue = computed(() =>
-  Math.round(positionQuantity.value * stock.value.price),
+// 某标的当前价优先级：实时报价 > 榜单/自选快照价 > 成本价（行情不可用时不编造跳变）。
+function currentPrice(code) {
+  const q = heldQuotes.value[code];
+  const qp = q?.price ?? q?.close;
+  if (Number.isFinite(qp)) return qp;
+  const s = stockOptions.value.find((o) => o.code === code);
+  if (s && Number.isFinite(s.price)) return s.price;
+  const p = positions.value[code];
+  return p && p.quantity ? p.cost / p.quantity : 0;
+}
+// 持仓列表（按市值降序）：每行带现价、市值、均价、浮动盈亏。
+const positionList = computed(() =>
+  Object.values(positions.value)
+    .filter((p) => p && p.quantity > 0)
+    .map((p) => {
+      const price = currentPrice(p.code);
+      const marketValue = Math.round(p.quantity * price);
+      const cost = Number(p.cost) || 0;
+      const pnl = marketValue - cost;
+      return {
+        ...p,
+        price,
+        marketValue,
+        cost,
+        avgCost: p.quantity ? cost / p.quantity : 0,
+        pnl,
+        pnlPct: cost > 0 ? (pnl / cost) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.marketValue - a.marketValue),
 );
-const totalAssets = computed(() => cash.value + positionValue.value);
+const totalPositionValue = computed(() =>
+  positionList.value.reduce((s, p) => s + p.marketValue, 0),
+);
+const totalPositionCost = computed(() =>
+  positionList.value.reduce((s, p) => s + p.cost, 0),
+);
+const unrealizedPnl = computed(
+  () => totalPositionValue.value - totalPositionCost.value,
+);
+const unrealizedPct = computed(() =>
+  totalPositionCost.value > 0
+    ? (unrealizedPnl.value / totalPositionCost.value) * 100
+    : 0,
+);
+const totalAssets = computed(() => cash.value + totalPositionValue.value);
+// 累计盈亏 = 总资产 - 初始本金（恒等于「已实现 + 浮动」）。
+const totalPnl = computed(() => totalAssets.value - INITIAL_CAPITAL);
+const totalPnlPct = computed(() => (totalPnl.value / INITIAL_CAPITAL) * 100);
 const marketSourceStatusLabel = computed(
   () =>
     ({
@@ -259,44 +335,170 @@ async function run(message, requestedTool = tool.value, extra = {}) {
   }
 }
 function localFeedback(message) {
-  setFeedback(`${message} · 仅保存在本机模拟账户`);
+  setFeedback(`${message} · 已持久保存（本机模拟账户）`);
 }
-function trade(side) {
-  const amount = Math.round(quantity.value * stock.value.price);
-  if (side === "买入" && amount <= cash.value) {
-    cash.value -= amount;
-    positionQuantity.value += quantity.value;
-    trades.value = [
-      {
-        side,
-        quantity: quantity.value,
-        price: stock.value.price,
-        stock: stock.value.name,
-        createdAt: new Date().toISOString(),
-        emotion: emotion.value,
-      },
-      ...trades.value,
-    ];
-    localFeedback(`模拟买入 ${quantity.value} 股成功`);
-  } else if (side === "卖出" && positionQuantity.value >= quantity.value) {
-    cash.value += amount;
-    positionQuantity.value -= quantity.value;
-    trades.value = [
-      {
-        side,
-        quantity: quantity.value,
-        price: stock.value.price,
-        stock: stock.value.name,
-        createdAt: new Date().toISOString(),
-        emotion: emotion.value,
-      },
-      ...trades.value,
-    ];
-    localFeedback(`模拟卖出 ${quantity.value} 股成功`);
+// 买入：按选中标的的当前价成交，累加/合并到该标的的持仓。
+function buy() {
+  const code = stock.value.code;
+  const qty = quantity.value;
+  // 手动成交价优先；留空/0 → 回落到该标的当前行情价（原有行为）。
+  const manual = Number(fillPrice.value);
+  const price =
+    Number.isFinite(manual) && manual > 0 ? manual : stock.value.price;
+  if (!Number.isFinite(price) || price <= 0) {
+    localFeedback("该标的暂无有效行情，无法模拟买入");
+    return;
+  }
+  const amount = Math.round(qty * price);
+  if (!(amount <= cash.value)) {
+    localFeedback("可用资金不足");
+    return;
+  }
+  const prev = positions.value[code];
+  const nextQty = (prev?.quantity || 0) + qty;
+  const nextCost = (Number(prev?.cost) || 0) + amount;
+  positions.value = {
+    ...positions.value,
+    [code]: { code, name: stock.value.name, quantity: nextQty, cost: nextCost },
+  };
+  cash.value -= amount;
+  trades.value = [
+    {
+      side: "买入",
+      quantity: qty,
+      price,
+      stock: stock.value.name,
+      createdAt: new Date().toISOString(),
+      emotion: emotion.value,
+    },
+    ...trades.value,
+  ];
+  localFeedback(`模拟买入 ${qty} 股成功`);
+  saveSimulation();
+}
+// 卖出：卖出某标的 qty 股（默认取表单选中标的 + 表单股数）。
+function sell(code = stockCode.value, qty = quantity.value, useManual = true) {
+  const pos = positions.value[code];
+  if (!pos || pos.quantity <= 0) {
+    localFeedback("该标的不存在可卖持仓");
+    return;
+  }
+  const sellQty = Math.min(qty, pos.quantity);
+  const avg = pos.cost / pos.quantity;
+  // 表单卖出可带手动成交价；持仓行「清仓」按现价成交（useManual=false）。
+  const manual = useManual ? Number(fillPrice.value) : 0;
+  const price =
+    Number.isFinite(manual) && manual > 0
+      ? manual
+      : currentPrice(code) || avg;
+  const pnl = Math.round((price - avg) * sellQty);
+  cash.value += Math.round(sellQty * price);
+  realizedPnl.value += pnl;
+  const next = { ...positions.value };
+  const remainQty = pos.quantity - sellQty;
+  if (remainQty <= 0) {
+    delete next[code];
   } else {
-    localFeedback(side === "买入" ? "可用资金不足" : "可卖持仓不足");
+    next[code] = { ...pos, quantity: remainQty, cost: pos.cost - avg * sellQty };
+  }
+  positions.value = next;
+  trades.value = [
+    {
+      side: "卖出",
+      quantity: sellQty,
+      price,
+      stock: pos.name,
+      pnl,
+      createdAt: new Date().toISOString(),
+      emotion: emotion.value,
+    },
+    ...trades.value,
+  ];
+  const pnlText = `${pnl >= 0 ? "+" : ""}¥${pnl.toLocaleString()}`;
+  localFeedback(`模拟卖出 ${sellQty} 股成功 · 本笔盈亏 ${pnlText}`);
+  saveSimulation();
+}
+// 持仓行「清仓」：把该标的剩余股数一次卖完。
+function sellAll(code) {
+  const pos = positions.value[code];
+  // 清仓按当前行情价成交，忽略「手动成交价」输入。
+  if (pos) sell(code, pos.quantity, false);
+}
+// 模拟账户持久化：每笔交易后把内存态写回后端 simulation.json；
+// 挂载时从后端读回，刷新页面 / 重启容器都不丢。
+async function saveSimulation() {
+  try {
+    await http.post("/api/simulation", {
+      account: accountId.value,
+      initialCapital: INITIAL_CAPITAL,
+      cash: cash.value,
+      realizedPnl: realizedPnl.value,
+      positions: positions.value,
+      trades: trades.value,
+    });
+  } catch (e) {
+    // 持久化失败不影响本机模拟交易（降级为内存态），只在控制台提示。
+    console.warn("模拟账户持久化失败，仅保留本机会话态：", e?.message || e);
   }
 }
+async function loadSimulation() {
+  try {
+    // axios 的响应体在 .data 里（后端返回 {account, state}），不是直接返回 payload。
+    const resp = await http.get("/api/simulation", {
+      params: { account: accountId.value },
+    });
+    const s = resp?.data?.state ?? resp?.data;
+    if (!s) return;
+    cash.value = Number(s.cash ?? 1000000);
+    realizedPnl.value = Number(s.realizedPnl ?? 0);
+    trades.value = Array.isArray(s.trades) ? s.trades : [];
+    // ⚠️ 后端 DEFAULT_STATE 总会补一个空的 positions: {}，所以「非空」才算已有
+    // 多持仓结构；否则要回落到旧单持仓字段迁移，否则老数据会被空对象覆盖丢失。
+    const hasPositions =
+      s.positions &&
+      typeof s.positions === "object" &&
+      Object.keys(s.positions).length > 0;
+    let migrated = false;
+    if (hasPositions) {
+      positions.value = s.positions;
+    } else if (s.heldStock && Number(s.positionQuantity) > 0) {
+      // 旧「单持仓」存档迁移：转成 positions 表，保证老数据不丢。
+      const code = s.heldStock.code;
+      const qty = Number(s.positionQuantity);
+      const cost =
+        Number(s.positionCost) || qty * (Number(s.heldStock.price) || 0);
+      positions.value = {
+        [code]: { code, name: s.heldStock.name, quantity: qty, cost },
+      };
+      migrated = true;
+    } else {
+      positions.value = {};
+    }
+    if (s.stockCode) stockCode.value = s.stockCode;
+    // 迁移完成后立刻回写，把存档规范成新结构（下次加载不再走迁移分支）。
+    if (migrated) saveSimulation();
+  } catch {
+    // 没有存档（首次运行）或后端不可用：保持默认内存态，不阻塞模拟交易。
+  }
+}
+// 给所有持仓标的拉真实报价：即使标的不在当前 TOP50/自选里，现价也是真实行情，
+// 浮动盈亏才有意义（否则现价会回落成成本价 → 盈亏恒为 0）。
+async function resolveHeldQuotes(force = false) {
+  for (const code of Object.keys(positions.value)) {
+    if (!force && heldQuotes.value[code]?.price != null) continue;
+    try {
+      const q = await fetchSnapshot(
+        `/api/stocks/${encodeURIComponent(code)}/quote`,
+      );
+      if (q?.quote) {
+        heldQuotes.value = { ...heldQuotes.value, [code]: q.quote };
+      }
+    } catch {
+      // 行情不可用：现价回落成本价，不阻塞模拟。
+    }
+  }
+}
+
 function switchTool(id) {
   tool.value = id;
   // 离开模拟 tab 时，如果当前选中的是榜单外自选股（其它 tab 的引擎只认 TOP50），
@@ -345,6 +547,19 @@ function pctText(v) {
 }
 function fmtMoney(v) {
   return `¥${Number(v || 0).toLocaleString()}`;
+}
+// A 股习惯：盈利红、亏损绿（样式类 price-up 为红、price-down 为绿）。
+function pnlClass(v) {
+  return v > 0 ? "price-up" : v < 0 ? "price-down" : "";
+}
+function fmtSignedMoney(v) {
+  const n = Number(v || 0);
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}¥${Math.abs(n).toLocaleString()}`;
+}
+function fmtSignedPct(v) {
+  const n = Number(v || 0);
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
 // 回测净值曲线配置（策略 vs 基准双线，真实历史行情现算）。
@@ -946,17 +1161,43 @@ const equityCurvePoints = computed(
     >
       <div class="simulation-summary">
         <div>
+          <span>模拟总资产</span><strong>{{ fmtMoney(totalAssets) }}</strong>
+        </div>
+        <div>
+          <span>累计盈亏</span>
+          <strong :class="pnlClass(totalPnl)">{{
+            fmtSignedMoney(totalPnl)
+          }}</strong>
+          <small :class="pnlClass(totalPnl)">{{
+            fmtSignedPct(totalPnlPct)
+          }}</small>
+        </div>
+        <div>
+          <span>浮动盈亏</span>
+          <strong :class="pnlClass(unrealizedPnl)">{{
+            fmtSignedMoney(unrealizedPnl)
+          }}</strong>
+          <small :class="pnlClass(unrealizedPnl)">{{
+            fmtSignedPct(unrealizedPct)
+          }}</small>
+        </div>
+        <div>
+          <span>已实现盈亏</span>
+          <strong :class="pnlClass(realizedPnl)">{{
+            fmtSignedMoney(realizedPnl)
+          }}</strong>
+        </div>
+        <div>
           <span>模拟可用余额</span><strong>{{ fmtMoney(cash) }}</strong>
         </div>
         <div>
           <span>模拟持仓市值</span
-          ><strong>{{ fmtMoney(positionValue) }}</strong>
+          ><strong>{{ fmtMoney(totalPositionValue) }}</strong>
         </div>
-        <div>
-          <span>模拟总资产</span><strong>{{ fmtMoney(totalAssets) }}</strong>
-        </div>
-        <div><span>数据性质</span><strong>本机模拟</strong></div>
       </div>
+      <p class="simulation-source-note">
+        数据来源：本机模拟 · 每笔交易已持久保存（重启不丢）
+      </p>
       <div class="tool-form-row simulation-order">
         <el-select
           v-model="stockCode"
@@ -978,8 +1219,19 @@ const equityCurvePoints = computed(
           class="ep-form-control ep-form-control--number"
           aria-label="模拟交易股数"
         />
-        <button class="primary-button" @click="trade('买入')">模拟买入</button>
-        <button class="danger-button" @click="trade('卖出')">模拟卖出</button>
+        <el-input-number
+          v-model="fillPrice"
+          :min="0"
+          :step="0.01"
+          :precision="2"
+          :controls="false"
+          class="ep-form-control ep-form-control--price"
+          placeholder="成交价(留空=现价)"
+          aria-label="手动成交价"
+          title="留空则按当前行情价成交；填入则按该价格成交"
+        />
+        <button class="primary-button" @click="buy()">模拟买入</button>
+        <button class="danger-button" @click="sell()">模拟卖出</button>
       </div>
       <div class="emotion-selector">
         <span>下单心态</span>
@@ -1011,17 +1263,32 @@ const equityCurvePoints = computed(
       </div>
       <section class="panel account-content">
         <div v-if="accountTab === '持仓'">
-          <div v-if="positionQuantity" class="holding-row">
+          <div
+            v-for="item in positionList"
+            :key="item.code"
+            class="holding-row"
+          >
             <span
-              ><strong>{{ stock.name }}</strong
-              ><small>{{ stock.code }}</small></span
+              ><strong>{{ item.name }}</strong
+              ><small>{{ item.code }}</small></span
             >
-            <span>{{ positionQuantity }}股</span
-            ><span>快照价 {{ fmtMoney(stock.price.toFixed(2)) }}</span>
-            <strong>本机模拟</strong
-            ><button @click="trade('卖出')">模拟卖出100股</button>
+            <span
+              >{{ item.quantity }}股<small
+                >成本价 {{ fmtMoney(item.avgCost.toFixed(2)) }}</small
+              ></span
+            >
+            <span
+              >现价 {{ fmtMoney(item.price.toFixed(2)) }}<small
+                >市值 {{ fmtMoney(item.marketValue) }}</small
+              ></span
+            >
+            <strong :class="pnlClass(item.pnl)"
+              >{{ fmtSignedMoney(item.pnl) }}<small :class="pnlClass(item.pnl)"
+                >{{ fmtSignedPct(item.pnlPct) }}</small
+              ></strong
+            ><button @click="sellAll(item.code)">清仓</button>
           </div>
-          <div v-else class="account-empty">
+          <div v-if="!positionList.length" class="account-empty">
             <IconBriefcase2 :size="22" /><strong>当前没有模拟持仓</strong>
           </div>
         </div>
@@ -1035,8 +1302,14 @@ const equityCurvePoints = computed(
             >
             <span>{{ item.side }}</span
             ><span>{{ item.quantity }}股</span>
-            <strong>{{ fmtMoney(item.price.toFixed(2)) }}</strong
-            ><span>{{ item.emotion }}</span>
+            <span
+              >{{ fmtMoney(item.price.toFixed(2)) }}<small
+                v-if="item.pnl != null"
+                :class="pnlClass(item.pnl)"
+                >盈亏 {{ fmtSignedMoney(item.pnl) }}</small
+              ></span
+            >
+            <span>{{ item.emotion }}</span>
           </div>
           <div v-if="!trades.length" class="account-empty">
             <IconBriefcase2 :size="22" /><strong>暂无模拟交易历史</strong>

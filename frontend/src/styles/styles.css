@@ -525,6 +525,12 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .backtest-summary > div, .simulation-summary > div { min-height: 86px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); padding: 12px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
 .backtest-summary span, .simulation-summary span { color: var(--muted); font-size: 8px; }
 .backtest-summary strong, .simulation-summary strong { margin-top: 7px; font-size: 19px; }
+/* 模拟汇总扩为 6 张卡（总资产/累计盈亏/浮动盈亏/已实现盈亏/余额/持仓市值）→ 桌面 3×2 布局 */
+.simulation-summary { grid-template-columns: repeat(3, 1fr); }
+.simulation-summary small { margin-top: 3px; font-size: 9px; }
+.simulation-source-note { margin: 8px 2px 0; color: var(--muted); font-size: 9px; }
+.holding-row > strong { font-size: 11px; }
+.holding-row > strong small { display: block; margin-top: 3px; font-size: 8px; }
 .backtest-chart-panel { margin-top: 10px; }
 .tool-legend { color: var(--green) !important; }
 .backtest-chart { height: 310px; padding: 12px; }
@@ -587,6 +593,9 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .evaluation-actions span { color: var(--muted); font-size: 8px; }
 .evaluation-actions strong { margin-top: 5px; font-size: 10px; }
 .simulation-order { margin-top: 10px; }
+/* 模拟下单：手动成交价输入（比数量框窄，占位提示“留空=现价”） */
+.simulation-order .ep-form-control--price { width: 140px; }
+.simulation-order .ep-form-control--price input { min-width: 0; }
 .emotion-selector { min-height: 52px; margin-top: 10px; border: 1px dashed var(--line); border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .emotion-selector > span { color: var(--muted); font-size: 8px; margin-right: 4px; }
 .emotion-selector button { height: 26px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: #9cabbd; padding: 0 8px; font-size: 8px; cursor: pointer; }

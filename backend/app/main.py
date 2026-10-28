@@ -13,7 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import job_runs, scheduler
 from app.config import settings
-from app.routers import admin, agent_documents, agents, snapshots, research
+from app.routers import (
+    admin,
+    agent_documents,
+    agents,
+    snapshots,
+    research,
+    simulation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +85,7 @@ app.include_router(research.router)
 app.include_router(agents.router)
 app.include_router(agent_documents.router)
 app.include_router(admin.router)
+app.include_router(simulation.router)
 
 
 if __name__ == "__main__":
