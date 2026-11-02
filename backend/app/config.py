@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # 额度最直接的一条）。同样是运行态 JSON，已在 .gitignore 里。
     top50_snapshot_path: str = str(_BACKEND_DIR / "app" / "data" / "top50_snapshot.json")
 
+    # 盘后复盘存档目录（见 app/review_engine.py）。内含 days/（报告）、attempts/
+    # （生成尝试与失败原因）、boards/（当日冻结榜单副本，保证报告可复算）。
+    # 同样是运行态数据，已在 .gitignore 里。
+    review_dir: str = str(_BACKEND_DIR / "app" / "data" / "review")
+
     # 上传资料的相关性过滤（T2）：入库判定整篇是否属于股票财经范畴。
     # 关掉后所有能解析的文件都直接入库，不做内容判断。
     doc_relevance_enabled: bool = True

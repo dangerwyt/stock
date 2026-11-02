@@ -431,9 +431,60 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
     raise TushareError("无法取得最近交易日的全市场行情（daily 为空或不足 50 行）")
 
 
+_DAILY_BY_DATE: dict[str, list[dict]] = {}
+_DAILY_BY_DATE_MAX = 12
+
+
+async def fetch_daily_rows(date_str: str) -> list[dict]:
+    """拉**指定交易日**的全市场日线（``daily``），口径与 ``_latest_market_trade_date`` 一致。
+
+    盘后复盘要用「复盘当日」的收盘价，而 ``_latest_market_trade_date`` 只给"最新一天"。
+    两处必须是同一份字段口径（``ts_code/close/...``），否则复盘算出来的日表现会和
+    market-close 页面对不上。
+
+    省额度：
+    * 进程内按自然日缓存（一只股票一天一行，全市场约 5500 行，12 天约 66k 行，可控）；
+    * 若该日恰好就是「最近交易日」缓存里的那一天，直接复用，**零额外调用**。
+
+    返回空列表表示数据源没给这一天（停牌全市场/未落库/未来日期），由调用方决定
+    "不生成报告"，这里**不**伪造行。
+    """
+    compact = _compact(date_str)
+    cached = _DAILY_BY_DATE.get(compact)
+    if cached is not None:
+        return cached
+    if _LATEST_CACHE.get("trade_date") == compact and _LATEST_CACHE.get("rows"):
+        rows = _LATEST_CACHE["rows"]
+        _DAILY_BY_DATE[compact] = rows
+        return rows
+
+    rows = await _call(
+        "daily",
+        {"trade_date": compact},
+        "ts_code,trade_date,open,high,low,close,pre_close,pct_chg,vol,amount",
+    )
+    if rows:
+        # 数据源若没回 trade_date（字段被裁剪/B 套忽略字段表），就按"本次查询的日期"补上 ——
+        # 这次调用本来就是按 trade_date 过滤的，语义不会错。补这一步是为了让下游
+        # （复盘引擎）能继续按"只认当日行"的规则严格过滤，而不是静默全变成缺数据。
+        for row in rows:
+            if not row.get("trade_date"):
+                row["trade_date"] = compact
+        if len(_DAILY_BY_DATE) >= _DAILY_BY_DATE_MAX:
+            # 简单的 FIFO 淘汰：dict 保序，删最早的键即可。
+            _DAILY_BY_DATE.pop(next(iter(_DAILY_BY_DATE)), None)
+        _DAILY_BY_DATE[compact] = rows
+    return rows
+
+
 def invalidate_latest_market_cache() -> None:
     """测试或强制刷新时清空「最近交易日全市场行情」缓存。"""
     _LATEST_CACHE.update(window=None, trade_date=None, rows=None)
+    _DAILY_BY_DATE.clear()
+
+
+_CAL_CACHE: dict[str, bool] = {}
+_CAL_CACHE_MAX = 400
 
 
 async def is_market_open(date_str: str) -> bool:
@@ -442,8 +493,13 @@ async def is_market_open(date_str: str) -> bool:
     ``date_str`` 接受 ``YYYY-MM-DD`` 或 ``YYYYMMDD``。对应 reference-react 的
     ``detectTradingDay``：交易日历不可用时**不要**在这里回落近似值 —— 由调用方决定
     （抛 ``TushareError`` 让调度退到"周末即休市"的近似）。
+
+    日历是**不可变事实**（某天开没开市不会变），所以按日期常驻进程内缓存：复盘每次
+    手动刷新都会问一遍，不缓存就等于每点一次"刷新报告"白烧一次额度。
     """
     compact = _compact(date_str)
+    if compact in _CAL_CACHE:
+        return _CAL_CACHE[compact]
     cal = await _call(
         "trade_cal",
         {"exchange": "SSE", "start_date": compact, "end_date": compact},
@@ -451,7 +507,11 @@ async def is_market_open(date_str: str) -> bool:
     )
     for row in cal:
         if str(row.get("cal_date")) == compact:
-            return str(row.get("is_open")) == "1"
+            is_open = str(row.get("is_open")) == "1"
+            if len(_CAL_CACHE) >= _CAL_CACHE_MAX:
+                _CAL_CACHE.pop(next(iter(_CAL_CACHE)), None)
+            _CAL_CACHE[compact] = is_open
+            return is_open
     return False
 
 

@@ -40,6 +40,9 @@ backend/app/data/market_source_state.json
 # 模拟账户状态（量化工具「模拟」tab 的余额/持仓/流水，前端每笔交易后落盘）：
 # 运行态数据，删了顶多重置回 ¥1,000,000 空仓，不该入库。
 backend/app/data/simulation.json
+# 盘后复盘存档（days/ 报告、attempts/ 生成尝试、boards/ 当日冻结榜单副本）：
+# 运行态数据，删了历史复盘列表会空，但每天收盘后会自动重建。
+backend/app/data/review/
 # prediction-pipeline 累积库（冻结预测 + 到期回填，逐日增长可达数 MB）：
 # 首次访问会自动从 fixtures/predictions.json 播种 320 条历史基线，所以删了可重建；
 # 它是本机运行态数据，不该进版本库（提交后每次跑都会产生巨大 diff）。

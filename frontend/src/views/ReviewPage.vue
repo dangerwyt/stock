@@ -1,17 +1,48 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSnapshot } from '@/composables/useSnapshot'
+import { http } from '@/api/client'
 import { formatShanghaiDateTime } from '@/utils/format'
 import { IconFileAnalytics, IconRefresh, IconDatabase, IconInfoCircle, IconAlertTriangle } from '@tabler/icons-vue'
 
+const route = useRoute()
 const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date())
-const date = ref(today)
+// ?date=YYYY-MM-DD 可深链到某一天的报告（默认今天）。只认未来日期之外的合法日期，
+// 否则回落到今天 —— 不能让一个手写错的 URL 把页面卡在永远读不到的状态。
+function initialDate() {
+  const wanted = String(route.query.date || '')
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(wanted) && wanted <= today
+  return valid ? wanted : today
+}
+const date = ref(initialDate())
 const cycle = ref('超短')
-const refresh = ref(0)
-const { data: review, state } = useSnapshot(`/api/review?date=${date.value}`, { refreshMs: 60000 })
+// 地址必须是响应式的：换成 computed 后，选别的日期会自动重拉，
+// 否则 review 里永远是首次加载那一天的数据，date !== 选中日期 → 恒显示「正在读取报告」。
+const reviewUrl = computed(() => `/api/review?date=${date.value}`)
+const { data: review, state, reload } = useSnapshot(reviewUrl, { refreshMs: 60000 })
 const report = computed(() => (review.value?.date === date.value ? review.value?.report : null))
 const active = computed(() => report.value?.cycles?.find((c) => c.cycle === cycle.value))
 const pct = (v) => (v == null ? '--' : `${v > 0 ? '+' : ''}${Number(v).toFixed(2)}%`)
+
+const generating = ref(false)
+const generateError = ref('')
+// 报告由后端「冻结榜单 × 当日收盘价」现算，不是前端拼出来的；生成有副作用，所以是显式按钮，
+// 且不带自动重试 —— 缺数据时后端会把原因写进 attempt，页面照实显示，不反复打数据源。
+async function generateReport() {
+  if (generating.value) return
+  generating.value = true
+  generateError.value = ''
+  try {
+    const resp = await http.post(`/api/review/refresh?date=${date.value}`)
+    if (resp?.data?.status === 'invalid') generateError.value = resp.data.reason || '日期无效。'
+    await reload()
+  } catch (e) {
+    generateError.value = e?.response?.data?.reason || e?.message || '生成失败，请稍后重试。'
+  } finally {
+    generating.value = false
+  }
+}
 // 不允许选未来日期。原来是原生 <input type="date" :max="today">，EP 用 disabled-date 回调；
 // 比较运算放这里而不是模板属性里（约定：模板属性内禁止内联比较/三元）。
 function disableFutureDate(value) {
@@ -25,7 +56,7 @@ function disableFutureDate(value) {
       <div><h1>盘后复盘</h1><p>真实收盘数据 × 盘前冻结榜单 · 报告生成不依赖AI回答</p></div>
       <div class="review-controls">
         <label>报告日期 <el-date-picker v-model="date" type="date" value-format="YYYY-MM-DD" class="ep-form-control ep-form-control--date" aria-label="复盘日期" :clearable="false" :disabled-date="disableFutureDate" /></label>
-        <button class="toolbar-button" @click="refresh++"><IconRefresh :size="15" /> 刷新报告</button>
+        <button class="toolbar-button" :disabled="generating" @click="generateReport"><IconRefresh :size="15" /> {{ generating ? '生成中…' : '刷新报告' }}</button>
       </div>
     </div>
 
@@ -46,7 +77,9 @@ function disableFutureDate(value) {
     <div v-if="!report" class="account-empty" role="status">
       <IconFileAnalytics :size="24" />
       <strong>{{ review?.date !== date ? '正在读取报告' : '当日报告待生成' }}</strong>
-      <p>{{ review?.attempt?.reason || '交易日15:20首次生成，17:35、18:35补充校准；缺收盘数据时不生成虚构结论。' }}</p>
+      <p>{{ review?.attempt?.reason || '交易日 15:10 后生成，17:40、22:00 补充校准；缺收盘数据时不生成虚构结论。' }}</p>
+      <button v-if="review?.date === date" class="toolbar-button" :disabled="generating" @click="generateReport">{{ generating ? '生成中…' : '立即生成复盘' }}</button>
+      <p v-if="generateError" class="review-warning">{{ generateError }}</p>
     </div>
 
     <template v-else>

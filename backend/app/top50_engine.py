@@ -979,6 +979,30 @@ def _restore_from_disk(window: str) -> None:
     )
 
 
+def get_known_snapshot() -> dict | None:
+    """取「手上现有的那份冻结榜单」，**不触发任何重算或行情请求**。
+
+    与 :func:`get_top50_snapshot` 的区别：后者在数据窗口不匹配时会去拉全市场重算。
+    复盘引擎只是想知道"现存的榜单是哪一天的"，不该为这一句话付出一次 Tushare 调用，
+    因此这里内存优先、其次直接读落盘文件，并**忽略窗口校验** —— 调用方自己会比对
+    ``meta.tradeDate``，拿错日期的榜单它也不会用。
+    """
+    if _CACHE.get("snapshot") is not None:
+        return _CACHE["snapshot"]
+    try:
+        path = _snapshot_file()
+        if not path.exists():
+            return None
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 - 只读提示用，读不到就当没有
+        logger.warning("TOP50 落盘快照不可读：%s", exc)
+        return None
+    snapshot = payload.get("snapshot")
+    if isinstance(snapshot, dict) and snapshot.get("cycles"):
+        return snapshot
+    return None
+
+
 def invalidate_cache() -> None:
     """显式标记快照过期（画像提炼 / 打分完成后调用）。
 

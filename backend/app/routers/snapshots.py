@@ -17,6 +17,7 @@ from app import market_clock
 from app import market_state
 from app import tushare_client
 from app import news_aggregate
+from app import review_engine
 from app import top50_engine
 from app import quant_tools
 from app import agents
@@ -235,7 +236,35 @@ def us_etf_map():
 
 @router.get("/api/review")
 def review(date: str | None = Query(default=None)):
-    return fixtures.load("review")
+    """盘后复盘报告：读 ``data/review/`` 下按日期存档的真实报告。
+
+    对齐 reference-react ``GET /api/review``：返回 ``{date, report, attempt, dates}``。
+    与原来那份 ``fixtures/review.json`` 占位桩的关键差别是**会认 ``date`` 参数** ——
+    前端拿 ``review.date === 选中日期`` 判断"读到了没"，占位桩永远返回固定日期，
+    于是页面恒显示「正在读取报告」。
+
+    这里**只读不生成**：生成有副作用（打 Tushare、写文件），走
+    ``POST /api/review/refresh`` 或调度任务 ``post-close``。
+    """
+    target = (date or "").strip() or market_clock.shanghai_clock()["date"]
+    return review_engine.snapshot_payload(target)
+
+
+@router.post("/api/review/refresh")
+async def review_refresh(date: str | None = Query(default=None), force: bool = Query(default=False)):
+    """生成/校准某一天的复盘报告（有副作用）。
+
+    与 ``/api/quant/{tool}`` 同级：都是本地单用户研究工具里的"主动算一次"，因此不做
+    token 鉴权（reference 的 ``POST /api/admin/review`` 在公网 Worker 上必须鉴权，
+    本项目若对公网开放，请在外层 nginx 或 ``ADMIN_API_TOKEN`` 网关上拦掉这个路径）。
+
+    ``force=true`` 会忽略"已有完整报告就复用"的短路，强制重算一次 —— 用于校准轮次。
+    """
+    target = (date or "").strip() or market_clock.shanghai_clock()["date"]
+    result = await review_engine.generate(target, force=force)
+    if result.get("status") == "invalid":
+        return JSONResponse(status_code=400, content=result)
+    return {**result, **review_engine.snapshot_payload(target)}
 
 
 @router.get("/api/source-quality")

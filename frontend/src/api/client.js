@@ -4,11 +4,12 @@ import axios from 'axios'
 export const http = axios.create({ baseURL: '/', timeout: 20000 })
 
 // JSON snapshot fetch with the same merge/timeout semantics as the React prototype.
+// `fresh: true` 绕过 1 秒去重缓存 —— 刚 POST 改完后端状态再读，必须拿到新结果。
 const cache = new Map()
 
-export async function fetchSnapshot(url, { timeout = 20000 } = {}) {
+export async function fetchSnapshot(url, { timeout = 20000, fresh = false } = {}) {
   const cached = cache.get(url)
-  if (cached && (cached.pending || Date.now() - cached.at < 1000)) return cached.promise
+  if (!fresh && cached && (cached.pending || Date.now() - cached.at < 1000)) return cached.promise
   const entry = { pending: true, at: Date.now() }
   entry.promise = http
     .get(url, { params: { _t: Date.now() }, timeout })

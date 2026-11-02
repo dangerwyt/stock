@@ -32,7 +32,15 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app import fixtures, news_aggregate, tushare_client, top50_engine, prediction_pipeline, accuracy
+from app import (
+    accuracy,
+    fixtures,
+    news_aggregate,
+    prediction_pipeline,
+    review_engine,
+    top50_engine,
+    tushare_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,9 +86,14 @@ def component_of(name: str) -> str:
 async def _job_top50() -> dict:
     snapshot = await top50_engine.get_top50_snapshot(force=True)
     meta = snapshot.get("meta") or {}
+    # 把当日这份冻结榜单按 tradeDate 存档一份给复盘用。
+    # 必须在这里存：榜单只保留"最新一份"，而复盘要拿**盘前冻结**的参考价去比当日收盘，
+    # 到了晚上若没存过这份就再也找不回来了（见 review_engine 顶部说明）。
+    review_engine.archive_board(snapshot)
     return {
         "status": "completed",
         "snapshotId": meta.get("snapshotId"),
+        "tradeDate": meta.get("tradeDate"),
         "marketDataDate": meta.get("marketDataDate"),
         "selectedCount": meta.get("selectedCount"),
         "sourceMode": meta.get("sourceMode"),
@@ -320,12 +333,23 @@ async def _job_post_close() -> dict:
         "quoteCount": len(quotes),
         "staleCount": 0,
     })
+
+    # 盘后复盘：手上这份 rows 就是当日全市场收盘价，直接传进去，**零额外 Tushare 调用**。
+    # 复盘要用"盘前冻结的榜单"当参考价，所以这里复核的正是今天早上 07:20 建的那份榜单；
+    # 生成失败不影响行情落盘（复盘自己会把原因写进 attempts/，页面照实显示）。
+    try:
+        review_result = await review_engine.generate(trade_date, daily_rows=rows, force=True)
+    except Exception as exc:  # noqa: BLE001 - 复盘失败不该让 post-close 整体判失败
+        logger.warning("post-close 生成盘后复盘失败：%s", exc)
+        review_result = {"status": "error", "reason": str(exc)}
+
     return {
         "status": "completed" if len(quotes) >= 50 else "partial",
         "sourceMode": "live",
         "tradeDate": trade_date,
         "universe": len(quotes),
         "snapshotPath": str(_MARKET_SNAPSHOT),
+        "review": review_result,
     }
 
 
