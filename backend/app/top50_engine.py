@@ -931,6 +931,22 @@ def _persist_snapshot() -> None:
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("TOP50 快照落盘失败（不影响本轮结果）：%s", exc)
+        return
+
+    # 顺手给盘后复盘存一份「当日冻结榜单」。
+    #
+    # 为什么挂在这里而不是只挂在 ``market_jobs._job_top50``：榜单只有**两种**产生路径 ——
+    # 调度 job（07:20）和前端访问 ``/api/top50`` 时的懒计算。两条路最后都走这个落盘函数。
+    # 只挂在 job 上会漏掉懒计算那一份，而漏掉的后果很具体：那份榜单的参考价（前一交易日
+    # 收盘）是当晚复盘的唯一基准，隔天榜单一旦重算就再也找不回来，复盘只能显示「缺少冻结榜单」。
+    #
+    # 局部 import 避免 top50_engine ↔ review_engine 的循环依赖（review_engine 依赖本模块）。
+    try:
+        from app import review_engine  # noqa: PLC0415 - 见上，必需延迟导入
+
+        review_engine.archive_board(_CACHE.get("snapshot") or {})
+    except Exception as exc:  # noqa: BLE001 - 存档失败不该影响榜单本身
+        logger.warning("TOP50 快照存档给复盘失败（不影响榜单）：%s", exc)
 
 
 def _restore_from_disk(window: str) -> None:

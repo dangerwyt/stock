@@ -47,6 +47,42 @@ _SNAPSHOT_LOCK = asyncio.Lock()
 # 缓存后一天只真拉 2 次（收盘前后各一次），而不是各自重拉。
 _LATEST_CACHE: dict[str, Any] = {"window": None, "trade_date": None, "rows": None}
 
+# 主源「额度用尽」熔断。
+#
+# 现象：主源（relay A）超额后返回 ``code=42901 token daily limit exceeded``，
+# 但**不是立刻失败** —— 每个请求都要先等它 2~4 秒才拿到这个错误，再回落 B 套。
+# 一次盘后复盘要调 3 次 Tushare（交易日历 + 全市场 daily + …），光"等主源拒绝"
+# 就要烧掉 ~10 秒，直接把 20 秒的前端超时顶穿。
+#
+# 所以在拿到明确的额度错误后，**在一个冷却窗口内不再尝试主源**，直接走 B 套：
+# 省的是纯等待，拿到的数据完全一样。只在配了 B 套时才熔断 —— 否则熔断等于自断数据源。
+_PRIMARY_BLOCK: dict[str, Any] = {"until": 0.0, "reason": ""}
+_PRIMARY_BLOCK_SECONDS = 1800.0
+
+# 主源明确"今天没额度了"的错误码/关键字。
+_QUOTA_MARKERS = ("42901", "limit exceeded", "每日限量", "超过每日")
+
+
+def _is_quota_error(message: str) -> bool:
+    low = (message or "").lower()
+    return any(marker.lower() in low for marker in _QUOTA_MARKERS)
+
+
+def _primary_blocked() -> bool:
+    return time.time() < float(_PRIMARY_BLOCK.get("until") or 0.0)
+
+
+def primary_status() -> dict:
+    """主源熔断状态（运维/诊断用）。``blockedUntil`` 为空表示正常。"""
+    until = float(_PRIMARY_BLOCK.get("until") or 0.0)
+    if time.time() >= until:
+        return {"blocked": False, "blockedUntil": None, "reason": None}
+    return {
+        "blocked": True,
+        "blockedUntil": datetime.fromtimestamp(until, _SHANGHAI).isoformat(),
+        "reason": _PRIMARY_BLOCK.get("reason") or None,
+    }
+
 
 class TushareError(RuntimeError):
     """Tushare 未配置或调用失败。
@@ -200,15 +236,34 @@ async def _call(
       ① 主源 relay A（POST + ``TUSHARE_TOKEN``）
       ② B 套 ProMax（GET + ``X-API-Key``，需配置 ``TUSHARE_FALLBACK_*``）
     两条都失败才抛 ``TushareError``（由调用方转 503），**全程不回落 fixtures 假数据**。
+
+    主源一旦报「额度用尽」，冷却窗口内直接跳过它（见 ``_PRIMARY_BLOCK``）——
+    省掉的是每次 2~4 秒的"等它拒绝"，数据本身仍来自 B 套。
     """
     errors: list[str] = []
-    if settings.tushare_token:
+    has_fallback = bool(settings.tushare_fallback_url and settings.tushare_fallback_api_key)
+    if settings.tushare_token and not (has_fallback and _primary_blocked()):
         try:
-            return await _post_primary(api_name, params, fields, timeout)
+            rows = await _post_primary(api_name, params, fields, timeout)
+            if _PRIMARY_BLOCK.get("until"):
+                logger.info("Tushare 主源已恢复，解除熔断")
+                _PRIMARY_BLOCK.update(until=0.0, reason="")
+            return rows
         except TushareError as exc:
             errors.append(f"主源: {exc}")
-            logger.warning("Tushare 主源失败，尝试 B 套备用：%s", exc)
-    if settings.tushare_fallback_url and settings.tushare_fallback_api_key:
+            if has_fallback and _is_quota_error(str(exc)):
+                _PRIMARY_BLOCK.update(
+                    until=time.time() + _PRIMARY_BLOCK_SECONDS,
+                    reason=str(exc)[:200],
+                )
+                logger.warning(
+                    "Tushare 主源额度用尽，%.0f 分钟内直接走 B 套（省掉每次数秒等待）：%s",
+                    _PRIMARY_BLOCK_SECONDS / 60,
+                    exc,
+                )
+            else:
+                logger.warning("Tushare 主源失败，尝试 B 套备用：%s", exc)
+    if has_fallback:
         fb_timeout = (
             60.0
             if api_name in _BULK_APIS and not (params or {}).get("ts_code")

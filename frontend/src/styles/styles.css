@@ -4691,6 +4691,21 @@ html.home-research-active .app-shell.active-overview .app-content { grid-templat
   .top50-evidence-rule-grid { grid-template-columns: 1fr; }
 }
 /* Evidence and review surfaces reuse the shared terminal typography and panels. */
+
+/* 复盘页块间距。
+ * 原来 `.review-warning` 没有外边距、"立即生成复盘" 也直接贴着说明文字，
+ * 空态里图标/标题/说明/按钮/报错框全挤在一起；这里用统一节奏把块分开。 */
+.review-page .review-warning { margin: 0 0 18px; line-height: 1.7; }
+.review-page .review-warning:last-child { margin-bottom: 0; }
+.review-page .account-empty { gap: 12px; min-height: 260px; padding: 30px 20px; }
+.review-page .account-empty > svg { margin: 0; }
+.review-page .account-empty strong { margin: 0; font-size: 15px; }
+.review-page .account-empty p { margin: 0; max-width: 560px; font-size: 12px; line-height: 1.7; }
+.review-page .account-empty .toolbar-button { margin-top: 6px; }
+.review-page .account-empty .review-warning { width: 100%; max-width: 520px; margin: 6px 0 0; font-size: 12px; text-align: left; }
+/* 有 warning 条时，标签页的 20px 上边距会和它叠成 38px；统一成 18px 节奏。 */
+.review-page .review-tabs { margin: 18px 0; }
+
 .review-controls, .review-tabs, .review-history { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .review-controls input, .review-history button, .review-tabs button { background: var(--panel, #101b29); color: inherit; border: 1px solid #2a3a4b; border-radius: 6px; padding: 9px 14px; font: inherit; }
 .review-tabs button[aria-selected="true"], .review-history button.active { border-color: #4c9be8; color: #8fc7ff; background: #17314b; }

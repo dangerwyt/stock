@@ -89,6 +89,8 @@ async def _job_top50() -> dict:
     # 把当日这份冻结榜单按 tradeDate 存档一份给复盘用。
     # 必须在这里存：榜单只保留"最新一份"，而复盘要拿**盘前冻结**的参考价去比当日收盘，
     # 到了晚上若没存过这份就再也找不回来了（见 review_engine 顶部说明）。
+    # 与 ``top50_engine._persist_snapshot`` 里的同名调用互为兜底（同一份日期只写一次）：
+    # 那条覆盖"榜单刚算出来"，这条覆盖"榜单命中缓存、本次没重算"。
     review_engine.archive_board(snapshot)
     return {
         "status": "completed",

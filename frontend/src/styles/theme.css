@@ -1753,3 +1753,30 @@ a {
   font-size: 9px;
   line-height: 1.55;
 }
+
+/* 日期 / 月 / 年 面板的表头与单元格。
+ *
+ * 根因：styles.css 给裸标签 `th` 设了深色底 #0c1724 + 左对齐，给 `td` 设了 46px 行高
+ * 和 1px 分隔线（终端表格样式）。el-date-picker 的日历同样是 table 结构，于是浅色弹层里
+ * 多出一条深色横带、每周之间还多出灰线。
+ *
+ * ⚠️ 必须写在**本文件**（无层）而不是 styles.css —— 后者被 `@import ... layer(legacy)`，
+ * 同属性必输给 EP 自己那条无层规则（同 el-dialog 的处境，见 styles.css:968 的注释）。
+ * 这里只还原日历该有的样子：透明、居中、无行线；字号用 EP 自己的。 */
+.el-picker-panel .el-date-table th,
+.el-picker-panel .el-date-table td,
+.el-picker-panel .el-month-table td,
+.el-picker-panel .el-year-table td {
+  height: auto;
+  border-bottom: 0;
+  background: transparent;
+  text-align: center;
+  white-space: normal;
+}
+.el-picker-panel .el-date-table th {
+  padding: 6px 0;
+  color: #6b7f96;
+  font-size: 12px;
+  font-weight: 500;
+}
+.el-picker-panel .el-date-table td { padding: 2px 0; }

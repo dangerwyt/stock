@@ -30,6 +30,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -45,6 +46,9 @@ logger = logging.getLogger(__name__)
 # 收盘数据落库的保守时点：与 ``tushare_client._data_window`` 的 15:30 一致，
 # 取 15:10 是 reference 的值（宁可早试一次、失败留给下一次校准）。
 _CLOSE_READY_TIME = "15:10"
+
+# 抓「当日资讯」的最长等待。新闻只是背景线索，超时就当没有，不拖整体生成。
+_NEWS_TIMEOUT_SECONDS = 8.0
 
 _METHOD = (
     "冻结TOP50逐股与当日daily收盘价匹配；周期内等权，不计交易成本、不可成交和实际持仓。"
@@ -402,12 +406,35 @@ def _frozen_board_for(date: str) -> dict | None:
 
 
 async def _news_snapshot() -> dict | None:
-    """当日资讯快照。拉取失败不算致命 —— 报告里会记一条「没有可核验的当日新闻」的 gap。"""
+    """当日资讯快照。拉取失败/超时都不算致命 —— 报告里会记一条「没有可核验的当日新闻」的 gap。
+
+    **必须限时**：资讯聚合会依次试晴红 50+ / NewsAPI / Tushare major_news，任一家的网络
+    抖动都会把整个复盘拖到十几秒，而新闻在这份报告里只是「背景线索」，不值得为它
+    冒前端超时的风险。超时就当没有，报告照出。
+    """
     try:
-        return await news_aggregate.build_news_snapshot()
+        return await asyncio.wait_for(
+            news_aggregate.build_news_snapshot(), timeout=_NEWS_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        logger.warning("复盘取资讯超时（>%.0fs），报告将不含新闻依据", _NEWS_TIMEOUT_SECONDS)
+        return None
     except Exception as exc:  # noqa: BLE001 - 资讯只是背景线索，不该阻断复盘
         logger.warning("复盘取资讯失败，报告将不含新闻依据：%s", exc)
         return None
+
+
+async def _safe_daily_rows(target: str) -> list[dict]:
+    """取当日全市场日线；失败返回空列表。
+
+    复盘里"取不到行情"和"行情为空"走的是同一句提示（都是数据源没给这一天），
+    所以在这里把异常收掉，避免 ``asyncio.gather`` 因为一个取数失败把整个生成打断。
+    """
+    try:
+        return await tushare_client.fetch_daily_rows(target)
+    except tushare_client.TushareError as exc:
+        logger.warning("复盘取当日行情失败（%s）：%s", target, exc)
+        return []
 
 
 async def generate(
@@ -445,22 +472,30 @@ async def generate(
     if target == clock["date"] and clock["time"] < _CLOSE_READY_TIME:
         return _pending(target, "等待真实交易日收盘（15:10 后生成）", moment)
 
-    try:
-        trading_day = await tushare_client.is_market_open(target)
-    except tushare_client.TushareError as exc:
-        # 交易日历不可用时退到「周末即休市」的近似（与调度同口径），宁可少生成不误生成。
-        trading_day = clock["weekday"] not in ("Sat", "Sun")
-        logger.warning("复盘交易日历不可用，按周末近似判定（%s）：%s", target, exc)
-    if not trading_day:
-        return _pending(target, "非交易日，不生成复盘", moment)
-
+    # 行情与资讯互不依赖，**并发**取：
+    # 早前是"先查交易日历 → 再拉日线 → 再抓资讯"串行三步，主源超额时每一步都要先等
+    # 它 4 秒才回落 B 套，冷启动一次生成能到 22 秒，把前端超时顶穿。并发后只剩最慢那步。
+    daily_task = None
     if daily_rows is None:
-        try:
-            daily_rows = await tushare_client.fetch_daily_rows(target)
-        except tushare_client.TushareError as exc:
-            return _pending(target, f"当日收盘数据暂不可用；保留已有报告，等待下一次校准。（{exc}）", moment)
+        daily_task = asyncio.ensure_future(_safe_daily_rows(target))
+    news_task = asyncio.ensure_future(_news_snapshot())
+    if daily_task is not None:
+        daily_rows, news = await asyncio.gather(daily_task, news_task)
+    else:
+        news = await news_task
+
     if not daily_rows:
-        return _pending(target, "当日收盘数据暂不可用（数据源未返回该日行情）；保留已有报告。", moment)
+        # 拿不到当日行情时再问一次交易日历，只为把"非交易日"和"数据没落库"这两种
+        # 完全不同的原因区分开 —— 页面上它们是两句不一样的话。顺带省掉正常路径上的一次调用：
+        # 有当日行情本身就证明那天是交易日。
+        try:
+            trading_day = await tushare_client.is_market_open(target)
+        except tushare_client.TushareError as exc:
+            trading_day = clock["weekday"] not in ("Sat", "Sun")
+            logger.warning("复盘交易日历不可用，按周末近似判定（%s）：%s", target, exc)
+        if not trading_day:
+            return _pending(target, "非交易日，不生成复盘", moment)
+        return _pending(target, "当日收盘数据暂不可用（数据源未返回该日行情）；保留已有报告，等待下一次校准。", moment)
 
     board = _frozen_board_for(target)
     if not board:
@@ -472,7 +507,7 @@ async def generate(
             moment,
         )
 
-    report = build_post_close_review(board, daily_rows, await _news_snapshot(), target, moment)
+    report = build_post_close_review(board, daily_rows, news, target, moment)
 
     board_meta = board.get("meta") or {}
     if _iso_date(board_meta.get("marketDataDate")) == target:

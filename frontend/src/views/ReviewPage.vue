@@ -34,7 +34,9 @@ async function generateReport() {
   generating.value = true
   generateError.value = ''
   try {
-    const resp = await http.post(`/api/review/refresh?date=${date.value}`)
+    // 单独放宽超时：生成要真打数据源（交易日历 + 全市场日线），冷缓存下十几秒是正常的，
+    // 全局的 20s 会把"正在算"误判成"失败"。GET 读存档仍然是 20s，不受影响。
+    const resp = await http.post(`/api/review/refresh?date=${date.value}`, null, { timeout: 90000 })
     if (resp?.data?.status === 'invalid') generateError.value = resp.data.reason || '日期无效。'
     await reload()
   } catch (e) {
