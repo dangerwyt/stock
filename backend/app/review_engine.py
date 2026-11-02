@@ -405,6 +405,25 @@ def _frozen_board_for(date: str) -> dict | None:
     return None
 
 
+def freeze_today() -> None:
+    """把「今天的冻结榜单」存档一份（启动时调用；幂等）。"""
+    _freeze_board_if_current(market_clock.shanghai_clock()["date"])
+
+
+def _freeze_board_if_current(date: str) -> None:
+    """手上这份榜单若正好是 ``date`` 那天的，就立刻存档（幂等，已有则不覆盖）。
+
+    这是「盘后重算会毁掉当日参考价」的唯一兜底：调用点放在 ``generate`` 最前面，
+    所以哪怕这一次因为"还没到 15:10"或"行情取不到"而没生成报告，榜单也已经冻住了。
+    """
+    try:
+        snapshot = top50_engine.get_known_snapshot()
+    except Exception:  # noqa: BLE001 - 存档是兜底，失败不该影响主流程
+        return
+    if ((snapshot or {}).get("meta") or {}).get("tradeDate") == date:
+        archive_board(snapshot)
+
+
 async def _news_snapshot() -> dict | None:
     """当日资讯快照。拉取失败/超时都不算致命 —— 报告里会记一条「没有可核验的当日新闻」的 gap。
 
@@ -458,6 +477,12 @@ async def generate(
         _validate_date(target, clock["date"])
     except ReviewError as exc:
         return {"status": "invalid", "date": target, "reportId": None, "reason": str(exc)}
+
+    # 「第一次有人问起这一天，就把那天的榜单冻住」—— 放在所有分支之前，包括"还没到收盘
+    # 时点"的 pending 分支。理由很具体：榜单只保留最新一份，而复盘要的是**盘前冻结**的
+    # 参考价（前一交易日收盘）。盘后一旦有人打开 TOP50 页面触发重算，参考价就变成当日
+    # 收盘，日表现会全变 0；这个窗口从收盘到当晚 17:40 之间一直存在，只有提前存档能兜住。
+    _freeze_board_if_current(target)
 
     existing = load_report(target)
     if existing and existing.get("status") == "ready" and not force:

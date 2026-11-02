@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import job_runs, scheduler
+from app import job_runs, review_engine, scheduler
 from app.config import settings
 from app.routers import (
     admin,
@@ -44,6 +44,14 @@ async def lifespan(_: FastAPI):
         scheduler.start()
     except Exception:  # noqa: BLE001 - 调度器是附属能力，别让它阻断启动
         logger.exception("自动画像更新调度器启动失败，服务继续运行")
+    # 启动时先把「今天的冻结榜单」存档一份给盘后复盘。
+    # 为什么要在启动时做：落盘的榜单可能是在这条存档逻辑存在之前就生成的（部署/升级后
+    # 首次启动正是这种情况），而它一旦被盘后重算覆盖，当天的参考价（前一交易日收盘）
+    # 就再也找不回来 —— 复盘会退化成"参考价取自当日收盘，无法归因"。
+    try:
+        review_engine.freeze_today()
+    except Exception:  # noqa: BLE001 - 纯兜底，失败不影响启动
+        logger.warning("启动时存档当日冻结榜单失败（不影响服务）", exc_info=True)
     try:
         yield
     finally:
