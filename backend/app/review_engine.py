@@ -132,18 +132,23 @@ def archive_board(snapshot: dict) -> None:
 
 
 def list_dates(limit: int = 60) -> list[str]:
-    """已生成报告的日期，倒序。对齐 reference 的 ``keys.slice(0, 60)``。"""
-    days_dir = _review_dir() / "days"
-    if not days_dir.exists():
-        return []
-    dates = []
-    for item in days_dir.glob("*.json"):
-        if item.name.endswith(".tmp"):
+    """可复盘的日期，倒序。对齐 reference 的 ``keys.slice(0, 60)``。
+
+    取的是**已生成报告 ∪ 已存档冻结榜单**的并集，而不是只列报告。理由：某天可能只冻了
+    榜单、没生成报告（当天没空点，或那天没人打开生成）。这种日期照样能补看 —— 参考价在
+    ``boards/`` 里，收盘价可以按日期从数据源取。只列 ``days/`` 会让这些天在页面上彻底消失，
+    用户连"可以补"都不知道。
+    """
+    found: set[str] = set()
+    for sub in ("days", "boards"):
+        folder = _review_dir() / sub
+        if not folder.exists():
             continue
-        stem = item.stem
-        if len(stem) == 10 and stem[4] == "-":
-            dates.append(stem)
-    return sorted(dates, reverse=True)[:limit]
+        for item in folder.glob("*.json"):
+            stem = item.stem
+            if len(stem) == 10 and stem[4] == "-" and stem[7] == "-":
+                found.add(stem)
+    return sorted(found, reverse=True)[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +413,21 @@ def _frozen_board_for(date: str) -> dict | None:
 def freeze_today() -> None:
     """把「今天的冻结榜单」存档一份（启动时调用；幂等）。"""
     _freeze_board_if_current(market_clock.shanghai_clock()["date"])
+
+
+def ensure_today_board_frozen() -> None:
+    """读接口的轻量兜底：今天还没存过就顺手存一次。
+
+    为什么让 GET 也做这件事：不能把「每天都能复盘」寄托在外部计时器上。只要那天有人
+    打开过复盘页，当天的盘前榜单就落盘了 —— 于是**当天没空看、隔天再补看**也仍然成立
+    （参考价来自存档，收盘价从 Tushare 按日期取，两者都不依赖"当天有没有人点生成"）。
+
+    成本受控：当天已存过就只剩一次 ``exists()``，不做任何读取。
+    """
+    date = market_clock.shanghai_clock()["date"]
+    if (_review_dir() / "boards" / f"{date}.json").exists():
+        return
+    _freeze_board_if_current(date)
 
 
 def _freeze_board_if_current(date: str) -> None:

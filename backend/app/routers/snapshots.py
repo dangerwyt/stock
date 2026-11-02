@@ -245,7 +245,12 @@ def review(date: str | None = Query(default=None)):
 
     这里**只读不生成**：生成有副作用（打 Tushare、写文件），走
     ``POST /api/review/refresh`` 或调度任务 ``post-close``。
+
+    唯一的例外是"把今天的冻结榜单存档"（:func:`review_engine.ensure_today_board_frozen`）：
+    那是幂等的本地记录，只在当天第一次访问时做一次。不加这一步的话，"当天没打开过生成、
+    隔天再补看"就会因为榜单已被重算而彻底失去参考价。
     """
+    review_engine.ensure_today_board_frozen()
     target = (date or "").strip() or market_clock.shanghai_clock()["date"]
     return review_engine.snapshot_payload(target)
 

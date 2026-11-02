@@ -67,7 +67,7 @@ function disableFutureDate(value) {
     </div>
 
     <div class="review-history">
-      已有报告：
+      可复盘日期：
       <template v-if="review?.dates?.length">
         <button v-for="d in review.dates" :key="d" :class="{ active: d === date }" @click="date = d">{{ d }}</button>
       </template>
