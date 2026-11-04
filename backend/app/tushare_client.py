@@ -222,6 +222,34 @@ async def _get_fallback(
 # 对话式单股查询仍用原来的短超时。与 reference-react 的 60s/25s 分档一致。
 _BULK_APIS = ("trade_cal", "daily", "daily_basic")
 
+# 全市场 ``daily`` 的统一字段表。
+#
+# ⚠️ ``trade_date`` **必须在里面**。下游（``review_engine.build_post_close_review``）靠它
+# 严格判定"这一行是不是复盘当天的收盘价"，缺了这一列，所有行都会被当作"非当日"丢掉，
+# 于是报告退化成一排 ``0 / 50`` —— 既不报错、也不留痕，看起来就像"当天没有行情"。
+# 曾经的 bug 就出在这里：``_latest_market_trade_date`` 用了另一份不带 ``trade_date`` 的
+# 字段表，而它的结果被缓存后又被 post-close 直接当作复盘的日线传入。
+_DAILY_FIELDS = "ts_code,trade_date,open,high,low,close,pre_close,pct_chg,vol,amount"
+
+
+def _stamp_trade_date(rows: list[dict], compact: str) -> list[dict]:
+    """给缺 ``trade_date`` 的行走补齐成 ``compact``（就地修改并返回）。
+
+    为什么补这一步是**安全**的、不违反"绝不拿旧价冒充当日价"：
+
+    * 这里的每一条行都来自 ``daily`` 的**按交易日查询**（``params={"trade_date": ...}``），
+      "这行属于哪一天"在调用侧就已经确定，字段只是数据源没回而已；
+    * 旧价风险只存在于「按 ``ts_code`` + 日期区间」的查询（``_build_stock_snapshot``），
+      那种查询本身就带了 ``trade_date``，不会被这里补。
+
+    补在**缓存之前**，所以进程内缓存里的行也一定是带日期的 —— 否则一旦缓存了"裸行"，
+    之后每次命中缓存的复盘都会退化成一排 ``0 / 50``。
+    """
+    for row in rows:
+        if not row.get("trade_date"):
+            row["trade_date"] = compact
+    return rows
+
 
 async def _call(
     api_name: str,
@@ -472,11 +500,14 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
             rows = await _call(
                 "daily",
                 {"trade_date": d},
-                "ts_code,open,high,low,close,pre_close,pct_chg,vol,amount",
+                _DAILY_FIELDS,
             )
         except TushareError:
             continue
         if len(rows) >= 50:
+            # 字段补齐放在缓存**之前**：缓存的这份是多个 job 共用的，
+            # 一旦存进"没有 trade_date 的裸行"，命中缓存的复盘就全是 0/50（见 _DAILY_FIELDS）。
+            rows = _stamp_trade_date(rows, d)
             # 只在「取到的交易日 == 当前窗口日」时才缓存。
             # 15:31 这种刚过窗口、数据还没落库的时刻会拿到上一交易日；若把它当成
             # 窗口日的答案缓存，之后数据真出来了也刷不到 —— 宁可下次重拉。
@@ -509,22 +540,23 @@ async def fetch_daily_rows(date_str: str) -> list[dict]:
     if cached is not None:
         return cached
     if _LATEST_CACHE.get("trade_date") == compact and _LATEST_CACHE.get("rows"):
-        rows = _LATEST_CACHE["rows"]
+        # 「零额外调用」直接复用最近交易日那份行 —— 但**必须**先补齐 trade_date：
+        # 这份缓存有可能是在 ``_DAILY_FIELDS`` 修正之前建好的（进程长跑时尤其如此），
+        # 裸行直接返回会让复盘退化成 0/50。补齐是幂等的，命中缓存时只多一次字段判空。
+        rows = _stamp_trade_date(_LATEST_CACHE["rows"], compact)
         _DAILY_BY_DATE[compact] = rows
         return rows
 
     rows = await _call(
         "daily",
         {"trade_date": compact},
-        "ts_code,trade_date,open,high,low,close,pre_close,pct_chg,vol,amount",
+        _DAILY_FIELDS,
     )
     if rows:
-        # 数据源若没回 trade_date（字段被裁剪/B 套忽略字段表），就按"本次查询的日期"补上 ——
+        # 数据源若没回 trade_date（字段被裁剪 / B 套忽略字段表），就按"本次查询的日期"补上 ——
         # 这次调用本来就是按 trade_date 过滤的，语义不会错。补这一步是为了让下游
         # （复盘引擎）能继续按"只认当日行"的规则严格过滤，而不是静默全变成缺数据。
-        for row in rows:
-            if not row.get("trade_date"):
-                row["trade_date"] = compact
+        rows = _stamp_trade_date(rows, compact)
         if len(_DAILY_BY_DATE) >= _DAILY_BY_DATE_MAX:
             # 简单的 FIFO 淘汰：dict 保序，删最早的键即可。
             _DAILY_BY_DATE.pop(next(iter(_DAILY_BY_DATE)), None)

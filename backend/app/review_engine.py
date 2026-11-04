@@ -155,10 +155,15 @@ def list_dates(limit: int = 60) -> list[str]:
 # 纯计算（reference buildPostCloseReview 的逐行移植）
 # ---------------------------------------------------------------------------
 def _iso_date(value: Any) -> str | None:
-    """``20261028`` / ``2026-10-28`` → ``2026-10-28``。"""
+    """``20261028`` / ``2026-10-28`` / ``2026-10-28 00:00:00`` → ``2026-10-28``。
+
+    容忍带时间的形态：有些数据源会在日期列上带 ``00:00:00`` 或 ``T`` 分隔，直接拼成
+    "20261028 00:00:00" 会因为长度不是 8 而被判成"无法识别"，进而把整天的行全部丢掉。
+    """
     raw = str(value or "").strip()
     if not raw:
         return None
+    raw = raw.split(" ")[0].split("T")[0]
     compact = raw.replace("-", "")
     if len(compact) != 8 or not compact.isdigit():
         return None
@@ -208,12 +213,22 @@ def build_post_close_review(
     news: dict | None,
     date: str,
     now: datetime | None = None,
+    *,
+    assume_date: bool = False,
 ) -> dict:
     """生成一份复盘报告（纯函数，不读写磁盘、不发请求）。
 
     ``top50`` 是当日冻结榜单（``{meta, cycles}``），``daily`` 是 Tushare ``daily`` 行，
     只有 ``trade_date == date`` 且 ``close > 0`` 的行会被采用 —— 这是"不用旧价补位"的实现
     所在，缺价的股票 ``close`` 留 ``None``，前端显式显示「缺数据」。
+
+    ``assume_date``：当日线行**整列没有 ``trade_date``** 时，是否把它们视为 ``date`` 当天。
+    只在调用方确实按交易日取数时传 ``True``（``daily?trade_date=...`` 是日期参数化查询，
+    "这行属于哪天"在调用侧已经确定，字段只是数据源没回）。带日期但日期不符的行**永远**
+    被丢弃，所以这个开关不会让错位的数据混进来。
+
+    留这个开关的直接原因：曾经有一份行来源用了不带 ``trade_date`` 的字段表，结果四周期
+    一律 ``0 / 50``、等权表现 ``--`` —— 既没报错也没留痕，看着就像"当天全市场都没数据"。
     """
     moment = now or datetime.now(market_clock.SHANGHAI)
     if moment.tzinfo is None:
@@ -223,7 +238,12 @@ def build_post_close_review(
 
     quotes: dict[str, dict] = {}
     for row in daily or []:
-        if _iso_date(row.get("trade_date")) != date:
+        row_date = _iso_date(row.get("trade_date"))
+        if row_date is None:
+            if not assume_date:
+                continue
+            row_date = date
+        if row_date != date:
             continue
         close = _num(row.get("close"))
         if close is None or close <= 0:
@@ -374,6 +394,25 @@ def build_post_close_review(
 # ---------------------------------------------------------------------------
 # 编排
 # ---------------------------------------------------------------------------
+def _is_degenerate(report: dict | None) -> bool:
+    """这份存档报告是不是"一只也没对上"的空壳？
+
+    判定：非 ``ready`` 且所有周期的 ``observed`` 加起来是 0，而 ``expected`` 不是 0。
+    这种报告四周期一律 ``0 / 50``、等权表现 ``--``，展示出来会被读成"当天全市场没数据"，
+    实际是取数口径出了错（历史成因见 ``build_post_close_review`` 的 ``assume_date`` 说明）。
+
+    为什么宁可当作没有：项目底线是"缺数据就不出结论"。一份看着正常、其实一只都没核验过的
+    报告，比"暂无报告 + 一句真实原因"危害大得多 —— 前者会被人当成结论。
+    """
+    if not report or report.get("status") == "ready":
+        return False
+    expected = observed = 0
+    for item in report.get("cycles") or []:
+        expected += int(item.get("expected") or 0)
+        observed += int(item.get("observed") or 0)
+    return expected > 0 and observed == 0
+
+
 def _pending(date: str, reason: str, now: datetime | None = None) -> dict:
     """写一条「这次没生成」的记录 —— 页面据此显示原因，而不是空白。"""
     moment = now or datetime.now(market_clock.SHANGHAI)
@@ -486,8 +525,12 @@ async def generate(
     """生成（或重新校准）某一天的复盘报告。
 
     ``daily_rows`` 允许调用方传入已取到的全市场日线（``post-close`` 任务手上就有），
-    传了就不再多打一次 Tushare。返回 ``{status, date, reportId, reason?}``，
-    ``status`` 为 ``completed`` / ``pending``；**任何情况下都不抛**（异常转成 pending 原因）。
+    传了就不再多打一次 Tushare。**必须**是 ``date`` 当天那一次按交易日查询的结果 ——
+    传错日期的行会在匹配阶段被全部丢弃，最终触发下方"一只也没对上"的守卫而拒绝生成
+    （不会静默产出一份 0/50 的报告）。
+
+    返回 ``{status, date, reportId, reason?}``，``status`` 为 ``completed`` / ``pending``；
+    **任何情况下都不抛**（异常转成 pending 原因）。
     """
     moment = (now or datetime.now(market_clock.SHANGHAI)).astimezone(market_clock.SHANGHAI)
     clock = market_clock.shanghai_clock(moment)
@@ -552,7 +595,28 @@ async def generate(
             moment,
         )
 
-    report = build_post_close_review(board, daily_rows, news, target, moment)
+    report = build_post_close_review(
+        board, daily_rows, news, target, moment,
+        # 两条取数路径（``fetch_daily_rows`` 与 ``_latest_market_trade_date``）都是
+        # ``daily?trade_date=...`` 的日期参数化查询，行属于哪天在取数时就已确定。
+        # 所以字段被数据源裁掉时按 target 归日是安全的 —— 详见该函数 ``assume_date`` 说明。
+        assume_date=True,
+    )
+
+    # 「一只也没对上」= 行情行与榜单的交集为空，这不是"数据不全"，而是**取数口径出了错**
+    # （历史上就是 daily 缺 trade_date 导致的）。这种报告四周期一律 0/50、等权表现 ``--``，
+    # 用户根本分不清是"当天真没数据"还是"程序算错了"，等于拿一份看起来正常的空壳糊弄人。
+    # 按项目「缺数据就不出结论」的底线，这种情况不出报告，只写原因。
+    expected_total = sum(item["expected"] for item in report["cycles"])
+    observed_total = sum(item["observed"] for item in report["cycles"])
+    if expected_total and not observed_total:
+        return _pending(
+            target,
+            f"当日行情与 {target} 冻结榜单一只股票也没匹配上"
+            f"（{expected_total} 只全部缺当日收盘价，通常是行情字段异常），"
+            "不生成全 0 的空报告；已保留日志，待数据源恢复后重试。",
+            moment,
+        )
 
     board_meta = board.get("meta") or {}
     if _iso_date(board_meta.get("marketDataDate")) == target:
@@ -611,9 +675,15 @@ def _validate_date(value: str, today: str) -> None:
 
 def snapshot_payload(date: str) -> dict:
     """``GET /api/review`` 的响应体：报告 + 尝试 + 历史日期。"""
+    report = load_report(date)
+    if _is_degenerate(report):
+        # 旧代码写下的空壳报告（全 0 观测）不再对外，页面会落到空态并给出「立即生成复盘」，
+        # 重新生成后正常覆盖 —— 比继续展示一份 0/50 的假报告更诚实。
+        logger.warning("复盘 %s 的存档是「一只也没对上」的空报告，已忽略（可重新生成）", date)
+        report = None
     return {
         "date": date,
-        "report": load_report(date),
+        "report": report,
         "attempt": load_attempt(date),
         "dates": list_dates(),
     }
