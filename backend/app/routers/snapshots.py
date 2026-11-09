@@ -6,7 +6,10 @@ render identical business content.
 from __future__ import annotations
 
 import json
+import asyncio
 import logging
+from datetime import date
+from typing import Literal
 from pathlib import Path
 
 from fastapi import APIRouter, Query
@@ -15,6 +18,9 @@ from fastapi.responses import JSONResponse
 from app import fixtures
 from app import market_clock
 from app import market_state
+from app import market_dashboard
+from app import concepts
+from app import financials
 from app import tushare_client
 from app import news_aggregate
 from app import review_engine
@@ -22,6 +28,7 @@ from app import top50_engine
 from app import quant_tools
 from app import agents
 from app import accuracy as accuracy_module
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +106,16 @@ def _derive_market_health() -> dict:
     }
 
 
+def _subsystems() -> dict:
+    """已接入的外部子系统清单，供前端决定「量化工具」这个入口怎么走。
+
+    ``url`` 为 ``None`` 表示没配（``QUANT_SUBSYSTEM_URL`` 为空）——前端据此提示未接入，
+    而不是打开一个空白页。只暴露地址，不含任何凭据：TSP 自己有访问密码体系。
+    """
+    url = (settings.quant_subsystem_url or "").strip().rstrip("/")
+    return {"quant": {"label": "量化工作台", "url": url or None}}
+
+
 @router.get("/api/status")
 def status():
     # fixtures.load 是 lru_cache 的共享对象，**不能原地改**；这里重建外层 dict。
@@ -106,11 +123,16 @@ def status():
     # ⚠️ health.market 改为由真实快照派生（见 _derive_market_health），不再读死 fixture 的 partial。
     health = dict(payload.get("health") or {})
     health["market"] = _derive_market_health()
-    return {**payload, "health": health, "session": _live_session()}
+    return {
+        **payload,
+        "health": health,
+        "session": _live_session(),
+        "subsystems": _subsystems(),
+    }
 
 
 @router.get("/api/market")
-def market(refresh: int = 0):
+async def market(refresh: int = 0, scope: str = "snapshot", supplement: bool = True):
     """行情快照：优先服务 post-close 落盘的真实收盘行情，否则回落 fixtures 静态样例。
 
     ⚠️ 只在本进程已拉过当天行情（``_LATEST_CACHE.trade_date`` 指向当前窗口交易日）且
@@ -120,12 +142,65 @@ def market(refresh: int = 0):
     /api/top50 的口径），让前端能区分"真实快照"与"种子样例"，不再把 2026-10-08 的种子
     数据误标成 ``live``。
     """
+    if scope == "all":
+        try:
+            trade_date, rows = await asyncio.wait_for(tushare_client._latest_market_trade_date(), timeout=75)
+            try:
+                universe = await tushare_client._stock_basic_universe()
+            except tushare_client.TushareError:
+                universe = []
+            payload = market_dashboard.build_snapshot(trade_date, rows, universe)
+            if not payload["quotes"]:
+                raise tushare_client.TushareError("无可核验的当日行情")
+            if supplement:
+                payload.update(await market_dashboard.fetch_supplement(trade_date))
+            return payload
+        except (tushare_client.TushareError, asyncio.TimeoutError) as exc:
+            logger.warning("市场看板行情不可用：%s", exc)
+            return JSONResponse(status_code=503, content={
+                "meta": {"status": "unavailable", "sourceMode": "none"},
+                "quotes": [], **tushare_client.public_error(exc),
+            })
     snap = _live_market_snapshot()
     if snap:
         return snap
     base = fixtures.load("market")
     meta = {**(base.get("meta") or {}), "sourceMode": "fixtures", "status": "fixtures"}
     return {**base, "meta": meta}
+
+
+@router.get("/api/market/supplement")
+async def market_supplement(trade_date: date):
+    # 与基础日线独立请求，慢指数或连板接口不阻塞全市场统计。
+    payload = await market_dashboard.fetch_supplement(trade_date.strftime("%Y%m%d"))
+    return {"tradeDate": trade_date.isoformat(), **payload}
+
+
+async def _concept_response(request):
+    try:
+        return await asyncio.wait_for(request, timeout=65)
+    except Exception as exc:
+        logger.warning("概念数据不可用 (%s)", type(exc).__name__)
+        return JSONResponse(status_code=503, content={"message": "概念数据源暂不可用或返回不完整，请稍后重试。"})
+
+
+@router.get("/api/concepts")
+async def concept_snapshot():
+    return await _concept_response(concepts.snapshot())
+
+
+@router.get("/api/concepts/{section}")
+async def concept_detail(section: Literal["flows", "history", "members"], trade_date: date,
+                         code: str | None = Query(default=None, pattern=r"^BK\d{4,6}\.DC$"),
+                         days: int = Query(default=60, ge=10, le=180)):
+    day = trade_date.strftime("%Y%m%d")
+    if section == "flows":
+        return await _concept_response(concepts.flows(day))
+    if not code:
+        return JSONResponse(status_code=422, content={"message": "请选择概念板块"})
+    if section == "history":
+        return await _concept_response(concepts.history(code, day, days))
+    return await _concept_response(concepts.members(code, day))
 
 
 @router.get("/api/top50")
@@ -337,9 +412,10 @@ async def stocks_search(q: str = Query(default="")):
     try:
         items = await tushare_client.search_stock_basic(q)
     except tushare_client.TushareError as exc:
+        detail = tushare_client.public_error(exc)
         return JSONResponse(
             status_code=503,
-            content={"status": "unavailable", "error": str(exc)},
+            content={"status": "unavailable", "error": detail["message"], **detail},
         )
     return {"status": "ready", "items": items}
 
@@ -347,6 +423,16 @@ async def stocks_search(q: str = Query(default="")):
 @router.get("/api/stocks/{code}/metrics")
 def stock_metrics(code: str):
     return {"status": "empty", "code": code, "metrics": None}
+
+
+@router.get("/api/stocks/{code}/financials")
+async def stock_financials(code: str):
+    try:
+        return await financials.snapshot(code)
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"message": str(exc), "retryable": False})
+    except tushare_client.TushareError as exc:
+        return JSONResponse(status_code=503, content=tushare_client.public_error(exc))
 
 
 @router.get("/api/stocks/{code}/quote")
@@ -361,9 +447,11 @@ async def stock_quote(code: str):
     try:
         snap = await tushare_client.get_stock_snapshot(code)
     except tushare_client.TushareError as exc:
+        detail = tushare_client.public_error(exc)
+        logger.warning("股票 %s 报价不可用：%s", code, detail["errorCode"])
         return JSONResponse(
             status_code=503,
-            content={"status": "unavailable", "error": str(exc)},
+            content={"status": "unavailable", "error": detail["message"], **detail},
         )
     return {"status": "ready", "quote": snap}
 

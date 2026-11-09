@@ -7,11 +7,11 @@
 - ``screener`` 该周期榜单前 N（硬风险门控在入池前已执行）；
 - ``predict``  参考价/概率/目标区间/失效位（目标区间按概率偏离 0.5 的幅度动态给）；
 - ``evaluate`` / ``signals`` 各因子得分 + 分歧度(max-min) + 允许/禁止动作；
-- ``backtest``  **真实历史行情**跑 20 日均线趋势策略，含净值曲线（策略 vs 基准）。
+- ``backtest``  **真实历史行情**运行可配置策略，含复权净值、成本、交易与持仓记录。
 
 ⚠️ 三条硬约束（与本项目「不伪造数据」原则一致）：
 1. 快照不可用 → 抛错，不回落 fixtures；
-2. 回测历史不足 30 行 → 抛错，不放宽门槛；
+2. 回测预热不足 / 价格或复权数据缺失 → 抛错；
 3. 行情源不可用 → 抛 ``TushareError``，由路由转明确报错，不返回假净值。
 """
 from __future__ import annotations
@@ -144,6 +144,8 @@ async def run_tool(tool: str, body: dict | None = None) -> dict:
     stock = await _stock_from_snapshot(snapshot, stock_code, cycle)
     if not stock:
         raise QuantError("快照里没有可用标的")
+    if tool == "backtest" and (not stock_code or stock.get("code") != stock_code):
+        raise QuantError("请选择当前榜单中的有效标的，不会替换为其它股票")
     common = _common(snapshot, cycle, stock)
 
     # ---- market：冻结 TOP50 + 行情来源 + 该周期 TOP10 ----
@@ -218,7 +220,7 @@ async def run_tool(tool: str, body: dict | None = None) -> dict:
             "prohibitedAction": "未触发前追价、跌破失效位补仓",
         }
 
-    # ---- backtest：真实历史行情跑 20 日均线趋势 ----
+    # ---- backtest：真实历史行情与可配置策略 ----
     if tool == "backtest":
         return {**common, **(await _backtest(stock, body))}
 
@@ -226,84 +228,47 @@ async def run_tool(tool: str, body: dict | None = None) -> dict:
 
 
 async def _backtest(stock: dict, body: dict) -> dict:
-    """20 日均线趋势策略真实回测（对齐原版 4958-5012）。
-
-    策略：前 20 日收盘均值；昨日收盘 > 均值则**今日持仓**（信号滞后一日，原版口径），
-    走当日涨跌幅。返回净值曲线（策略 vs 基准）。不足 30 行历史直接抛错。
-    """
-    end_date = _compact(body.get("endDate") or _today())
-    default_start = (
-        datetime.now(_SHANGHAI) - timedelta(days=365)
-    ).strftime("%Y-%m-%d")
-    start_date = _compact(body.get("startDate") or default_start)
+    from app import backtest
+    import asyncio
+    from datetime import date
 
     try:
-        rows = await tushare_client._call(
-            "daily",
-            {
-                "ts_code": stock.get("tsCode") or _to_ts_code(stock.get("code") or ""),
-                "start_date": start_date,
-                "end_date": end_date,
-            },
-            "ts_code,trade_date,close,pct_chg",
-        )
-    except tushare_client.TushareError as exc:
-        raise QuantError(f"回测行情不可用：{exc}") from exc
+        options = backtest.parameters(body, datetime.now(_SHANGHAI).date())
+        code = stock.get("tsCode") or tushare_client._to_ts_code(stock.get("code") or "")
+        start = date.fromisoformat(options["startDate"])
+        period = options["maPeriod"] if options["strategyId"] == "ma" else options["slowPeriod"] if options["strategyId"] == "dual_ma" else 0
+        ranges = [(options["startDate"], options["endDate"])]
+        if period:
+            ranges.insert(0, ((start - timedelta(days=min(365, period * 3 + 15))).isoformat(), (start - timedelta(days=1)).isoformat()))
 
-    ordered = sorted(
-        (r for r in rows if r.get("close") is not None),
-        key=lambda r: str(r.get("trade_date")),
-    )
-    if len(ordered) < 30:
-        raise QuantError(f"回测历史不足：仅 {len(ordered)} 行（至少需要 30 行）")
+        async def fetch(api, interval):
+            fields = "ts_code,trade_date,open,close" if api == "daily" else "ts_code,trade_date,adj_factor"
+            rows = await tushare_client._call(api, {"ts_code": code, "start_date": _compact(interval[0]), "end_date": _compact(interval[1])}, fields)
+            if any(r.get("ts_code") != code or not _compact(interval[0]) <= str(r.get("trade_date", "")) <= _compact(interval[1]) for r in rows):
+                raise ValueError("历史数据的股票或日期与请求不符")
+            return rows
 
-    strategy_equity = 1.0
-    benchmark_equity = 1.0
-    peak = 1.0
-    max_drawdown = 0.0
-    invested_days = 0
-    positive_days = 0
-    entries = 0
-    previous_invested = False
-    curve: list[dict] = []
-    step = max(1, len(ordered) // 100)
-
-    for index in range(20, len(ordered)):
-        window = [float(ordered[i]["close"]) for i in range(index - 20, index)]
-        average = sum(window) / len(window)
-        invested = float(ordered[index - 1]["close"]) > average
-        daily_return = float(ordered[index].get("pct_chg") or 0) / 100
-        benchmark_equity *= 1 + daily_return
-        if invested:
-            strategy_equity *= 1 + daily_return
-            invested_days += 1
-            if daily_return > 0:
-                positive_days += 1
-        if invested and not previous_invested:
-            entries += 1
-        previous_invested = invested
-        peak = max(peak, strategy_equity)
-        max_drawdown = min(max_drawdown, strategy_equity / peak - 1)
-        if index % step == 0 or index == len(ordered) - 1:
-            curve.append(
-                {
-                    "date": _iso(str(ordered[index]["trade_date"])),
-                    "strategy": round(strategy_equity, 4),
-                    "benchmark": round(benchmark_equity, 4),
-                }
-            )
-
-    return {
-        "strategy": "20日均线趋势（信号滞后一日，未计手续费与滑点）",
-        "sampleCount": len(ordered),
-        "startDate": _iso(start_date),
-        "endDate": _iso(end_date),
-        "totalReturn": round((strategy_equity - 1) * 100, 2),
-        "benchmarkReturn": round((benchmark_equity - 1) * 100, 2),
-        "maxDrawdown": round(max_drawdown * 100, 2),
-        "investedDayWinRate": (
-            round(positive_days / invested_days * 100, 2) if invested_days else None
-        ),
-        "entries": entries,
-        "equityCurve": curve,
-    }
+        results = await asyncio.gather(*(fetch(api, interval) for api in ("daily", "adj_factor") for interval in ranges))
+        count = len(ranges)
+        rows = [r for group in results[:count] for r in group]
+        factors = [r for group in results[count:] for r in group]
+        # 上游区间查询偶有漏行，按日补查；不推算或向前填充复权因子。
+        dates = sorted({r["trade_date"] for r in rows})
+        pre = [d for d in dates if d < _compact(options["startDate"])]
+        required = (pre[-period:] if period else []) + [d for d in dates if d >= _compact(options["startDate"])]
+        existing = {r["trade_date"] for r in factors}
+        missing = [d for d in required if d not in existing]
+        if len(missing) > 20:
+            raise ValueError(f"复权因子缺少 {len(missing)} 个交易日，请缩短区间或更换标的")
+        semaphore = asyncio.Semaphore(3)
+        async def repair(day):
+            async with semaphore:
+                values = await tushare_client._call("adj_factor", {"ts_code": code, "trade_date": day}, "ts_code,trade_date,adj_factor")
+                if any(r.get("ts_code") != code or r.get("trade_date") != day for r in values):
+                    raise ValueError("补查复权因子的股票或日期与请求不符")
+                return values
+        for values in await asyncio.gather(*(repair(day) for day in missing)):
+            factors.extend(values)
+        return backtest.simulate(rows, factors, options)
+    except (ValueError, tushare_client.TushareError) as exc:
+        raise QuantError(f"回测未完成：{exc}") from exc

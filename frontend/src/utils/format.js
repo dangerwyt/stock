@@ -33,6 +33,12 @@ export function displayField(value, fallback = '--') {
   return value == null || value === '' ? fallback : String(value)
 }
 
+export function findDecisionStock(code, currentRanking, allRanked) {
+  return currentRanking?.find(item => item.code === code)
+    || allRanked.find(item => item.code === code)
+    || null
+}
+
 // 成交额单位换算：value 为 Tushare 的 amount（单位＝千元）。
 // unit === 'yuan' 时按元换算（÷1e8），否则按千元换算（÷1e5），结果统一为「亿」。
 export function formatDailyAmount(value, unit) {
@@ -52,7 +58,6 @@ export function hydrateStock(item) {
     name: item?.name || base.name || item?.code || '未知股票',
     code: item?.code || base.code || '',
     industry: item?.industry || base.industry || '行业待映射',
-    price: Number(item?.close ?? item?.price ?? base.price ?? 0),
     pct,
     score: Number(item?.score ?? base.score ?? 0),
     confidence: Number(item?.confidence ?? base.confidence ?? 0),
@@ -67,6 +72,8 @@ export function hydrateStock(item) {
     trigger: item?.trigger || (Number.isFinite(Number(item?.triggerPrice)) ? `突破当日高点 ${Number(item.triggerPrice).toFixed(2)}` : liveRankedItem ? '暂无真实触发位' : base.trigger || '暂无真实触发位'),
     invalid: item?.invalid || (Number.isFinite(Number(item?.invalidPrice)) ? `跌破当日低点 ${Number(item.invalidPrice).toFixed(2)}` : liveRankedItem ? '暂无真实失效位' : base.invalid || '暂无真实失效位'),
     ...item,
+    // 合并行情后 close 才是新报价，不能再被旧对象的 price 占位值覆盖。
+    price: Number(item?.close ?? item?.price ?? base.price ?? 0),
   }
 }
 

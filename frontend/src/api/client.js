@@ -7,13 +7,21 @@ export const http = axios.create({ baseURL: '/', timeout: 20000 })
 // `fresh: true` 绕过 1 秒去重缓存 —— 刚 POST 改完后端状态再读，必须拿到新结果。
 const cache = new Map()
 
-export async function fetchSnapshot(url, { timeout = 20000, fresh = false } = {}) {
+export async function fetchSnapshot(url, { timeout = 20000, fresh = false, retry = false } = {}) {
   const cached = cache.get(url)
   if (!fresh && cached && (cached.pending || Date.now() - cached.at < 1000)) return cached.promise
   const entry = { pending: true, at: Date.now() }
-  entry.promise = http
-    .get(url, { params: { _t: Date.now() }, timeout })
-    .then((r) => r.data)
+  entry.promise = (async () => {
+    for (let attempt = 0; ; attempt++) {
+      try { return (await http.get(url, { params: { _t: Date.now() }, timeout })).data }
+      catch (error) {
+        const status = error.response?.status
+        const temporary = [429, 502, 503, 504].includes(status) || ['ECONNABORTED', 'ETIMEDOUT', 'ERR_NETWORK'].includes(error.code)
+        if (!retry || attempt > 0 || !temporary || error.response?.data?.retryable === false) throw error
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+    }
+  })()
     .finally(() => {
       entry.pending = false
       entry.at = Date.now()

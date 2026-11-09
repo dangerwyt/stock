@@ -46,6 +46,7 @@ _SNAPSHOT_LOCK = asyncio.Lock()
 # 存在的意义：``top50`` job 与 ``market-close`` job（每天 3 轮）拉的**是同一份数据**，
 # 缓存后一天只真拉 2 次（收盘前后各一次），而不是各自重拉。
 _LATEST_CACHE: dict[str, Any] = {"window": None, "trade_date": None, "rows": None}
+_LATEST_LOCK = asyncio.Lock()
 
 # 主源「额度用尽」熔断。
 #
@@ -89,6 +90,19 @@ class TushareError(RuntimeError):
 
     按「必须实时」策略，调用方应把它转成明确报错（如 503），**不要**回落到 fixtures 假数据。
     """
+
+
+def public_error(error: Exception) -> dict:
+    """供页面展示的固定错误说明，不透传上游响应中的账户信息。"""
+    # 已尝试备用源时，以它的最终失败原因决定是否可重试。
+    message = str(error).lower().rsplit('备用:', 1)[-1]
+    if '409' in message and any(word in message for word in ('notice', '提示', '确认')):
+        return {"errorCode": "provider_notice_required", "message": "ProMax 要求确认今日账户提示，请到数据源账户页处理后刷新。", "retryable": False}
+    if _is_quota_error(message):
+        return {"errorCode": "provider_quota", "message": "行情源调用额度已用完，请待额度恢复后刷新。", "retryable": False}
+    if any(word in message for word in ('unauthorized', '401', '403', '未配置', '已过期')):
+        return {"errorCode": "provider_auth", "message": "行情源鉴权或配置异常，请检查账户授权。", "retryable": False}
+    return {"errorCode": "provider_unavailable", "message": "行情源暂时无法响应，请稍后刷新重试。", "retryable": True}
 
 
 def _to_ts_code(code: str) -> str:
@@ -350,7 +364,7 @@ async def search_stock_basic(query: str, limit: int = 20) -> list[dict]:
     return [
         it
         for it in universe
-        if q in it["code"].lower() or q in str(it["name"]).lower()
+        if q in it["code"].lower() or q in str(it["name"]).lower() or q in str(it.get("industry") or "").lower()
     ][:limit]
 
 
@@ -383,9 +397,17 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
     start_s = _compact(start.strftime("%Y-%m-%d"))
     end_s = _compact(end.strftime("%Y-%m-%d"))
 
+    async def stock_identity():
+        # 搜索加入自选时全市场资料已缓存，复用它避免再次请求同一份基础信息。
+        if _UNIVERSE["data"] is not None and time.time() - _UNIVERSE["at"] < _UNIVERSE_TTL_SECONDS:
+            hit = next((r for r in _UNIVERSE["data"] if r.get("tsCode") == ts_code), None)
+            if hit:
+                return [hit]
+        return await _call("stock_basic", {"ts_code": ts_code, "list_status": "L"},
+                           "ts_code,symbol,name,industry,market,list_date")
+
     basics, daily, daily_basic = await asyncio.gather(
-        _call("stock_basic", {"ts_code": ts_code, "list_status": "L"},
-              "ts_code,symbol,name,industry,market,list_date"),
+        stock_identity(),
         _call("daily", {"ts_code": ts_code, "start_date": start_s, "end_date": end_s},
               "ts_code,trade_date,open,high,low,close,pre_close,pct_chg,vol,amount"),
         _call("daily_basic", {"ts_code": ts_code, "start_date": start_s, "end_date": end_s},
@@ -393,9 +415,13 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         return_exceptions=True,
     )
 
-    # 基础信息都拿不到（通常网络/鉴权失败），按「必须实时」直接报错，不编造。
+    # 日线失败必须保留原因，不能以只有名称的 200 响应掩盖上游拒绝。
+    if isinstance(daily, Exception):
+        raise TushareError(f"Tushare 获取日线失败：{daily}")
     if isinstance(basics, Exception):
-        raise TushareError(f"Tushare 获取基础信息失败：{basics}")
+        if not daily:
+            raise TushareError(f"Tushare 获取基础信息失败：{basics}")
+        basics = []
 
     name = industry = None
     if basics:
@@ -415,10 +441,17 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         "low": None, "preClose": None, "turnoverRate": None,
         "volumeRatio": None, "peTtm": None, "pb": None,
         "amount": None, "amplitude": None,
+        "tradeDate": None, "history": [],
     }
 
     if not isinstance(daily, Exception) and daily:
         last = sorted(daily, key=lambda x: str(x.get("trade_date") or ""), reverse=True)[0]
+        snap["tradeDate"] = str(last.get("trade_date") or "")
+        snap["history"] = [
+            {"date": str(r.get("trade_date") or ""),
+             **{key: _num(r.get(key)) for key in ("open", "close", "high", "low", "vol")}}
+            for r in sorted(daily, key=lambda r: str(r.get("trade_date") or ""))[-21:]
+        ]
         snap["close"] = _num(last.get("close"))
         snap["pct"] = _num(last.get("pct_chg"))
         snap["open"] = _num(last.get("open"))
@@ -427,8 +460,10 @@ async def _build_stock_snapshot(ts_code: str, code: str) -> dict:
         snap["preClose"] = _num(last.get("pre_close"))
         snap["amount"] = _num(last.get("amount"))
 
+    if not isinstance(daily_basic, Exception):
+        daily_basic = [r for r in daily_basic if str(r.get("trade_date") or "") == snap["tradeDate"]]
     if not isinstance(daily_basic, Exception) and daily_basic:
-        last = sorted(daily_basic, key=lambda x: str(x.get("trade_date") or ""), reverse=True)[0]
+        last = daily_basic[0]
         snap["turnoverRate"] = _num(last.get("turnover_rate"))
         snap["volumeRatio"] = _num(last.get("volume_ratio"))
         snap["peTtm"] = _num(last.get("pe_ttm"))
@@ -465,6 +500,12 @@ def _data_window(now: datetime | None = None) -> str:
 
 
 async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tuple[str, list[dict]]:
+    # 合并首次加载的并发请求，后到的页面复用前一个请求填入的窗口缓存。
+    async with _LATEST_LOCK:
+        return await _load_latest_market_trade_date(days_back, tries)
+
+
+async def _load_latest_market_trade_date(days_back: int, tries: int) -> tuple[str, list[dict]]:
     """返回最近一个「有全市场行情数据」的交易日（YYYYMMDD）及其 daily 行。
 
     用 ``trade_cal`` 列出近 N 个交易日，从最新往前试 ``daily``，取第一个 ≥50 行的
@@ -494,7 +535,9 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
         },
         "cal_date,is_open",
     )
-    dates = sorted({str(r.get("cal_date")) for r in cal if r.get("cal_date")}, reverse=True)
+    # 收盘落库窗口前不请求今日 daily，避免等待尚未产生的数据。
+    dates = sorted({str(r.get("cal_date")) for r in cal
+                    if r.get("cal_date") and str(r["cal_date"]) <= window}, reverse=True)
     for d in dates[:tries]:
         try:
             rows = await _call(
@@ -502,7 +545,9 @@ async def _latest_market_trade_date(days_back: int = 30, tries: int = 8) -> tupl
                 {"trade_date": d},
                 _DAILY_FIELDS,
             )
-        except TushareError:
+        except TushareError as exc:
+            if not public_error(exc)["retryable"]:
+                raise
             continue
         if len(rows) >= 50:
             # 字段补齐放在缓存**之前**：缓存的这份是多个 job 共用的，

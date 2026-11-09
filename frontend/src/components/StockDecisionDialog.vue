@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/snapshot'
 import { fetchSnapshot } from '@/api/client'
 import {
   hydrateStock,
+  findDecisionStock,
   displayField,
   formatShanghaiTime,
   formatShanghaiDateTime,
@@ -113,12 +114,15 @@ watch(
 
 const selected = computed(() => {
   if (!code.value) return null
-  const top = allRanked.value.find((s) => s.code === code.value)
+  // 调用方的当前周期优先，不能被其他周期的同名股票覆盖。
+  const top = findDecisionStock(code.value, state.ranked, allRanked.value)
   if (top) return top
   // 非 TOP50：基础信息来自 search/调用方，行情优先用实时 quote 补全（因子分永远没有，保持 --）。
   const base = state.stock && state.stock.code === code.value ? hydrateStock(state.stock) : resolved.value
   if (!base && !quote.value) return null
-  return hydrateStock({ ...(base || {}), ...(quote.value || {}) })
+  const day = quote.value?.tradeDate
+  const marketDataDate = /^\d{8}$/.test(day || '') ? `${day.slice(0,4)}-${day.slice(4,6)}-${day.slice(6)}` : base?.marketDataDate
+  return hydrateStock({ ...(base || {}), ...(quote.value || {}), marketDataDate })
 })
 
 // 是否 TOP50 榜单标的：决定 score/consensus/price 等专属字段能否展示，

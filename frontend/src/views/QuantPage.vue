@@ -5,14 +5,19 @@ import { useSnapshot } from "@/composables/useSnapshot";
 import { http, fetchSnapshot } from "@/api/client";
 import { useAppStore } from "@/stores/snapshot";
 import StatusBadge from "@/components/StatusBadge.vue";
-import EChart from "@/components/EChart.vue";
+import BacktestBoard from "@/components/BacktestBoard.vue";
+import ConceptBoard from "@/components/ConceptBoard.vue";
+import FinancialBoard from "@/components/FinancialBoard.vue";
+import TeacherStrategyBoard from "@/components/TeacherStrategyBoard.vue";
+import WatchlistBoard from "@/components/WatchlistBoard.vue";
+import MarketBoard from "@/components/MarketBoard.vue";
 import { hydrateStock } from "@/utils/format";
 import {
   IconActivity,
   IconFileAnalytics,
   IconChartCandle,
   IconBell,
-  IconSearch,
+  IconStar,
   IconTargetArrow,
   IconShieldCheck,
   IconBriefcase2,
@@ -24,11 +29,8 @@ import {
 
 const route = useRoute();
 const router = useRouter();
-const { data: platformStatus } = useSnapshot("/api/status", {
-  refreshMs: 60000,
-});
 const { data: accuracy } = useSnapshot("/api/accuracy", { refreshMs: 60000 });
-const { data: top50Snapshot } = useSnapshot("/api/top50", {
+const { data: top50Snapshot, state: top50State, reload: reloadTop50 } = useSnapshot("/api/top50", {
   refreshMs: 300000,
 });
 // 全局自选股（localStorage 持久化，与侧边栏/自选组合/单股决策弹窗同源）。
@@ -39,19 +41,13 @@ const store = useAppStore();
 const teacherCount = computed(
   () => Number(top50Snapshot.value?.meta?.teacherCount) || 1,
 );
-// 模板里不做字符串拼接（约定：模板属性内禁止内联运算），按钮文案在这里算好。
-const analysisRunLabel = computed(
-  () => `${teacherCount.value}套因子画像分析已更新`,
-);
-
 const quantToolTabs = [
-  { id: "market", label: "行情", icon: IconActivity },
+  { id: "market", label: "市场看板", icon: IconActivity },
   { id: "analysis", label: "分析", icon: IconFileAnalytics },
+  { id: "strategy", label: "策略", icon: IconBrain },
   { id: "backtest", label: "回测", icon: IconChartCandle },
-  { id: "signals", label: "信号", icon: IconBell },
-  { id: "screener", label: "选股", icon: IconSearch },
-  { id: "predict", label: "预判", icon: IconTargetArrow },
-  { id: "evaluate", label: "评估", icon: IconShieldCheck },
+  { id: "financial", label: "财务分析", icon: IconFileAnalytics },
+  { id: "screener", label: "自选", icon: IconStar },
   { id: "simulation", label: "模拟", icon: IconBriefcase2 },
 ];
 
@@ -99,13 +95,6 @@ const trades = ref([]);
 // 持仓标的的实时报价（code -> quote）：不在 TOP50/自选里时也能拿到真实现价，
 // 否则现价会回落成成本价、浮动盈亏恒为 0。
 const heldQuotes = ref({});
-const backtestStart = ref("2025-01-01");
-const backtestEnd = ref(
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(
-    new Date(),
-  ),
-);
-
 // 自选股解析：在 TOP50 榜单里的直接复用榜单信息；不在榜单里的异步拉
 // /api/stocks/search 补名字，选中后按需拉 /api/stocks/{code}/quote 补实时价
 // （与单股决策弹窗同源 —— 榜单外标的没有因子分，只有基础信息+实时行情）。
@@ -294,18 +283,6 @@ const totalAssets = computed(() => cash.value + totalPositionValue.value);
 // 累计盈亏 = 总资产 - 初始本金（恒等于「已实现 + 浮动」）。
 const totalPnl = computed(() => totalAssets.value - INITIAL_CAPITAL);
 const totalPnlPct = computed(() => (totalPnl.value / INITIAL_CAPITAL) * 100);
-const marketSourceStatusLabel = computed(
-  () =>
-    ({
-      live: "实时",
-      partial: "部分更新",
-      snapshot: "缓存快照",
-      stale: "缓存快照",
-      unavailable: "不可用",
-    })[toolResult.value?.marketSource?.status] ||
-    toolResult.value?.marketSource?.status ||
-    "不可用",
-);
 
 async function run(message, requestedTool = tool.value, extra = {}) {
   setFeedback("正在读取冻结因子榜与真实数据源…", requestedTool);
@@ -521,7 +498,8 @@ function switchTool(id) {
 watch(
   () => route.query.tool,
   (v) => {
-    if (v && v !== tool.value && validTools.includes(v)) switchTool(v);
+    const next = validTools.includes(v) ? v : "market";
+    if (next !== tool.value) switchTool(next);
   },
 );
 
@@ -562,74 +540,16 @@ function fmtSignedPct(v) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-// 回测净值曲线配置（策略 vs 基准双线，真实历史行情现算）。
-// 空数组时显示"暂无净值数据"，不画假线。
-const equityCurveOptions = computed(() => {
-  const curve = toolResult.value?.equityCurve || [];
-  const dates = curve.map((p) => p.date);
-  return {
-    grid: { left: 48, right: 20, top: 24, bottom: 32 },
-    tooltip: { trigger: "axis" },
-    legend: { data: ["策略净值", "基准净值"], top: 0, textStyle: { fontSize: 12 } },
-    xAxis: { type: "category", data: dates, axisLabel: { fontSize: 11 } },
-    yAxis: {
-      type: "value",
-      scale: true,
-      axisLabel: { fontSize: 11, formatter: (v) => v.toFixed(2) },
-    },
-    series: [
-      {
-        name: "策略净值",
-        type: "line",
-        showSymbol: false,
-        smooth: true,
-        data: curve.map((p) => p.strategy),
-        lineStyle: { width: 2, color: "#378ADD" },
-        itemStyle: { color: "#378ADD" },
-      },
-      {
-        name: "基准净值",
-        type: "line",
-        showSymbol: false,
-        smooth: true,
-        data: curve.map((p) => p.benchmark),
-        lineStyle: { width: 1.5, type: "dashed", color: "#888780" },
-        itemStyle: { color: "#888780" },
-      },
-    ],
-  };
-});
-const equityCurvePoints = computed(
-  () => (toolResult.value?.equityCurve || []).length,
-);
 </script>
 
 <template>
   <div class="simple-page quant-tool-page">
-    <div class="page-toolbar">
-      <div>
-        <h1>量化工具</h1>
-        <p>与 TOP50、{{ teacherCount }}套因子画像、风险纪律和模拟研究联动</p>
-      </div>
-      <span
-        :class="[
-          'tool-data-state',
-          { degraded: !platformStatus?.providers?.quant?.configured },
-        ]"
-      >
-        <i />
-        {{
-          platformStatus?.providers?.quant?.configured
-            ? "量化接口已配置 · 运行后显示真实结果"
-            : "真实量化引擎待配置"
-        }}
-      </span>
-    </div>
-
-    <div class="quant-tool-tabs">
+    <div class="quant-tool-tabs" role="tablist" aria-label="量化工具">
       <button
         v-for="t in quantToolTabs"
         :key="t.id"
+        role="tab"
+        :aria-selected="tool === t.id"
         :class="{ active: tool === t.id }"
         @click="switchTool(t.id)"
       >
@@ -647,224 +567,15 @@ const equityCurvePoints = computed(
       </button>
     </div>
 
-    <!-- 行情 -->
-    <div v-if="tool === 'market'" class="tool-workspace">
-      <div class="tool-form-row">
-        <el-select
-          v-model="cycle"
-          class="ep-form-control ep-form-control--cycle"
-          aria-label="持有周期"
-          ><el-option v-for="c in cycleOptions" :key="c" :label="c" :value="c"
-        /></el-select>
-        <button class="primary-button" @click="run('行情快照已读取', 'market')">
-          读取真实行情快照
-        </button>
-      </div>
-      <section class="panel screener-result">
-        <div v-if="!toolResult" class="account-empty">
-          <IconActivity :size="22" /><strong>读取后显示行情来源和TOP10</strong>
-          <p>运行后显示真实结果</p>
-        </div>
-        <template v-else>
-          <div class="panel-head">
-            <div>
-              <h2>冻结TOP50因子榜</h2>
-              <span
-                >排序：{{ toolResult.rankingSource?.provider || "待确认" }} ·
-                数据日
-                {{ toolResult.rankingSource?.dataDate || "--" }}；盘中：{{
-                  toolResult.marketSource?.provider || "不可用"
-                }}
-                · {{ marketSourceStatusLabel }}</span
-              >
-            </div>
-            <strong>{{ toolResult.top10?.length || 0 }}只</strong>
-          </div>
-          <div class="scanner-table">
-            <div class="scanner-head">
-              <span>排名</span><span>股票</span><span>综合分</span
-              ><span>共识</span><span>涨跌幅</span><span>状态</span>
-            </div>
-            <div v-for="item in toolResult.top10 || []" :key="item.code">
-              <b>#{{ item.rank }}</b>
-              <span
-                ><strong>{{ item.name }}</strong
-                ><small>{{ item.code }}</small></span
-              >
-              <em>{{ item.score }}</em
-              ><span>{{ item.agentVotes }}/{{ teacherCount }}</span>
-              <span :class="item.pct >= 0 ? 'price-up' : 'price-down'">{{
-                pctText(item.pct)
-              }}</span>
-              <StatusBadge :status="item.status || '仅观察'" />
-            </div>
-          </div>
-        </template>
-      </section>
-    </div>
+    <KeepAlive><MarketBoard v-if="tool === 'market'" /></KeepAlive>
 
     <!-- 分析 -->
-    <div v-if="tool === 'analysis'" class="tool-workspace">
-      <div class="tool-form-row">
-        <el-select
-          v-model="stockCode"
-          class="ep-form-control ep-form-control--stock"
-          filterable
-          placeholder="选择标的"
-          aria-label="选择标的"
-          ><el-option
-            v-for="s in rankedStockChoices"
-            :key="s.value"
-            :label="s.label"
-            :value="s.value"
-        /></el-select>
-        <button
-          class="primary-button"
-          @click="run(analysisRunLabel, 'analysis')"
-        >
-          运行完整分析
-        </button>
-      </div>
-      <div v-if="!toolResult" class="account-empty">
-        <IconFileAnalytics :size="22" /><strong>运行后显示真实结果</strong>
-        <p>因子画像分析需要读取冻结快照。</p>
-      </div>
-      <template v-else>
-        <section class="panel evaluation-result">
-          <div class="evaluation-score">
-            <span>冻结综合分</span
-            ><strong>{{ toolResult.stock?.score ?? "--" }}</strong>
-            <p>{{ toolResult.conclusion }}</p>
-          </div>
-          <div class="evaluation-dimensions">
-            <div
-              v-for="[label, score] in Object.entries(
-                toolResult.factorScores || {},
-              )"
-              :key="label"
-            >
-              <span>{{ label }}</span>
-              <div><i :style="{ width: `${score}%` }" /></div>
-              <b>{{ Math.round(score) }}</b>
-            </div>
-          </div>
-        </section>
-        <section class="panel ai-insight-panel">
-          <IconBrain :size="22" />
-          <div>
-            <span>领先因子画像</span>
-            <h2>{{ toolResult.topAgents?.join("、") || "暂无" }}</h2>
-            <p>
-              实际支持 {{ toolResult.agentVotes ?? 0 }}/{{ teacherCount }} ·
-              行情日 {{ toolResult.marketDataDate }}
-            </p>
-          </div>
-          <strong>{{ toolResult.stock?.score ?? "--" }}</strong>
-        </section>
-      </template>
-    </div>
+    <KeepAlive><ConceptBoard v-if="tool === 'analysis'" /></KeepAlive>
+    <KeepAlive><FinancialBoard v-if="tool === 'financial'" /></KeepAlive>
+    <KeepAlive><TeacherStrategyBoard v-if="tool === 'strategy'" :snapshot="top50Snapshot" :snapshot-state="top50State" :reload-snapshot="reloadTop50" /></KeepAlive>
 
-    <!-- 回测 -->
-    <div v-if="tool === 'backtest'" class="tool-workspace">
-      <div class="tool-form-row">
-        <el-select
-          v-model="stockCode"
-          class="ep-form-control ep-form-control--stock"
-          filterable
-          placeholder="选择标的"
-          aria-label="选择标的"
-          ><el-option
-            v-for="s in rankedStockChoices"
-            :key="s.value"
-            :label="s.label"
-            :value="s.value"
-        /></el-select>
-        <el-date-picker
-          v-model="backtestStart"
-          type="date"
-          value-format="YYYY-MM-DD"
-          class="ep-form-control ep-form-control--date"
-          aria-label="回测开始日期"
-          :clearable="false"
-        />
-        <el-date-picker
-          v-model="backtestEnd"
-          type="date"
-          value-format="YYYY-MM-DD"
-          class="ep-form-control ep-form-control--date"
-          aria-label="回测结束日期"
-          :clearable="false"
-        />
-        <button
-          class="primary-button"
-          @click="
-            run('回测完成', 'backtest', {
-              startDate: backtestStart,
-              endDate: backtestEnd,
-            })
-          "
-        >
-          开始真实历史回测
-        </button>
-      </div>
-      <div v-if="!toolResult" class="account-empty">
-        <IconChartCandle :size="22" /><strong
-          >选择日期并运行真实历史回测</strong
-        >
-        <p>运行后显示真实结果</p>
-      </div>
-      <template v-else>
-        <div class="backtest-summary">
-          <div>
-            <span>策略收益</span
-            ><strong
-              :class="toolResult.totalReturn >= 0 ? 'price-up' : 'price-down'"
-              >{{ toolResult.totalReturn }}%</strong
-            >
-          </div>
-          <div>
-            <span>基准收益</span
-            ><strong
-              :class="toolResult.benchmarkReturn >= 0 ? 'price-up' : 'price-down'"
-              >{{ toolResult.benchmarkReturn }}%</strong
-            >
-          </div>
-          <div>
-            <span>持仓日胜率</span
-            ><strong>{{ toolResult.investedDayWinRate ?? "--" }}%</strong>
-          </div>
-          <div>
-            <span>最大回撤</span
-            ><strong class="price-down">{{ toolResult.maxDrawdown }}%</strong>
-          </div>
-          <div>
-            <span>入场次数</span><strong>{{ toolResult.entries }}</strong>
-          </div>
-        </div>
-        <section class="panel backtest-chart-panel">
-          <div class="tool-panel-head">
-            <div>
-              <h2>净值曲线</h2>
-              <span>{{ toolResult.strategy }}</span>
-            </div>
-            <span class="tool-legend"
-              >{{ toolResult.startDate }}—{{ toolResult.endDate }} ·
-              {{ toolResult.sampleCount }}日</span
-            >
-          </div>
-          <div class="backtest-chart">
-            <EChart
-              v-if="equityCurvePoints"
-              :options="equityCurveOptions"
-              height="280px"
-            />
-            <p v-else class="page-data-method">
-              本次回测未产出净值曲线（历史行情不足或行情源不可用）。
-            </p>
-          </div>
-        </section>
-      </template>
-    </div>
+    <!-- 回测独立保存参数与结果，切换 tab 不重新拉取历史数据。 -->
+    <KeepAlive><BacktestBoard v-if="tool === 'backtest'" :stocks="rankedStockChoices" :cycle="cycle" /></KeepAlive>
 
     <!-- 信号 -->
     <div v-if="tool === 'signals'" class="tool-workspace">
@@ -922,65 +633,7 @@ const equityCurvePoints = computed(
       </section>
     </div>
 
-    <!-- 选股 -->
-    <div v-if="tool === 'screener'" class="tool-workspace">
-      <div class="tool-form-row screener-form">
-        <el-select
-          v-model="cycle"
-          class="ep-form-control ep-form-control--cycle"
-          aria-label="持有周期"
-          ><el-option v-for="c in cycleOptions" :key="c" :label="c" :value="c"
-        /></el-select>
-        <button
-          class="primary-button"
-          @click="run('风险门控后的TOP50扫描完成', 'screener', { limit: 30 })"
-        >
-          扫描真实TOP50
-        </button>
-      </div>
-      <section class="panel screener-result">
-        <div v-if="!toolResult" class="account-empty">
-          <IconSearch :size="22" /><strong>运行后显示真实结果</strong>
-          <p>硬风险门控已在入池前执行。</p>
-        </div>
-        <template v-else>
-          <div class="panel-head">
-            <div>
-              <h2>扫描结果</h2>
-              <span
-                >{{ teacherCount }}套因子画像排名 ·
-                硬风险门控已在入池前执行</span
-              >
-            </div>
-            <strong>{{ toolResult.items?.length || 0 }}只</strong>
-          </div>
-          <div class="scanner-table">
-            <div class="scanner-head">
-              <span>排名</span><span>股票</span><span>综合分</span
-              ><span>因子支持</span><span>状态</span><span>操作</span>
-            </div>
-            <div v-for="item in toolResult.items || []" :key="item.code">
-              <b>#{{ item.rank }}</b>
-              <span
-                ><strong>{{ item.name }}</strong
-                ><small>{{ item.code }}</small></span
-              >
-              <em>{{ item.score }}</em
-              ><span>{{ item.agentVotes }}/{{ teacherCount }}</span>
-              <StatusBadge :status="item.status" />
-              <button
-                @click="
-                  stockCode = item.code;
-                  switchTool('predict');
-                "
-              >
-                预判
-              </button>
-            </div>
-          </div>
-        </template>
-      </section>
-    </div>
+    <KeepAlive><WatchlistBoard v-if="tool === 'screener'" :snapshot="top50Snapshot" /></KeepAlive>
 
     <!-- 预判 -->
     <div v-if="tool === 'predict'" class="tool-workspace predict-workspace">
@@ -1157,8 +810,12 @@ const equityCurvePoints = computed(
     <!-- 模拟 -->
     <div
       v-if="tool === 'simulation'"
-      class="tool-workspace simulation-workspace"
+      class="simulation-workspace"
     >
+      <header class="sim-heading">
+        <div><h1><IconBriefcase2 :size="23" />模拟交易</h1><p>跟踪模拟账户资产、持仓和交易记录</p></div>
+        <span class="sim-badge">本机模拟账户</span>
+      </header>
       <div class="simulation-summary">
         <div>
           <span>模拟总资产</span><strong>{{ fmtMoney(totalAssets) }}</strong>
@@ -1195,10 +852,10 @@ const equityCurvePoints = computed(
           ><strong>{{ fmtMoney(totalPositionValue) }}</strong>
         </div>
       </div>
-      <p class="simulation-source-note">
-        数据来源：本机模拟 · 每笔交易已持久保存（重启不丢）
-      </p>
-      <div class="tool-form-row simulation-order">
+      <section class="sim-order-panel">
+      <header class="sim-panel-heading"><h2>模拟下单</h2><span>标的来自当前 TOP50 与自选</span></header>
+      <div class="simulation-order">
+        <label class="sim-field"><span>交易标的</span>
         <el-select
           v-model="stockCode"
           class="ep-form-control ep-form-control--stock"
@@ -1211,6 +868,8 @@ const equityCurvePoints = computed(
             :label="s.label"
             :value="s.value"
         /></el-select>
+        </label>
+        <label class="sim-field"><span>交易数量（股）</span>
         <el-input-number
           v-model="quantity"
           :min="100"
@@ -1219,6 +878,8 @@ const equityCurvePoints = computed(
           class="ep-form-control ep-form-control--number"
           aria-label="模拟交易股数"
         />
+        </label>
+        <label class="sim-field"><span>成交价格（元）</span>
         <el-input-number
           v-model="fillPrice"
           :min="0"
@@ -1226,12 +887,15 @@ const equityCurvePoints = computed(
           :precision="2"
           :controls="false"
           class="ep-form-control ep-form-control--price"
-          placeholder="成交价(留空=现价)"
+          placeholder="留空按行情价"
           aria-label="手动成交价"
           title="留空则按当前行情价成交；填入则按该价格成交"
         />
+        </label>
+        <div class="sim-order-actions">
         <button class="primary-button" @click="buy()">模拟买入</button>
         <button class="danger-button" @click="sell()">模拟卖出</button>
+        </div>
       </div>
       <div class="emotion-selector">
         <span>下单心态</span>
@@ -1246,22 +910,27 @@ const equityCurvePoints = computed(
           ]"
           :key="item"
           :class="{ active: emotion === item }"
+          :aria-pressed="emotion === item"
           @click="emotion = item"
         >
           {{ item }}
         </button>
       </div>
-      <div class="account-tabs">
+      </section>
+      <section class="sim-account-panel">
+      <div class="account-tabs" role="tablist" aria-label="模拟账户记录">
         <button
           v-for="item in ['持仓', '历史', '预委托', '情绪分析']"
           :key="item"
           :class="{ active: accountTab === item }"
+          role="tab"
+          :aria-selected="accountTab === item"
           @click="accountTab = item"
         >
           {{ item }}
         </button>
       </div>
-      <section class="panel account-content">
+      <div class="account-content">
         <div v-if="accountTab === '持仓'">
           <div
             v-for="item in positionList"
@@ -1327,7 +996,74 @@ const equityCurvePoints = computed(
           }}</strong>
           <p>情绪分析仅基于本机模拟交易记录，不推断真实账户行为。</p>
         </div>
+      </div>
       </section>
+      <p class="simulation-source-note">数据来源：本机模拟账户与现有行情快照。交易仅用于模拟记录，不连接真实证券账户。</p>
     </div>
   </div>
 </template>
+
+<style scoped>
+:global(.app-shell.active-tools .app-content) { grid-template-columns: minmax(0, 1fr); }
+.simulation-workspace { color: #234a7b; font-size: 14px; min-width: 0; }
+.sim-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 20px 0; }
+.sim-heading h1 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 23px; }
+.sim-heading h1 svg { color: #287cf0; }
+.sim-heading p { margin: 7px 0 0; color: #738bad; font-size: 13px; }
+.sim-badge { padding: 5px 10px; border: 1px solid #bde5dd; border-radius: 5px; background: #eef9f6; color: #168575; font-size: 12px; }
+.simulation-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+.simulation-summary > div { align-items: flex-start; min-height: 108px; padding: 16px 18px; border: 1px solid #dce7f6; border-radius: 9px; background: #f8fbff; text-align: left; }
+.simulation-summary span { font-size: 13px; color: #6e87aa; }
+.simulation-summary strong { margin-top: 10px; font-size: 24px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.simulation-summary > div:first-child strong { color: #2176ed; }
+.simulation-summary small { margin-top: 5px; font-size: 13px; }
+.sim-order-panel,.sim-account-panel { border: 1px solid #dce7f6; border-radius: 10px; background: #fff; margin-bottom: 18px; overflow: hidden; }
+.sim-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-bottom: 1px solid #e4edf8; }
+.sim-panel-heading h2 { margin: 0; font-size: 16px; }
+.sim-panel-heading > span { color: #738bad; font-size: 12px; }
+.simulation-order { display: grid; grid-template-columns: minmax(200px, 1.4fr) repeat(2, minmax(140px, 1fr)); align-items: end; gap: 16px; margin: 0; padding: 18px; }
+.sim-field { display: flex; flex-direction: column; gap: 9px; min-width: 0; color: #5879a4; font-size: 13px; }
+.simulation-order .ep-form-control { width: 100%; min-width: 0; }
+.simulation-order :deep(.el-select__wrapper),.simulation-order :deep(.el-input__wrapper) { min-height: 40px; border-radius: 7px; background: #fff; }
+.simulation-order :deep(.el-select__placeholder),.simulation-order :deep(.el-input__inner) { font-size: 14px; }
+.simulation-order :deep(.el-input-number__decrease),.simulation-order :deep(.el-input-number__increase) { background: #f5f9ff; color: #5879a4; }
+.sim-order-actions { grid-column: 1 / -1; display: flex; gap: 12px; }
+.sim-order-actions button { width: auto; min-width: 120px; height: 40px; margin: 0; padding: 0 20px; border-radius: 7px; font-size: 14px; cursor: pointer; }
+.sim-order-actions .primary-button { background: #287cf0; border: 1px solid #287cf0; color: #fff; }
+.sim-order-actions .primary-button:hover { background: #1768d5; }
+.sim-order-actions .danger-button { background: #fff2f3; border: 1px solid #f5cbd1; color: #dd5267; }
+.sim-order-actions .danger-button:hover { background: #ffe5e9; }
+.simulation-workspace .emotion-selector { gap: 8px; margin: 0; padding: 14px 18px; min-height: 0; border: 0; border-top: 1px solid #e4edf8; border-radius: 0; background: #fbfdff; }
+.emotion-selector > span { font-size: 13px; color: #738bad; }
+.emotion-selector button { height: 34px; padding: 0 12px; border: 1px solid #dce7f6; border-radius: 6px; background: #fff; color: #5879a4; font-size: 13px; }
+.emotion-selector button.active { background: #edf5ff; color: #2176ed; border-color: #bdd7ff; }
+.emotion-selector button:hover { border-color: #aacaff; }
+.account-tabs { gap: 8px; margin: 0; padding: 12px; border-bottom: 1px solid #e4edf8; overflow-x: auto; }
+.account-tabs button { flex-shrink: 0; height: 38px; padding: 0 16px; border: 1px solid transparent; border-radius: 7px; background: #fff; color: #5879a4; font-size: 14px; }
+.account-tabs button.active { background: #edf5ff; border-color: #c7deff; color: #2176ed; }
+.account-tabs button:hover { background: #f5f9ff; }
+.account-content { min-height: 210px; overflow-x: auto; }
+.account-empty { min-height: 210px; padding: 24px 18px; color: #7893b9; }
+.account-empty > svg { width: 38px; height: 38px; color: #aac9ef; }
+.account-empty strong { margin-top: 14px; color: #426b9d; font-size: 16px; }
+.account-empty p { margin-top: 10px; font-size: 13px; line-height: 1.7; }
+.holding-row { min-width: 650px; grid-template-columns: minmax(130px, 1.2fr) repeat(3, 1fr) 80px; padding: 16px 18px; border-bottom: 1px solid #e6eef8; font-size: 14px; }
+.holding-row:last-child { border-bottom: 0; }
+.holding-row:nth-child(even) { background: #f8fbff; }
+.holding-row > span { font-size: 14px; }
+.holding-row small { display: block; margin-top: 5px; font-size: 12px; }
+.holding-row span small { font-size: 12px; color: #738bad; }
+.holding-row > button { height: 34px; font-size: 13px; border-radius: 6px; background: #fff2f3; border-color: #f5cbd1; color: #dd5267; }
+.simulation-source-note { margin: 0 0 16px; color: #7a91b0; font-size: 12px; line-height: 1.8; }
+@media (max-width: 760px) {
+  .simulation-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .simulation-summary > div { padding: 14px; }
+  .simulation-summary strong { font-size: 21px; }
+  .simulation-order { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sim-field:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 420px) {
+  .simulation-order { grid-template-columns: minmax(0, 1fr); }
+  .sim-order-actions button { min-width: 0; flex: 1; padding: 0 12px; }
+}
+</style>

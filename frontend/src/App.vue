@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/snapshot'
 import { fetchSnapshot } from '@/api/client'
@@ -130,16 +130,31 @@ function go(id) {
 const searchQuery = ref('')
 const searchItems = ref([])
 const searchState = ref('idle')
+const searchError = ref('')
+let searchRequest = 0
+watch(searchQuery, () => {
+  searchRequest++
+  searchItems.value = []
+  searchState.value = 'idle'
+}, { flush: 'sync' })
+watch(searchOpen, value => { if (!value) searchRequest++ }, { flush: 'sync' })
 async function runSearch() {
+  const request = ++searchRequest
   const q = searchQuery.value.trim()
   searchState.value = 'loading'
+  searchItems.value = []
+  searchError.value = ''
   try {
-    const data = await fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(q)}`)
-    searchItems.value = data?.items || []
+    const data = await fetchSnapshot(`/api/stocks/search?q=${encodeURIComponent(q)}`, { timeout: 70000, retry: true })
+    if (request !== searchRequest) return
+    if (data?.status !== 'ready' || !Array.isArray(data.items)) throw new Error('invalid search')
+    searchItems.value = data.items.filter(item => /^\d{6}$/.test(item.code))
     searchState.value = 'ready'
   } catch (e) {
+    if (request !== searchRequest) return
     searchItems.value = []
     searchState.value = 'unavailable'
+    searchError.value = e.response?.data?.message || '搜索请求超时或服务暂不可用，请稍后重试。'
   }
 }
 function openSearch() {
@@ -149,6 +164,7 @@ function openSearch() {
   searchState.value = 'idle'
   runSearch()
 }
+provide('openStockSearch', openSearch)
 function openStock(item) {
   searchOpen.value = false
   // 加入自选（仅当尚未加入时）后，直接弹出与 TOP50 点股票名一致的单股决策弹窗。
@@ -196,6 +212,8 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
             :key="item.id"
             :class="{ active: active === item.id }"
             :aria-label="item.label"
+            :title="collapsed ? item.label : undefined"
+            :aria-current="active === item.id ? 'page' : undefined"
             @click="go(item.id)"
           >
             <component :is="item.icon" :size="19" :stroke="1.8" />
@@ -221,7 +239,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
     <div class="app-content">
       <header class="app-header">
         <div class="header-title">
-          <button class="mobile-menu" aria-label="打开导航" @click="mobileSidebar = true"><IconMenu2 :size="20" /></button>
+          <button class="mobile-menu" aria-label="打开导航" @click="collapsed = false; mobileSidebar = true"><IconMenu2 :size="20" /></button>
           <strong>{{ pageTitle }}</strong>
           <span>{{ session?.date || 'A股交易日' }}</span>
           <span>{{ session?.label || '上海时间' }}</span>
@@ -268,15 +286,18 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
     <!-- 全局搜索 -->
     <div v-if="searchOpen" class="stock-search-dialog" role="dialog" aria-label="搜索股票">
       <header><strong>搜索股票 / 代码 / 行业</strong><button aria-label="关闭" @click="searchOpen = false">✕</button></header>
-      <div class="search-field">
+      <div class="stock-search-field">
         <el-input v-model="searchQuery" class="ep-form-control" placeholder="输入代码、名称或行业" clearable @keyup.enter="runSearch" />
-        <button class="table-action" @click="runSearch">搜索</button>
+        <button class="table-action" :disabled="searchState === 'loading'" @click="runSearch">{{ searchState === 'loading' ? '搜索中' : '搜索' }}</button>
       </div>
       <div class="stock-search-results">
         <button v-for="item in searchItems" :key="item.code" class="stock-search-result" @click="openStock(item)">
           <strong>{{ item.name }}</strong>
           <small>{{ item.code }} · {{ item.industry }}</small>
+          <small>{{ store.has(item.code) ? '已加入自选 · 查看分析' : '加入自选并查看分析' }}</small>
         </button>
+        <p v-if="searchState === 'loading'" class="stock-search-empty" role="status">正在搜索股票…</p>
+        <p v-if="searchState === 'unavailable'" class="stock-search-empty" role="alert">{{ searchError }}</p>
         <p v-if="searchState === 'ready' && !searchItems.length" class="stock-search-empty">没有匹配的股票</p>
       </div>
     </div>
@@ -310,8 +331,17 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; border-bottom: 1px solid #d4e4f8;
 }
-.stock-search-dialog .search-field { display: flex; gap: 8px; padding: 12px 16px; }
-.stock-search-dialog .search-field input { flex: 1; height: 32px; border: 1px solid #bcd4ef; border-radius: 7px; padding: 0 10px; }
+.stock-search-dialog { max-width: calc(100vw - 48px); background: #fff; }
+.stock-search-dialog > header { flex: 0 0 auto; padding: 14px 16px 8px; border-bottom: 0; background: #fff; }
+.stock-search-dialog > header strong { font-size: 15px; }
+.stock-search-dialog > header button { width: 30px; height: 30px; border-color: transparent; background: #f4f8ff; border-radius: 8px; }
+.stock-search-field { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 4px 16px 16px; border-bottom: 1px solid #e3ecf8; }
+.stock-search-field > .el-input { flex: 1; width: auto; min-width: 0; }
+.stock-search-field :deep(.el-input__wrapper) { min-height: 40px; padding: 0 12px; border-radius: 8px; background: #f7faff; }
+.stock-search-field :deep(.el-input__inner) { flex: 1; font-size: 13px; }
+.stock-search-field > button { flex: 0 0 64px; height: 40px; margin: 0; padding: 0 10px; border: 1px solid #2878ed; border-radius: 8px; background: #2878ed; color: #fff; font-size: 13px; }
+.stock-search-field > button:hover:not(:disabled) { background: #1768db; }
+.stock-search-field > button:disabled { opacity: .6; cursor: wait; }
 .stock-search-results, .notification-list { overflow: auto; padding: 0 10px 12px; }
 .stock-search-result, .notification-item {
   display: block; width: 100%; text-align: left; border: 1px solid #dfe9f7; background: #fff;
@@ -319,5 +349,6 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 }
 .stock-search-result strong, .notification-item strong { display: block; }
 .stock-search-result small, .notification-item small { color: #6e86ab; font-size: 11px; }
+.stock-search-result small { display: block; margin-top: 3px; }
 .stock-search-empty, .notification-empty { padding: 18px; color: #7f95b6; text-align: center; }
 </style>

@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useSnapshot } from "@/composables/useSnapshot";
 import { useAgentsStore } from "@/stores/agents";
 import { hydrateStock } from "@/utils/format";
@@ -13,6 +13,7 @@ import {
 } from "@tabler/icons-vue";
 
 const router = useRouter();
+const route = useRoute();
 const agentsStore = useAgentsStore();
 const { data: top50, state: top50State } = useSnapshot("/api/top50", {
   refreshMs: 300000,
@@ -53,6 +54,11 @@ function scoredCount(stock) {
   return scores && typeof scores === "object" ? Object.keys(scores).length : 0;
 }
 const teacherName = ref(agentsStore.teacherList[0]?.name || "");
+watch([teachers, () => route.query.teacher], ([list, id]) => {
+  const requested = list.find(t => t.id === id);
+  if (requested) teacherName.value = requested.name;
+  else if (!list.some(t => t.name === teacherName.value)) teacherName.value = list[0]?.name || "";
+}, { immediate: true });
 const agentByName = computed(() => agentsStore.teacherByName);
 
 onMounted(() => {
@@ -122,6 +128,7 @@ const divergence = computed(() => {
 <template>
   <div class="page-grid strategies-page">
     <main class="primary-workspace">
+      <div class="strategy-screen-link"><button class="primary-button" @click="router.push({ path: '/tools', query: { tool: 'strategy', teacher: selectedTeacher?.id } })">进入量化策略筛选 <IconChevronRight :size="16" /></button></div>
       <div class="teacher-tabs">
         <span>{{ teacherCount }}套策略画像</span>
         <button
@@ -366,3 +373,7 @@ const divergence = computed(() => {
     </aside>
   </div>
 </template>
+
+<style scoped>
+.strategy-screen-link{display:flex;justify-content:flex-end;margin-bottom:12px}
+</style>

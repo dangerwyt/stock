@@ -7,10 +7,11 @@ import { fetchSnapshot } from '@/api/client'
 // `url` 可以是字符串、ref/computed，或返回字符串的 getter —— 后两种支持"地址变了自动
 // 重新拉"。字符串仍然是最常见用法，此时 watch 的 getter 恒返回同一个值，永不触发，
 // 行为与从前完全一致（这是 ReviewPage 改日期后不刷新那个 bug 的修法）。
-export function useSnapshot(url, { refreshMs = 0, fallbackUrl = null } = {}) {
+export function useSnapshot(url, { refreshMs = 0, fallbackUrl = null, timeout = 20000 } = {}) {
   const data = ref(null)
   const state = ref('loading')
   const sourceMode = ref('loading')
+  const error = ref(null)
   let timer = null
   let computeTimer = null
   let active = true
@@ -19,9 +20,10 @@ export function useSnapshot(url, { refreshMs = 0, fallbackUrl = null } = {}) {
 
   async function load(opts = {}) {
     try {
-      const d = await fetchSnapshot(currentUrl(), opts)
+      const d = await fetchSnapshot(currentUrl(), { timeout, ...opts })
       if (!active) return
       data.value = d
+      error.value = null
       if (d?.meta?.status === 'computing') {
         // 榜单首次计算（拉全市场行情）较慢：进入 3 秒快速轮询，直到 ready。
         state.value = 'computing'
@@ -37,6 +39,7 @@ export function useSnapshot(url, { refreshMs = 0, fallbackUrl = null } = {}) {
       sourceMode.value = d?.meta?.sourceMode || 'live'
     } catch (e) {
       if (!active) return
+      error.value = e.response?.data || null
       if (fallbackUrl) {
         try {
           const d = await fetchSnapshot(fallbackUrl)
@@ -78,5 +81,5 @@ export function useSnapshot(url, { refreshMs = 0, fallbackUrl = null } = {}) {
   })
 
   // reload 走 fresh：调用方通常是在"刚写了后端状态"之后手动刷新，拿到缓存就白刷了。
-  return { data, state, sourceMode, reload: () => load({ fresh: true }) }
+  return { data, state, sourceMode, error, reload: () => load({ fresh: true }) }
 }

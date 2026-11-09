@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     frontend_origin: str = "http://localhost:5173"
 
+    # 量化子系统（TSP / tick-stock-panel）的访问地址，例：http://127.0.0.1:3018
+    #
+    # 为什么走后端配置而不是前端构建期变量：TSP 是本机另起的独立服务，地址随部署环境变
+    # （服务器上多半是另一个主机/端口）。写进 frontend 的 VITE_* 就得重建镜像才能改地址；
+    # 放这里只改 .env + 重启 backend，前端从 /api/status 读。
+    #
+    # 留空 = 未接入：前端「量化工具」会明确提示未配置，而不是跳到一个打不开的空白页。
+    quant_subsystem_url: str = ""
+
     # Providers
     minimax_api_key: str = ""
     minimax_base_url: str = "https://api.minimaxi.com/v1"

@@ -45,6 +45,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .sidebar nav button:hover { background: #101d2c; color: #dbe8f8; }
 .sidebar nav button.active { background: #17345b; color: #80afff; box-shadow: inset 0 0 0 1px #244875; }
 .sidebar.collapsed nav button { justify-content: center; padding: 0; }
+/* 「量化工具」这类外部子系统入口：右侧一个外链角标，提示点击会跳出本项目 */
+.sidebar nav button .nav-external { margin-left: auto; display: flex; color: var(--muted); }
 .watchlist { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); min-height: 0; overflow: auto; }
 .watchlist .section-label span small { margin-left: 4px; color: #6d8bae; font-size: 7px; font-weight: 500; }
 .section-label { display: flex; justify-content: space-between; align-items: center; padding: 0 5px 8px; color: var(--muted); font-size: 11px; }
@@ -1009,13 +1011,7 @@ td small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .page-data-method { margin: 12px 16px 0; display: flex; align-items: flex-start; gap: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 @media (max-width: 1280px) {
-  :root { --sidebar: 64px; --rail: clamp(252px, 27vw, 300px); }
-  .sidebar { padding-inline: 8px; }
-  .brand { justify-content: center; padding-inline: 0; }
-  .brand > div:last-child, .sidebar nav button span, .watchlist, .sidebar-foot > span:not(.live-dot) { display: none; }
-  .sidebar nav button { justify-content: center; padding: 0; }
-  .sidebar-foot { justify-content: center; }
-  .sidebar-foot button { margin-left: 0; }
+  :root { --rail: clamp(252px, 27vw, 300px); }
   .overview-columns { grid-template-columns: 1fr; }
   .snapshot-banner { grid-template-columns: 38px 1fr 1.5fr; }
   .snapshot-cache { display: none; }
@@ -4506,27 +4502,8 @@ html.home-research-active .app-shell.active-overview .app-content { grid-templat
   .source-list { max-width: 100%; overflow-x: auto; }
 }
 
-/* Global navigation: keep the left icon rail visible on compact desktop. */
+/* Compact desktop content layout. Sidebar states live in reference-theme.css. */
 @media (min-width: 821px) and (max-width: 980px) {
-  .app-shell,
-  .app-shell.sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
-  .sidebar {
-    position: sticky;
-    left: auto;
-    width: auto;
-    padding-inline: 8px;
-    transform: none;
-    transition: none;
-    box-shadow: none;
-  }
-  .sidebar:not(.collapsed) .brand { justify-content: center; padding-inline: 0; }
-  .sidebar:not(.collapsed) .brand > div:last-child,
-  .sidebar:not(.collapsed) nav button span,
-  .sidebar:not(.collapsed) .watchlist,
-  .sidebar:not(.collapsed) .sidebar-foot > span:not(.live-dot) { display: none; }
-  .sidebar:not(.collapsed) nav button { justify-content: center; padding: 0; }
-  .sidebar:not(.collapsed) .sidebar-foot { justify-content: center; }
-  .sidebar:not(.collapsed) .sidebar-foot button { margin-left: 0; }
   .brief-consensus-copy strong {
     font-size: 12px;
     white-space: nowrap;
@@ -4542,9 +4519,6 @@ html.home-research-active .app-shell.active-overview .app-content { grid-templat
     padding-inline: 6px;
     white-space: nowrap;
   }
-  .mobile-sidebar-open .sidebar { transform: none; }
-  .sidebar-backdrop,
-  .mobile-menu { display: none; }
 }
 
 /* Frozen TOP50 evidence and compact decision list. */
@@ -4879,10 +4853,6 @@ html.home-research-active .app-shell.active-overview .app-content { grid-templat
 .ai-quick-question-grid button { min-height: 58px; display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #2b3d52; border-radius: 6px; color: #c8d6e6; background: #0d1724; text-align: left; cursor: pointer; }
 .ai-quick-question-grid button:hover { border-color: #4a79ad; background: #14263a; }
 .ai-quick-question-grid button svg:first-child { color: #6ba8eb; }
-
-@media (max-width: 1280px) {
-  .sidebar-nav-label { display: none; }
-}
 
 @media (max-width: 1180px) {
   .market-brief-grid { grid-template-columns: minmax(0, 1fr) minmax(390px, .9fr); }
