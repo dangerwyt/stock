@@ -12,15 +12,12 @@ import {
   IconBriefcase2,
   IconNews,
   IconBrain,
-  IconBuildingFactory2,
   IconUsersGroup,
   IconChartDots3,
   IconFileAnalytics,
   IconReportAnalytics,
-  IconShieldCheck,
   IconMenu2,
   IconSearch,
-  IconBell,
   IconUserCircle,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -43,7 +40,6 @@ const navGroups = [
   {
     label: '研究工具',
     items: [
-      { id: 'industries', label: '行业主题', icon: IconBuildingFactory2 },
       { id: 'strategies', label: '老师策略', icon: IconUsersGroup },
       { id: 'tools', label: '量化工具', icon: IconChartDots3 },
       { id: 'review', label: '盘后复盘', icon: IconFileAnalytics },
@@ -53,7 +49,6 @@ const navGroups = [
     label: '可信与系统',
     items: [
       { id: 'accuracy', label: '准确率证据', icon: IconReportAnalytics },
-      { id: 'risk', label: '风险中心', icon: IconShieldCheck },
       { id: 'operations', label: '运行状态', icon: IconActivity },
     ],
   },
@@ -72,7 +67,6 @@ const active = computed(() => route.name || 'overview')
 const collapsed = ref(false)
 const mobileSidebar = ref(false)
 const searchOpen = ref(false)
-const notificationsOpen = ref(false)
 
 const status = computed(() => store.platformStatus)
 const session = computed(() => status.value?.session)
@@ -172,18 +166,6 @@ function openStock(item) {
   stockDecision.open({ code: item.code, stock: item })
 }
 
-// --- 通知中心 ---
-const notifications = ref([])
-async function openNotifications() {
-  notificationsOpen.value = true
-  try {
-    const data = await fetchSnapshot('/api/notifications')
-    notifications.value = data?.items || []
-  } catch (e) {
-    notifications.value = []
-  }
-}
-
 function onResize() {
   if (window.innerWidth > 760) mobileSidebar.value = false
 }
@@ -249,9 +231,6 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
           <button class="header-search" title="全局搜索" aria-label="全局搜索" @click="openSearch">
             <IconSearch :size="18" /><span>搜索股票 / 代码 / 行业</span>
           </button>
-          <button class="notification" title="通知" aria-label="通知" @click="openNotifications">
-            <IconBell :size="18" /><em>{{ notifications.length || 0 }}</em>
-          </button>
           <button class="profile profile-button" aria-label="匿名研究模式"><IconUserCircle :size="19" /><span>无需登录</span></button>
         </div>
       </header>
@@ -299,18 +278,6 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
         <p v-if="searchState === 'loading'" class="stock-search-empty" role="status">正在搜索股票…</p>
         <p v-if="searchState === 'unavailable'" class="stock-search-empty" role="alert">{{ searchError }}</p>
         <p v-if="searchState === 'ready' && !searchItems.length" class="stock-search-empty">没有匹配的股票</p>
-      </div>
-    </div>
-
-    <!-- 通知中心 -->
-    <div v-if="notificationsOpen" class="notification-center" role="dialog" aria-label="通知中心">
-      <header><strong>通知中心</strong><button aria-label="关闭" @click="notificationsOpen = false">✕</button></header>
-      <div class="notification-list">
-        <article v-for="(item, i) in notifications" :key="i" class="notification-item">
-          <strong>{{ item.title || item.name || '系统通知' }}</strong>
-          <small>{{ item.detail || item.summary || item.body || '' }}</small>
-        </article>
-        <p v-if="!notifications.length" class="notification-empty">暂无通知</p>
       </div>
     </div>
 
